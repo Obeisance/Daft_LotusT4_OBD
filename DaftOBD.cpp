@@ -9,6 +9,7 @@
 //I took code from: https://www.youtube.com/watch?v=RT_MGEcnHg4
 
 #include <iostream>
+#include <fstream>
 #include <Unknwn.h>
 #include <windows.h>
 #include "ftd2xx.h"//included to directly drive the FTDI com port device
@@ -38,16 +39,19 @@ void saveLogCheckBoxSettings();//the loggable parameter checkbox settings are sa
 void restoreLogCheckBoxSettings();//the loggable parameter checkbox settings are restored when the list is drawn
 void updatePlot(HWND parent, int parentWidth, int parentHeight);//draw and update the data plot
 void checkForAndPopulateComPortList(HWND comPortList);//enumerate the list of available com ports
-void serialPollingCycle();//perform the serial message exchange
+bool serialPollingCycle(HANDLE serialPortHandle);//perform the serial message exchange
 int chars_to_int(char* number);//converts a char array to an integer
 void writeToSerialPort(HANDLE serialPortHandle, byte* bytesToSend, int numberOfBytesToSend);
-void readFromSerialPort(HANDLE serialPortHandle, byte* serialBytesRecvd, int sizeOfSerialByteBuffer, int delayMS);
+int readFromSerialPort(HANDLE serialPortHandle, byte* serialBytesRecvd, int sizeOfSerialByteBuffer, int delayMS);
 HANDLE sendOBDInit(HANDLE serialPortHandle);
-
+HANDLE setupComPort();
+void populateFileHeaders(std::ofstream &dataFile, std::ofstream &byteFile);
+std::string decodeDTC(byte firstByte, byte secondByte);
 
 //global variables for window handles
 HWND selectLogParams, logParamsTitle, logParamsScrollH, logParamsScrollV, logbutton, continuousButton, plotwindow, plot, plotParam, indicateBaudRate, baudrateSelect,mode1,mode2,mode3,mode4,mode5,mode6,mode7,mode8,mode9,mode22,mode2F,mode3B,modeSHORT;
 HWND comSelect;
+HANDLE serialPort;
 
 //set client relative window positions
 int plotWindowX = 220;
@@ -69,6 +73,16 @@ bool continuousLogging = false;
 char baudRateStore[5] = {'0','0','0','0','0'};
 int attemptsAtInit = 0;
 
+//global variables of files to save data logs
+std::ofstream writeBytes;
+std::ofstream writeData;
+
+//global timer variables for data logging
+//helped from: http://stackoverflow.com/questions/2150291/how-do-i-measure-a-time-interval-in-c
+LARGE_INTEGER systemFrequency;        // ticks per second
+LARGE_INTEGER startTime, currentTime;           // ticks
+double elapsedLoggerTime;
+
 //for the scroll bars
 SCROLLINFO si;
 
@@ -78,7 +92,7 @@ int mode1checkboxstate[28] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 
 //OBD MODE 2 PID buttons
 HWND OBD2PID0,OBD2PID2,OBD2PID3,OBD2PID4,OBD2PID5,OBD2PID6,OBD2PID7,OBD2PID12,OBD2PID13,OBD2PID16,OBD2PID17;
-int mode2checkboxstate[28] = {0,0,0,0,0,0,0,0,0,0,0};
+int mode2checkboxstate[11] = {0,0,0,0,0,0,0,0,0,0,0};
 
 //OBD MODE 3 PID buttons
 HWND OBD3PID0;
@@ -190,11 +204,18 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		//if we should log, perform the cycle
 		if(logButtonToggle)
 		{
-			serialPollingCycle();
+			serialPollingCycle(serialPort);//if the logging button is pushed, the handle 'serialPort' should be initialized
+
 			//un-toggle the log button unless we are supposed to continuously log
 			if(!continuousLogging)
 			{
 				logButtonToggle = false;
+
+				//close the log files
+				writeBytes.close();
+				writeData.close();
+				//close the COM port
+				CloseHandle(serialPort);
 			}
 		}
 	}
@@ -404,12 +425,35 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 				//update the stored button position
 				if(logButtonToggle == true)
 				{
+					//end logging
 					logButtonToggle = false;
+					//close the log files
+					writeBytes.close();
+					writeData.close();
+					//close the COM port
+					CloseHandle(serialPort);
 				}
 				else
 				{
 					logButtonToggle = true;
 					attemptsAtInit = 0;//reset our init attempt counter
+
+					//prepare to save bytes and interpreted data
+					std::ofstream writeBytes("daftOBD_byte_log.txt", std::ios::app);//append to the file
+					std::ofstream writeData("daftOBD_data_log.txt", std::ios::app);//append to the file
+
+					//begin a global timer
+					QueryPerformanceFrequency(&systemFrequency);// get ticks per second
+					QueryPerformanceCounter(&startTime);// start timer
+
+					//for everything which has a check box, write the header in the files
+					populateFileHeaders(writeData, writeBytes);
+
+					//open the serial port
+					serialPort = setupComPort();
+
+					//perform the OBD-II ISO-9141-2 slow init handshake sequence
+					serialPort = sendOBDInit(serialPort);
 				}
 				break;
 			case 2: //continuous logging checkbox is clicked
@@ -520,10 +564,10 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD2PID5 = CreateWindow("BUTTON", "Engine coolant temperature",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,5*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 7,NULL,NULL);
 	OBD2PID6 = CreateWindow("BUTTON", "Short term fuel trim",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,6*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 8,NULL,NULL);
 	OBD2PID7 = CreateWindow("BUTTON", "Long term fuel trim",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,7*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 9,NULL,NULL);
-	OBD2PID12 = CreateWindow("BUTTON", "Command secondary air status",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,8*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 10,NULL,NULL);
-	OBD2PID13 = CreateWindow("BUTTON", "Oxygen sensors present",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,9*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 11,NULL,NULL);
-	OBD2PID16 = CreateWindow("BUTTON", "Oxygen sensor 3",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,10*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 12,NULL,NULL);
-	OBD2PID17 = CreateWindow("BUTTON", "Oxygen sensor 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,11*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 13,NULL,NULL);
+	OBD2PID12 = CreateWindow("BUTTON", "Engine RPM",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,8*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 10,NULL,NULL);
+	OBD2PID13 = CreateWindow("BUTTON", "Vehicle speed",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,9*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 11,NULL,NULL);
+	OBD2PID16 = CreateWindow("BUTTON", "Mass airflow rate",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,10*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 12,NULL,NULL);
+	OBD2PID17 = CreateWindow("BUTTON", "Throttle position",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,11*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 13,NULL,NULL);
 	}
 	//if(y_offset+mode3y_offset < parentHeight && y_offset+mode3y_offset+mode3Height > 0)
 	{
@@ -573,12 +617,12 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	{
 	mode9 = CreateWindow("BUTTON", "MODE 0x9:Request vehicle info",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode9y_offset+y_offset,parameterTableWidth,mode9Height,parent,NULL,NULL,NULL);
 	OBD9PID0 = CreateWindow("BUTTON", "OBD monitor IDs supported 1-20",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 3,NULL,NULL);
-	OBD9PID1 = CreateWindow("BUTTON", "Vehicle info 1",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,2*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 4,NULL,NULL);
-	OBD9PID2 = CreateWindow("BUTTON", "Vehcile info 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,3*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 5,NULL,NULL);
-	OBD9PID3 = CreateWindow("BUTTON", "Vehicle info 3",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,4*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 6,NULL,NULL);
-	OBD9PID4 = CreateWindow("BUTTON", "Vehicle info 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,5*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 7,NULL,NULL);
-	OBD9PID5 = CreateWindow("BUTTON", "Vehicle info 5",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,6*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 8,NULL,NULL);
-	OBD9PID6 = CreateWindow("BUTTON", "Vehicle info 6",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,7*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 9,NULL,NULL);
+	OBD9PID1 = CreateWindow("BUTTON", "VIN message count",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,2*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 4,NULL,NULL);
+	OBD9PID2 = CreateWindow("BUTTON", "VIN",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,3*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 5,NULL,NULL);
+	OBD9PID3 = CreateWindow("BUTTON", "Cal ID message count",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,4*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 6,NULL,NULL);
+	OBD9PID4 = CreateWindow("BUTTON", "Calibration ID",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,5*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 7,NULL,NULL);
+	OBD9PID5 = CreateWindow("BUTTON", "CVN message count",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,6*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 8,NULL,NULL);
+	OBD9PID6 = CreateWindow("BUTTON", "Cal Validation No.",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,7*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 9,NULL,NULL);
 	}
 
 	//if(y_offset+mode22y_offset < parentHeight && y_offset+mode22y_offset+mode22Height > 0)
@@ -1044,9 +1088,10 @@ void checkForAndPopulateComPortList(HWND comPortList)
 	}
 }
 
-void serialPollingCycle()
+bool serialPollingCycle(HANDLE serialPortHandle)
 {
-	//a handle for the data type which holds COM port settings
+	bool success = true;
+	/*//a handle for the data type which holds COM port settings
 	DCB dcb;
 
 	//open the COM port
@@ -1075,32 +1120,1773 @@ void serialPollingCycle()
 	timeouts.WriteTotalTimeoutMultiplier = 10; // in milliseconds
 	SetCommTimeouts(Port,&timeouts);
 
+	//perform the OBD-II ISO-9141-2 slow init handshake sequence
+	//Port = sendOBDInit(Port);
+	*/
+
+
 	//for each logging parameter, send a message, recieve a message, interpret the message and save the data
 
-	//perform the OBD-II ISO-9141-2 slow init handshake sequence
-	Port = sendOBDInit(Port);
-
-	//
-
-	//test the OBD mode III response:
-	byte sendBytes[5] = {104,106,241,3,198};//init message for MODE 0x3 PID 0
-	//byte sendBytes[5] = {104,106,241,4,199};//init message for MODE 0x4 PID 0
-	Sleep(100);
-	writeToSerialPort(Port, sendBytes, 5);//send the 6 bytes
-	byte recvdBytes[100];//a buffer which can be used to store read bytes
+	//initialize a read-in data buffer
+	byte recvdBytes[100];//a buffer which can be used to store read-in bytes
 	for(int i = 0; i < 100; i++)
 	{
 		recvdBytes[i] = 0;
 	}
+
+	//get the current timer value
+    QueryPerformanceCounter(&currentTime);//get the loop position time
+    double LoggerTimeMS = (currentTime.QuadPart - startTime.QuadPart)*1000 / systemFrequency.QuadPart;// compute the elapsed time in milliseconds
+    elapsedLoggerTime = LoggerTimeMS/1000;//this is an attempt to get post-decimal points
+    writeBytes << elapsedLoggerTime;
+    writeData << elapsedLoggerTime;
+
+    //scan through the different OBD PIDs, checking if they are to be polled
+    //if they are to be polled, send a message, read a message and store the data
+
+    //28 PIDs to check for mode 1
+    //PID 0
+    if(mode1checkboxstate[0] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0: list of valid PIDs 0-20
+    	byte sendBytes[6] = {104,106,241,1,0,196};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,100);
+    	if(numBytesRead < 10)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 4 bytes which are binary flags
+    	//for the next 32 PIDs indicating if they work with this car
+    	//the return packet looks like 72,107,16,65,0,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int PIDplace = 0;
+    	for(int i = 5; i < 9; i++)//loop through bytes
+    	{
+    		for(int j = 7; j > -1; j--)
+    		{
+    			PIDplace += 1;
+    			if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+    			{
+    				writeData << PIDplace << ' ';
+    			}
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 1
+    if(mode1checkboxstate[1] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 1: Monitor status since DTCs cleared. (Includes malfunction indicator lamp (MIL) status and number of DTCs.)
+    	byte sendBytes[6] = {104,106,241,1,1,197};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,100);
+    	if(numBytesRead < 10)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 4 bytes which are binary/byte flags
+    	//for vehicle monitors of this car
+    	//the return packet looks like 72,107,16,65,1,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	if((recvdBytes[5] >> 7) & 0x1)
+    	{
+    		writeData << "CEL on: ";
+    	}
+    	else
+    	{
+    		writeData << "CEL off: ";
+    	}
+    	int numCELs = 0;
+    	int multiplier = 1;
+    	for(int i = 0; i < 7; i++)
+    	{
+    		numCELs += ((recvdBytes[5] >> i) & 0x1)*multiplier;
+    		multiplier = multiplier*2;
+    	}
+    	writeData << numCELs << " codes indicated ";
+    	if((recvdBytes[6] >> 0) & 0x1)
+    	{
+    		writeData << "misfire test available ";
+    	}
+    	else
+    	{
+    		writeData << "misfire test N/A ";
+    	}
+    	if((recvdBytes[6] >> 4) & 0x1)
+    	{
+    		writeData << "misfire test incomplete ";
+    	}
+    	else
+    	{
+    		writeData << "misfire test complete ";
+    	}
+    	if((recvdBytes[6] >> 1) & 0x1)
+    	{
+    		writeData << "fuel system test available ";
+    	}
+    	else
+    	{
+    		writeData << "fuel system test N/A ";
+    	}
+    	if((recvdBytes[6] >> 5) & 0x1)
+    	{
+    		writeData << "fuel system test incomplete ";
+    	}
+    	else
+    	{
+    		writeData << "fuel system test complete ";
+    	}
+    	if((recvdBytes[6] >> 2) & 0x1)
+    	{
+    		writeData << "components test available ";
+    	}
+    	else
+    	{
+    		writeData << "components test N/A ";
+    	}
+    	if((recvdBytes[6] >> 6) & 0x1)
+    	{
+    		writeData << "components test incomplete ";
+    	}
+    	else
+    	{
+    		writeData << "components test complete ";
+    	}
+    	if((recvdBytes[6] >> 3) & 0x1)
+    	{
+    		writeData << "Compression ignition monitors: ";
+    		if((recvdBytes[7] >> 0) & 0x1)
+    		{
+    			writeData << "NMHC test available ";
+    		}
+    		else
+    		{
+    			writeData << "NMHC test N/A ";
+    		}
+    		if((recvdBytes[8] >> 0) & 0x1)
+    		{
+    			writeData << "NMHC test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "NMHC test complete ";
+    		}
+    		if((recvdBytes[7] >> 1) & 0x1)
+    		{
+    			writeData << "NOx/SCR monitor test available ";
+    		}
+    		else
+    		{
+    			writeData << "NOx/SCR monitor test N/A ";
+    		}
+    		if((recvdBytes[8] >> 1) & 0x1)
+    		{
+    			writeData << "NOx/SCR monitor test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "NOx/SCR monitor test complete ";
+    		}
+    		if((recvdBytes[7] >> 2) & 0x1)
+    		{
+    			writeData << "?? test available ";
+    		}
+    		else
+    		{
+    			writeData << "?? test N/A ";
+    		}
+    		if((recvdBytes[8] >> 2) & 0x1)
+    		{
+    			writeData << "?? test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "?? test complete ";
+    		}
+    		if((recvdBytes[7] >> 3) & 0x1)
+    		{
+    			writeData << "Boost pressure test available ";
+    		}
+    		else
+    		{
+    			writeData << "Boost pressure test N/A ";
+    		}
+    		if((recvdBytes[8] >> 3) & 0x1)
+    		{
+    			writeData << "Boost pressure test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Boost pressure test complete ";
+    		}
+    		if((recvdBytes[7] >> 4) & 0x1)
+    		{
+    			writeData << "?? test available ";
+    		}
+    		else
+    		{
+    			writeData << "?? test N/A ";
+    		}
+    		if((recvdBytes[8] >> 4) & 0x1)
+    		{
+    			writeData << "?? test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "?? test complete ";
+    		}
+    		if((recvdBytes[7] >> 5) & 0x1)
+    		{
+    			writeData << "exhaust gas sensor test available ";
+    		}
+    		else
+    		{
+    			writeData << "exhaust gas sensor test N/A ";
+    		}
+    		if((recvdBytes[8] >> 5) & 0x1)
+    		{
+    			writeData << "exhaust gas sensor test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "exhaust gas sensor test complete ";
+    		}
+    		if((recvdBytes[7] >> 6) & 0x1)
+    		{
+    			writeData << "PM filter monitoring test available ";
+    		}
+    		else
+    		{
+    			writeData << "PM filter monitoring test N/A ";
+    		}
+    		if((recvdBytes[8] >> 6) & 0x1)
+    		{
+    			writeData << "PM filter monitoring test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "PM filter monitoring test complete ";
+    		}
+    		if((recvdBytes[7] >> 7) & 0x1)
+    		{
+    			writeData << "EGR/VVT system test available ";
+    		}
+    		else
+    		{
+    			writeData << "EGR/VVT system test N/A ";
+    		}
+    		if((recvdBytes[8] >> 7) & 0x1)
+    		{
+    			writeData << "EGR/VVT system test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "EGR/VVT system test complete ";
+    		}
+    	}
+    	else
+    	{
+    		writeData << "Spark ignition monitors: ";
+    		if((recvdBytes[7] >> 0) & 0x1)
+    		{
+    			writeData << "Catalyst test available ";
+    		}
+    		else
+    		{
+    			writeData << "Catalyst test N/A ";
+    		}
+    		if((recvdBytes[8] >> 0) & 0x1)
+    		{
+    			writeData << "Catalyst test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Catalyst test complete ";
+    		}
+    		if((recvdBytes[7] >> 1) & 0x1)
+    		{
+    			writeData << "Heated catalyst test available ";
+    		}
+    		else
+    		{
+    			writeData << "Heated catalyst test N/A ";
+    		}
+    		if((recvdBytes[8] >> 1) & 0x1)
+    		{
+    			writeData << "Heated catalyst test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Heated catalyst test complete ";
+    		}
+    		if((recvdBytes[7] >> 2) & 0x1)
+    		{
+    			writeData << "Evaporative system test available ";
+    		}
+    		else
+    		{
+    			writeData << "Evaporative system test N/A ";
+    		}
+    		if((recvdBytes[8] >> 2) & 0x1)
+    		{
+    			writeData << "Evaporative system test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Evaporative system test complete ";
+    		}
+    		if((recvdBytes[7] >> 3) & 0x1)
+    		{
+    			writeData << "Secondary air system test available ";
+    		}
+    		else
+    		{
+    			writeData << "Secondary air system test N/A ";
+    		}
+    		if((recvdBytes[8] >> 3) & 0x1)
+    		{
+    			writeData << "Secondary air system test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Secondary air system test complete ";
+    		}
+    		if((recvdBytes[7] >> 4) & 0x1)
+    		{
+    			writeData << "A/C refrigerant test available ";
+    		}
+    		else
+    		{
+    			writeData << "A/C refrigerant test N/A ";
+    		}
+    		if((recvdBytes[8] >> 4) & 0x1)
+    		{
+    			writeData << "A/C refrigerant test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "A/C refrigerant test complete ";
+    		}
+    		if((recvdBytes[7] >> 5) & 0x1)
+    		{
+    			writeData << "Oxygen sensor test available ";
+    		}
+    		else
+    		{
+    			writeData << "Oxygen sensor test N/A ";
+    		}
+    		if((recvdBytes[8] >> 5) & 0x1)
+    		{
+    			writeData << "Oxygen sensor test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Oxygen sensor test complete ";
+    		}
+    		if((recvdBytes[7] >> 6) & 0x1)
+    		{
+    			writeData << "Oxygen sensor heater test available ";
+    		}
+    		else
+    		{
+    			writeData << "Oxygen sensor heater test N/A ";
+    		}
+    		if((recvdBytes[8] >> 6) & 0x1)
+    		{
+    			writeData << "Oxygen sensor heater test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "Oxygen sensor heater test complete ";
+    		}
+    		if((recvdBytes[7] >> 7) & 0x1)
+    		{
+    			writeData << "EGR system test available ";
+    		}
+    		else
+    		{
+    			writeData << "EGR system test N/A ";
+    		}
+    		if((recvdBytes[8] >> 7) & 0x1)
+    		{
+    			writeData << "EGR system test incomplete ";
+    		}
+    		else
+    		{
+    			writeData << "EGR system test complete ";
+    		}
+    	}
+
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+
+    //MODE 1 PID 2
+    if(mode1checkboxstate[2] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 2: freeze DTC
+    	byte sendBytes[6] = {104,106,241,1,2,198};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which are binary flags
+    	//indicating which DTC triggered the freeze frame
+    	//the return packet looks like 72,107,16,65,2,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+
+    	if(recvdBytes[5] == 0 && recvdBytes[6] == 0)
+    	{
+    		writeData << "no DTC";
+    	}
+    	else
+    	{
+    		int letterCode = ((recvdBytes[5] >> 7) & 0x1)*2 + ((recvdBytes[5] >> 6) & 0x1);//will be 0,1,2, or 3
+    		if(letterCode == 0)
+    		{
+    			writeData << 'P';
+    		}
+    		else if(letterCode == 1)
+    		{
+    			writeData << 'C';
+    		}
+    		else if(letterCode == 2)
+    		{
+    			writeData << 'B';
+    		}
+    		else if(letterCode == 3)
+    		{
+    			writeData << 'U';
+    		}
+    		int firstDecimal = ((recvdBytes[5] >> 5) & 0x1)*2 + ((recvdBytes[5] >> 4) & 0x1);
+    		int secondDecimal = ((recvdBytes[5] >> 3) & 0x1)*8 + ((recvdBytes[5] >> 2) & 0x1)*4 + ((recvdBytes[5] >> 1) & 0x1)*2 + ((recvdBytes[5] >> 0) & 0x1);
+    		int thirdDecimal = ((recvdBytes[6] >> 7) & 0x1)*8 + ((recvdBytes[6] >> 6) & 0x1)*4 + ((recvdBytes[6] >> 5) & 0x1)*2 + ((recvdBytes[6] >> 4) & 0x1);
+    		int fourthDecimal = ((recvdBytes[6] >> 3) & 0x1)*8 + ((recvdBytes[6] >> 2) & 0x1)*4 + ((recvdBytes[6] >> 1) & 0x1)*2 + ((recvdBytes[6] >> 0) & 0x1);
+    		writeData << firstDecimal << secondDecimal << thirdDecimal << fourthDecimal;
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 3
+    if(mode1checkboxstate[3] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 3: fuel system status
+    	byte sendBytes[6] = {104,106,241,1,3,199};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which are byte flags
+    	//for the next 32 PIDs indicating if they work with this car
+    	//the return packet looks like 72,107,16,65,3,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	if(recvdBytes[5] != 0){
+    		writeData << " Fueling system 1: ";
+    		if(((recvdBytes[5] >> 0) & 0x1))
+    		{
+    			writeData << "Open loop due to insufficient engine temperature";
+    		}
+    		else if(((recvdBytes[5] >> 1) & 0x1))
+    		{
+    			writeData << "Closed loop, using oxygen sensor feedback to determine fuel mix";
+    		}
+    		else if(((recvdBytes[5] >> 2) & 0x1))
+    		{
+    			writeData << "Open loop due to engine load OR fuel cut due to deceleration";
+    		}
+    		else if(((recvdBytes[5] >> 3) & 0x1))
+    		{
+    			writeData << "Open loop due to system failure";
+    		}
+    		else if(((recvdBytes[5] >> 4) & 0x1))
+    		{
+    			writeData << "Closed loop, using at least one oxygen sensor but there is a fault in the feedback system";
+    		}
+    	}
+
+    	if(recvdBytes[6] != 0){
+    		writeData << " Fueling system 2: ";
+    		if(((recvdBytes[6] >> 0) & 0x1))
+    		{
+    			writeData << "Open loop due to insufficient engine temperature";
+    		}
+    		else if(((recvdBytes[6] >> 1) & 0x1))
+    		{
+    			writeData << "Closed loop, using oxygen sensor feedback to determine fuel mix";
+    		}
+    		else if(((recvdBytes[6] >> 2) & 0x1))
+    		{
+    			writeData << "Open loop due to engine load OR fuel cut due to deceleration";
+    		}
+    		else if(((recvdBytes[6] >> 3) & 0x1))
+    		{
+    			writeData << "Open loop due to system failure";
+    		}
+    		else if(((recvdBytes[6] >> 4) & 0x1))
+    		{
+    			writeData << "Closed loop, using at least one oxygen sensor but there is a fault in the feedback system";
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+
+    //mode 1 PID 4
+    if(mode1checkboxstate[4] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 4: calculated engine load
+    	byte sendBytes[6] = {104,106,241,1,4,200};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates engine load
+    	//the return packet looks like 72,107,16,65,4,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double load = recvdBytes[5]/2.55;
+    	writeData << load;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 5
+    if(mode1checkboxstate[5] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 5: engine coolant temperature
+    	byte sendBytes[6] = {104,106,241,1,5,201};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates engine coolant temp
+    	//the return packet looks like 72,107,16,65,5,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int temp = recvdBytes[5]-40;
+    	writeData << temp;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 6
+    if(mode1checkboxstate[6] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 6: short term fuel trim: bank 1
+    	byte sendBytes[6] = {104,106,241,1,6,202};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates STFT
+    	//the return packet looks like 72,107,16,65,6,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double STFT = recvdBytes[5]/1.28-100;
+    	writeData << STFT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 7
+    if(mode1checkboxstate[7] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 7: long term fuel trim: bank 1
+    	byte sendBytes[6] = {104,106,241,1,7,203};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates LTFT
+    	//the return packet looks like 72,107,16,65,7,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double LTFT = recvdBytes[5]/1.28-100;
+    	writeData << LTFT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0xC
+    if(mode1checkboxstate[8] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0xC: engine RPM
+    	byte sendBytes[6] = {104,106,241,1,12,208};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate engine RPM
+    	//the return packet looks like 72,107,16,65,12,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double RPM = (recvdBytes[5]*256+recvdBytes[6])/4;
+    	writeData << RPM;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0xD
+    if(mode1checkboxstate[9] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0xD: Vehicle speed
+    	byte sendBytes[6] = {104,106,241,1,13,209};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates vehicle speed in km/h
+    	//the return packet looks like 72,107,16,65,13,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double speed = recvdBytes[5];
+    	writeData << speed;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0xE
+    if(mode1checkboxstate[10] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0xE: Timing advance
+    	byte sendBytes[6] = {104,106,241,1,14,210};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates timing advance
+    	//the return packet looks like 72,107,16,65,14,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double timingAdvance = recvdBytes[5]/2 - 64;
+    	writeData << timingAdvance;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0xF
+    if(mode1checkboxstate[11] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0xF: Intake air temperature
+    	byte sendBytes[6] = {104,106,241,1,15,211};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates intake air temperature
+    	//the return packet looks like 72,107,16,65,15,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double IAT = recvdBytes[5] - 40;
+    	writeData << IAT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x10
+    if(mode1checkboxstate[12] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x10: Mass air flow rate
+    	byte sendBytes[6] = {104,106,241,1,16,212};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate mass airflow rate
+    	//the return packet looks like 72,107,16,65,16,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double MAF = (recvdBytes[5]*256 + recvdBytes[6])/100;
+    	writeData << MAF;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x11
+    if(mode1checkboxstate[13] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x11: Throttle position
+    	byte sendBytes[6] = {104,106,241,1,17,213};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates throttle position
+    	//the return packet looks like 72,107,16,65,17,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double TPS = recvdBytes[5]/2.55;
+    	writeData << TPS;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x13
+    if(mode1checkboxstate[14] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x13: Oxygen sensors present
+    	byte sendBytes[6] = {104,106,241,1,19,215};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates how many O2 sensors are present
+    	//the return packet looks like 72,107,16,65,19,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	writeData << "Bank1 O2 sensors: ";
+    	if(((recvdBytes[5] >> 0) & 0x1))
+    	{
+    		writeData << "1 ";
+    	}
+    	if(((recvdBytes[5] >> 1) & 0x1))
+    	{
+    		writeData << "2 ";
+    	}
+    	if(((recvdBytes[5] >> 2) & 0x1))
+    	{
+    		writeData << "3 ";
+    	}
+    	if(((recvdBytes[5] >> 3) & 0x1))
+    	{
+    		writeData << "4 ";
+    	}
+    	writeData << "Bank2 O2 sensors: ";
+    	if(((recvdBytes[5] >> 4) & 0x1))
+    	{
+    		writeData << "1 ";
+    	}
+    	if(((recvdBytes[5] >> 5) & 0x1))
+    	{
+    		writeData << "2 ";
+    	}
+    	if(((recvdBytes[5] >> 6) & 0x1))
+    	{
+    		writeData << "3 ";
+    	}
+    	if(((recvdBytes[5] >> 7) & 0x1))
+    	{
+    		writeData << "4 ";
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x14
+    if(mode1checkboxstate[15] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x14: Oxygen sensor 1 voltage/short term fuel trim
+    	byte sendBytes[6] = {104,106,241,1,20,216};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate oxygen sensor voltage and STFT
+    	//the return packet looks like 72,107,16,65,20,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double voltage = recvdBytes[5]/200;
+    	double STFT = recvdBytes[6]*1.28 - 100;
+    	writeData << voltage << ' ' << STFT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x15
+    if(mode1checkboxstate[16] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x15: Oxygen sensor 2 voltage/short term fuel trim
+    	byte sendBytes[6] = {104,106,241,1,21,217};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate oxygen sensor voltage and STFT
+    	//the return packet looks like 72,107,16,65,21,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double voltage = recvdBytes[5]/200;
+    	double STFT = recvdBytes[6]*1.28 - 100;
+    	writeData << voltage << ' ' << STFT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x1C
+    if(mode1checkboxstate[17] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x1C: OBD standards this vehicle conforms to
+    	byte sendBytes[6] = {104,106,241,1,28,224};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates which OBD standards the vehicle conforms to
+    	//the return packet looks like 72,107,16,65,28,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	if(recvdBytes[5] == 1)
+    	{
+    		writeData << "OBDII as defined by the CARB";
+    	}
+    	else if(recvdBytes[5] == 2)
+    	{
+    		writeData << "OBDII as defined by the EPA";
+    	}
+    	else if(recvdBytes[5] == 3)
+    	{
+    		writeData << "OBD and OBDII";
+    	}
+    	else if(recvdBytes[5] == 4)
+    	{
+    		writeData << "OBD-I";
+    	}
+    	else if(recvdBytes[5] == 5)
+    	{
+    		writeData << "Not OBD compliant";
+    	}
+    	else if(recvdBytes[5] == 6)
+    	{
+    		writeData << "EOBD (Europe)";
+    	}
+    	else if(recvdBytes[5] == 7)
+    	{
+    		writeData << "EOBD and OBDII";
+    	}
+    	else if(recvdBytes[5] == 8)
+    	{
+    		writeData << "EOBD and OBD";
+    	}
+    	else if(recvdBytes[5] == 9)
+    	{
+    		writeData << "EOBD, OBD and OBDII";
+    	}
+    	else if(recvdBytes[5] == 10)
+    	{
+    		writeData << "JOBD (Japan)";
+    	}
+    	else if(recvdBytes[5] == 11)
+    	{
+    		writeData << "JOBD and OBDII";
+    	}
+    	else if(recvdBytes[5] == 12)
+    	{
+    		writeData << "JOBD and EOBD";
+    	}
+    	else if(recvdBytes[5] == 13)
+    	{
+    		writeData << "JOBD, EOBD, and OBDII";
+    	}
+    	else if(recvdBytes[5] == 17)
+    	{
+    		writeData << "Engine Manufacturer Diagnostics (EMD)";
+    	}
+    	else if(recvdBytes[5] == 18)
+    	{
+    		writeData << "Engine Manufacturer Diagnostics Enhanced (EMD+)";
+    	}
+    	else if(recvdBytes[5] == 19)
+    	{
+    		writeData << "Heavy Duty On-Board Diagnostics (Child/Partial) (HD OBD-C)";
+    	}
+    	else if(recvdBytes[5] == 20)
+    	{
+    		writeData << "Heavy Duty On-Board Diagnostics (HD OBD)";
+    	}
+    	else if(recvdBytes[5] == 21)
+    	{
+    		writeData << "World Wide Harmonized OBD (WWH OBD)";
+    	}
+    	else if(recvdBytes[5] == 23)
+    	{
+    		writeData << "Heavy Duty Euro OBD Stage I without NOx control (HD EOBD-I)";
+    	}
+    	else if(recvdBytes[5] == 24)
+    	{
+    		writeData << "Heavy Duty Euro OBD Stage I with NOx control (HD EOBD-I N)";
+    	}
+    	else if(recvdBytes[5] == 25)
+    	{
+    		writeData << "Heavy Duty Euro OBD Stage II without NOx control (HD EOBD-II)";
+    	}
+    	else if(recvdBytes[5] == 26)
+    	{
+    		writeData << "Heavy Duty Euro OBD Stage II with NOx control (HD EOBD-II N)";
+    	}
+    	else if(recvdBytes[5] == 28)
+    	{
+    		writeData << "Brazil OBD Phase 1 (OBDBr-1)";
+    	}
+    	else if(recvdBytes[5] == 29)
+    	{
+    		writeData << "Brazil OBD Phase 2 (OBDBr-2)";
+    	}
+    	else if(recvdBytes[5] == 30)
+    	{
+    		writeData << "Korean OBD (KOBD)";
+    	}
+    	else if(recvdBytes[5] == 31)
+    	{
+    		writeData << "India OBD I (IOBD I)";
+    	}
+    	else if(recvdBytes[5] == 32)
+    	{
+    		writeData << "India OBD II (IOBD II)";
+    	}
+    	else if(recvdBytes[5] == 33)
+    	{
+    		writeData << "Heavy Duty Euro OBD Stage VI (HD EOBD-IV)";
+    	}
+
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x1F
+    if(mode1checkboxstate[18] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x1F: Run time since engine start
+    	byte sendBytes[6] = {104,106,241,1,31,227};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate engine run time
+    	//the return packet looks like 72,107,16,65,31,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double runTime = recvdBytes[5]*256 + recvdBytes[6];
+    	writeData << runTime;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x20
+    if(mode1checkboxstate[19] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x20: PIDs supported 21-40
+    	byte sendBytes[6] = {104,106,241,1,32,228};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,100);
+    	if(numBytesRead < 10)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 4 bytes which indicate which
+    	//PIDs are supported from 21-40
+    	//the return packet looks like 72,107,16,65,32,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int PIDplace = 32;
+    	for(int i = 5; i < 9; i++)//loop through bytes
+    	{
+    		for(int j = 7; j > -1; j--)
+    		{
+    			PIDplace += 1;
+    			if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+    			{
+    				writeData << PIDplace << ' ';
+    			}
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x21
+    if(mode1checkboxstate[20] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x21: Distance traveled with malfunction indicator lamp (MIL) on
+    	byte sendBytes[6] = {104,106,241,1,33,229};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate distance traveled
+    	//with the CEL on
+    	//the return packet looks like 72,107,16,65,33,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double distance = recvdBytes[5]*256 + recvdBytes[6];
+    	writeData << distance;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x2E
+    if(mode1checkboxstate[21] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x2E: commanded evaportative purge
+    	byte sendBytes[6] = {104,106,241,1,46,242};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates the commanded evap purge
+    	//the return packet looks like 72,107,16,65,46,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double evap = recvdBytes[5]/2.55;
+    	writeData << evap;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x2F
+    if(mode1checkboxstate[22] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x2F: Fuel tank level
+    	byte sendBytes[6] = {104,106,241,1,47,243};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates the fuel tank input level
+    	//the return packet looks like 72,107,16,65,47,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double fuelLevel = recvdBytes[5]/2.55;
+    	writeData << fuelLevel;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x33
+    if(mode1checkboxstate[23] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x33: Absolute barometric pressure
+    	byte sendBytes[6] = {104,106,241,1,51,247};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates the absolute barometric pressure
+    	//the return packet looks like 72,107,16,65,51,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double pressure = recvdBytes[5];
+    	writeData << pressure;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x40
+    if(mode1checkboxstate[24] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x40: PIDs supported 0x41 to 0x60
+    	byte sendBytes[6] = {104,106,241,1,64,4};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,100);
+    	if(numBytesRead < 10)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 4 bytes which indicate available OBD PIDs from 0x41 to 0x60
+    	//the return packet looks like 72,107,16,65,64,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int PIDplace = 64;
+    	for(int i = 5; i < 9; i++)//loop through bytes
+    	{
+    		for(int j = 7; j > -1; j--)
+    		{
+    			PIDplace += 1;
+    			if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+    			{
+    				writeData << PIDplace << ' ';
+    			}
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x42
+    if(mode1checkboxstate[25] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x42: Control module voltage
+    	byte sendBytes[6] = {104,106,241,1,66,6};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 byte which indicate the control module voltage
+    	//the return packet looks like 72,107,16,65,66,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double voltage = (recvdBytes[5]*256+recvdBytes[6])/1000;
+    	writeData << voltage;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x43
+    if(mode1checkboxstate[26] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x43: Absolute load value
+    	byte sendBytes[6] = {104,106,241,1,67,7};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 byte which indicate the absolute load
+    	//the return packet looks like 72,107,16,65,67,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double load = (recvdBytes[5]*256+recvdBytes[6])/2.55;
+    	writeData << load;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 1 PID 0x45
+    if(mode1checkboxstate[27] != BST_UNCHECKED && success == true)
+    {
+    	//mode 1 PID 0x45: Relative throttle position
+    	byte sendBytes[6] = {104,106,241,1,69,9};
+    	writeToSerialPort(serialPortHandle, sendBytes, 6);
+    	readFromSerialPort(serialPortHandle, recvdBytes,6,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,100);
+    	if(numBytesRead < 7)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates the relative throttle position
+    	//the return packet looks like 72,107,16,65,69,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double throttlePos = recvdBytes[5]/2.55;
+    	writeData << throttlePos;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+
+
+    //******************************************************************************
+    //11 PIDs to check for mode 2
+    //PID 0
+    if(mode2checkboxstate[0] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 0: list of valid PIDs 0x1-0x20
+    	byte sendBytes[7] = {104,106,241,2,0,0,197};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 4 bytes which are binary flags
+    	//for the next 32 PIDs indicating if they work with this car
+    	//the return packet looks like 72,107,16,66,0,0,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int PIDplace = 0;
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		for(int j = 7; j > -1; j--)
+    		{
+    			PIDplace += 1;
+    			if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+    			{
+    				writeData << PIDplace << ' ';
+    			}
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //MODE 2 PID 2
+    if(mode2checkboxstate[1] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 2: freeze DTC
+    	byte sendBytes[7] = {104,106,241,2,2,0,199};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which are binary flags
+    	//indicating which DTC triggered the freeze frame
+    	//the return packet looks like 72,107,16,66,2,0,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+
+    	if(recvdBytes[6] == 0 && recvdBytes[7] == 0)
+    	{
+    		writeData << "no DTC";
+    	}
+    	else
+    	{
+    		int letterCode = ((recvdBytes[6] >> 7) & 0x1)*2 + ((recvdBytes[6] >> 6) & 0x1);//will be 0,1,2, or 3
+    		if(letterCode == 0)
+    		{
+    			writeData << 'P';
+    		}
+    		else if(letterCode == 1)
+    		{
+    			writeData << 'C';
+    		}
+    		else if(letterCode == 2)
+    		{
+    			writeData << 'B';
+    		}
+    		else if(letterCode == 3)
+    		{
+    			writeData << 'U';
+    		}
+    		int firstDecimal = ((recvdBytes[6] >> 5) & 0x1)*2 + ((recvdBytes[6] >> 4) & 0x1);
+    		int secondDecimal = ((recvdBytes[6] >> 3) & 0x1)*8 + ((recvdBytes[6] >> 2) & 0x1)*4 + ((recvdBytes[6] >> 1) & 0x1)*2 + ((recvdBytes[6] >> 0) & 0x1);
+    		int thirdDecimal = ((recvdBytes[7] >> 7) & 0x1)*8 + ((recvdBytes[7] >> 6) & 0x1)*4 + ((recvdBytes[7] >> 5) & 0x1)*2 + ((recvdBytes[7] >> 4) & 0x1);
+    		int fourthDecimal = ((recvdBytes[7] >> 3) & 0x1)*8 + ((recvdBytes[7] >> 2) & 0x1)*4 + ((recvdBytes[7] >> 1) & 0x1)*2 + ((recvdBytes[7] >> 0) & 0x1);
+    		writeData << firstDecimal << secondDecimal << thirdDecimal << fourthDecimal;
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 3
+    if(mode2checkboxstate[2] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 3: fuel system status
+    	byte sendBytes[7] = {104,106,241,2,3,0,200};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which are byte flags
+    	//for the next 32 PIDs indicating if they work with this car
+    	//the return packet looks like 72,107,16,66,3,0,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	if(recvdBytes[6] != 0){
+    		writeData << " Fueling system 1: ";
+    		if(((recvdBytes[6] >> 0) & 0x1))
+    		{
+    			writeData << "Open loop due to insufficient engine temperature";
+    		}
+    		else if(((recvdBytes[6] >> 1) & 0x1))
+    		{
+    			writeData << "Closed loop, using oxygen sensor feedback to determine fuel mix";
+    		}
+    		else if(((recvdBytes[6] >> 2) & 0x1))
+    		{
+    			writeData << "Open loop due to engine load OR fuel cut due to deceleration";
+    		}
+    		else if(((recvdBytes[6] >> 3) & 0x1))
+    		{
+    			writeData << "Open loop due to system failure";
+    		}
+    		else if(((recvdBytes[6] >> 4) & 0x1))
+    		{
+    			writeData << "Closed loop, using at least one oxygen sensor but there is a fault in the feedback system";
+    		}
+    	}
+
+    	if(recvdBytes[7] != 0){
+    		writeData << " Fueling system 2: ";
+    		if(((recvdBytes[7] >> 0) & 0x1))
+    		{
+    			writeData << "Open loop due to insufficient engine temperature";
+    		}
+    		else if(((recvdBytes[7] >> 1) & 0x1))
+    		{
+    			writeData << "Closed loop, using oxygen sensor feedback to determine fuel mix";
+    		}
+    		else if(((recvdBytes[7] >> 2) & 0x1))
+    		{
+    			writeData << "Open loop due to engine load OR fuel cut due to deceleration";
+    		}
+    		else if(((recvdBytes[7] >> 3) & 0x1))
+    		{
+    			writeData << "Open loop due to system failure";
+    		}
+    		else if(((recvdBytes[7] >> 4) & 0x1))
+    		{
+    			writeData << "Closed loop, using at least one oxygen sensor but there is a fault in the feedback system";
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+
+    //mode 2 PID 4
+    if(mode2checkboxstate[3] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 4: calculated engine load
+    	byte sendBytes[7] = {104,106,241,2,4,0,201};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates engine load
+    	//the return packet looks like 72,107,16,66,4,0,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double load = recvdBytes[6]/2.55;
+    	writeData << load;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 5
+    if(mode2checkboxstate[4] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 5: engine coolant temperature
+    	byte sendBytes[7] = {104,106,241,2,5,0,202};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates engine coolant temp
+    	//the return packet looks like 72,107,16,66,5,0,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int temp = recvdBytes[6]-40;
+    	writeData << temp;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 6
+    if(mode2checkboxstate[5] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 6: short term fuel trim: bank 1
+    	byte sendBytes[7] = {104,106,241,2,6,0,203};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates STFT
+    	//the return packet looks like 72,107,16,66,6,0,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double STFT = recvdBytes[6]/1.28-100;
+    	writeData << STFT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 7
+    if(mode2checkboxstate[6] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 7: long term fuel trim: bank 1
+    	byte sendBytes[7] = {104,106,241,2,7,0,204};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates LTFT
+    	//the return packet looks like 72,107,16,66,7,0,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double LTFT = recvdBytes[6]/1.28-100;
+    	writeData << LTFT;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 0xC
+    if(mode2checkboxstate[7] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 0xC: engine RPM
+    	byte sendBytes[7] = {104,106,241,2,12,0,209};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate engine RPM
+    	//the return packet looks like 72,107,16,66,12,0,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double RPM = (recvdBytes[6]*256+recvdBytes[7])/4;
+    	writeData << RPM;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 0xD
+    if(mode2checkboxstate[8] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 0xD: Vehicle speed
+    	byte sendBytes[7] = {104,106,241,2,13,0,210};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates vehicle speed in km/h
+    	//the return packet looks like 72,107,16,66,13,0,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double speed = recvdBytes[6];
+    	writeData << speed;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 0x10
+    if(mode2checkboxstate[9] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 0x10: Mass air flow rate
+    	byte sendBytes[7] = {104,106,241,2,16,0,213};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 2 bytes which indicate mass airflow rate
+    	//the return packet looks like 72,107,16,66,16,0,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double MAF = (recvdBytes[6]*256 + recvdBytes[7])/100;
+    	writeData << MAF;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //mode 2 PID 0x11
+    if(mode2checkboxstate[10] != BST_UNCHECKED && success == true)
+    {
+    	//mode 2 PID 0x11: Throttle position
+    	byte sendBytes[7] = {104,106,241,2,17,0,214};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return 1 byte which indicates throttle position
+    	//the return packet looks like 72,107,16,66,17,0,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	double TPS = recvdBytes[6]/2.55;
+    	writeData << TPS;
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+
+
+    //****************************************************************************
+    //mode 3
+    if(mode3checkboxstate != BST_UNCHECKED && success == true)
+    {
+    	//mode 3: Read DTCs
+    	byte sendBytes[5] = {104,106,241,3,198};//message for MODE 0x3 PID 0
+    	writeToSerialPort(serialPortHandle, sendBytes, 5);
+    	readFromSerialPort(serialPortHandle, recvdBytes,5,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,100,300);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return pairs of bytes which indicate DTCs
+    	//the return packet looks like 72,107,16,67,x,x,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+
+    	if(recvdBytes[4] == 0 && recvdBytes[5] == 0)
+    	{
+    		writeData << "no DTC";
+    	}
+    	else
+    	{
+    		int index = 4;
+    		for(int i = 0;i < 3; i++)//loop through the bytes to interpret DTCs
+    		{
+    			if(!(recvdBytes[i*2+index] == 0 && recvdBytes[i*2+1+index] == 0))
+    			{
+    				std::string DTC = decodeDTC(recvdBytes[i*2+index],recvdBytes[i*2+1+index]);
+    				writeData << DTC << ' ';
+    			}
+    			if(numBytesRead > index+7 && i*2+4+index > index+7)
+    			{
+    				i = 0;
+    				index += 11;
+    			}
+    		}
+    	}
+
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //********************************************************************************
+    //mode 4
+    if(mode4checkboxstate != BST_UNCHECKED && success == true)
+    {
+    	//mode 4: Clear DTCs
+    	byte sendBytes[5] = {104,106,241,4,199};//message for MODE 0x4 PID 0
+    	writeToSerialPort(serialPortHandle, sendBytes, 5);
+    	readFromSerialPort(serialPortHandle, recvdBytes,5,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,5,100);
+    	if(numBytesRead < 5)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//this should return a blank message
+    	//the return packet looks like 72,107,16,68,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	writeData << "DTCs cleared";
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+
+    //************************************************************************************
+
+
+    /*
+	//byte sendBytes[5] = {104,106,241,4,199};//init message for MODE 0x4 PID 0
 	Sleep(100);
-	readFromSerialPort(Port, recvdBytes,100,1000);//read in bytes taking up to 10 ms
+	writeToSerialPort(Port, sendBytes, 5);//send the 5 bytes
+	Sleep(100);
+	readFromSerialPort(Port, recvdBytes,100,1000);//read in up to 100 bytes taking up to 1000 ms
 	for(int i = 0; i < 100; i++){
 		std::cout << (int) recvdBytes[i] << ' ';//print the buffer
 	}
-	std::cout << '\n';
+	std::cout << '\n';*/
+
 
 	//close the COM port
-	CloseHandle(Port);
+	//CloseHandle(Port);
+    return success;//will be false if we had a timeout occur
 }
 
 int chars_to_int(char* number)
@@ -1143,7 +2929,7 @@ void writeToSerialPort(HANDLE serialPortHandle, byte* bytesToSend, int numberOfB
 	//std::cout << numberOfBytesSent << '\n';
 }
 
-void readFromSerialPort(HANDLE serialPortHandle, byte* serialBytesRecvd, int sizeOfSerialByteBuffer, int delayMS)
+int readFromSerialPort(HANDLE serialPortHandle, byte* serialBytesRecvd, int sizeOfSerialByteBuffer, int delayMS)
 {
 	/*
 	//event flag method
@@ -1173,8 +2959,9 @@ void readFromSerialPort(HANDLE serialPortHandle, byte* serialBytesRecvd, int siz
 
 	//helped from: http://stackoverflow.com/questions/2150291/how-do-i-measure-a-time-interval-in-c
 	LARGE_INTEGER frequency;        // ticks per second
-	LARGE_INTEGER t1, t2;           // ticks
-	double elapsedTime;
+	LARGE_INTEGER t1, t2, lastByteTime;           // ticks
+	double elapsedTime = 0;
+	double elapsedTimeSinceLastByte = 0;
 
 	// get ticks per second
 	QueryPerformanceFrequency(&frequency);
@@ -1182,29 +2969,42 @@ void readFromSerialPort(HANDLE serialPortHandle, byte* serialBytesRecvd, int siz
 	// start timer
 	QueryPerformanceCounter(&t1);
 	bool notFinished = true;
+	bool haveReceivedBytes = false;
 
 	while(notFinished)
 	{
 	    // stop timer
 	    QueryPerformanceCounter(&t2);//get the loop position time
-	    elapsedTime = (t2.QuadPart - t1.QuadPart)*1000 / frequency.QuadPart;// compute the elapsed time in milliseconds
+	    if(!haveReceivedBytes)
+	    {
+	    	elapsedTime = (t2.QuadPart - t1.QuadPart)*1000 / frequency.QuadPart;// compute the elapsed time in milliseconds
+	    }
+	    else if(haveReceivedBytes)
+	    {
+	    	elapsedTimeSinceLastByte = (t2.QuadPart - lastByteTime.QuadPart)*1000 / frequency.QuadPart;// compute the elapsed time in milliseconds
+	    }
 	    ReadFile(serialPortHandle, &recvdByte, sizeof(recvdByte), &numberOfBytesReceived, NULL);//read in one byte at a time
 	    if(numberOfBytesReceived > 0 && recvdBufferPosition < sizeOfSerialByteBuffer)
 	    {
 			serialBytesRecvd[recvdBufferPosition] = recvdByte;
 			recvdBufferPosition += 1;
+			lastByteTime = t2;//the time that the previous byte was read in
+			haveReceivedBytes = true;//raise a flag that we've begun receiving a response
 			//update the starttimer in order to extend the timeout
 			//for reading-in bytes relative to the last received byte
 	       	//QueryPerformanceCounter(&t1);
 			//std::cout << (int) recvdByte << " ";//print the received bytes
 	    }
-	    if(elapsedTime >= delayMS || recvdBufferPosition >= sizeOfSerialByteBuffer)
+
+	    //if we've overrun our receive buffer, over run the timeout, or have overrun 10 ms since
+	    //we last received a serial byte, exit the loop
+	    if(elapsedTime >= delayMS || recvdBufferPosition >= sizeOfSerialByteBuffer || elapsedTimeSinceLastByte > 10)
 	    {
 	    	notFinished = false;//breaks the loop if we time out or if we have received all the bytes we wanted
 	    }
 	}
 	//std::cout << '\n';
-
+	return recvdBufferPosition;//this is also the number of received bytes total
 }
 
 HANDLE sendOBDInit(HANDLE serialPortHandle)
@@ -1320,4 +3120,212 @@ HANDLE sendOBDInit(HANDLE serialPortHandle)
 	std::cout << (int) lastByte[1] << '\n';
 
 	return serialPortHandle;
+}
+
+HANDLE setupComPort()
+{
+	//a handle for the data type which holds COM port settings
+	DCB dcb;
+
+	//open the COM port
+	HANDLE Port = CreateFile(ListItem,GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+
+	//set up the COM port settings
+	int baudRateInteger =  chars_to_int(baudRateStore);//numbers below 190 do not work
+	//std::cout << baudRateInteger << '\n';
+
+	//prepare the dcb data to configure the COM port
+	dcb.DCBlength = sizeof(DCB);//the size of the dbc file
+	GetCommState(Port, &dcb);//read in the current settings in order to modify them
+	dcb.BaudRate = baudRateInteger;//  baud rate
+	dcb.ByteSize = 8;              //  data size, xmit and rcv
+	dcb.Parity   = NOPARITY;       //  parity bit
+	dcb.StopBits = ONESTOPBIT;     //  stop bit
+	SetCommState(Port, &dcb);//set the COM port with these options
+	//one start bit, 8 data bits, one stop bit gives 10 bits per frame, just as the lotus is configured
+
+	//set com port timeouts too
+	COMMTIMEOUTS timeouts = { 0 };
+	timeouts.ReadIntervalTimeout         = 50; // in milliseconds
+	timeouts.ReadTotalTimeoutConstant    = 50; // in milliseconds
+	timeouts.ReadTotalTimeoutMultiplier  = 10; // in milliseconds
+	timeouts.WriteTotalTimeoutConstant   = 50; // in milliseconds
+	timeouts.WriteTotalTimeoutMultiplier = 10; // in milliseconds
+	SetCommTimeouts(Port,&timeouts);
+
+	return Port;
+}
+
+void populateFileHeaders(std::ofstream &dataFile, std::ofstream &byteFile)
+{
+	dataFile << "Time (s)";
+	byteFile << "Time (s)";
+
+	//28 1 2
+	//mode 1
+	std::string MODE1Titles[] = {"PIDs supported 1-20","Monitor Status Since DTCs cleared","DTC which triggered freeze frame","Fuel system status","Calc'd engine load (%)","Coolant Temp (C)","Short term fuel trim - Bank 1(%)","Long term fuel trim - Bank 1 (%)","Engine speed (rpm)","Vehicle speed (km/h)","Timing advance (deg. before TDC)","Intake air temp (C)","Mass air flow (g/sec)","Throttle position (%)","Oxygen sensors present","Oxygen sensor 1 (V or %)","Oxygen sensor 2 (V or %)","OBD standards this vehicle conforms to","Run time since engine start (s)","PIDs supported 21-40","Distance traveled with MIL on (km)","Command evaporative purge (%)","Fuel tank level (%)","Absolute pressure (kPa)","PIDs supported 41-60","Control module voltage (V)","Absolute load (%)","Relative throttle position (%)"};
+	for(int a = 0; a < 28; a++)
+	{
+		if(mode1checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE1Titles[a];
+			byteFile << ',' << MODE1Titles[a];
+		}
+	}
+
+	//mode 2
+	std::string MODE2Titles[] = {"PIDs supported 1-20","DTC which triggered freeze frame","Fuel system status","Calc'd engine load (%)","Coolant Temp (C)","Short term fuel trim - Bank 1(%)","Long term fuel trim - Bank 1 (%)","Engine speed (rpm)","Vehicle speed (km/h)","Mass air flow (g/sec)","Throttle position (%)"};
+	for(int a = 0; a < 11; a++)
+	{
+		if(mode2checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE2Titles[a];
+			byteFile << ',' << MODE2Titles[a];
+		}
+	}
+
+	//mode 3
+	if(mode3checkboxstate != BST_UNCHECKED)
+	{
+		dataFile << ',' << "Diagnostic Trouble Codes";
+		byteFile << ',' << "Diagnostic Trouble Codes";
+	}
+
+	//mode 4 has no return values
+	if(mode4checkboxstate != BST_UNCHECKED)
+	{
+		dataFile << ',' << "Clear Diagnostic Trouble Codes";
+		byteFile << ',' << "Clear Diagnostic Trouble Codes";
+	}
+
+	//mode 5
+	std::string MODE5Titles[] = {"OBD monitor IDs supported","Oxygen sensor voltage - bank 1 sensor 1","Oxygen sensor voltage - bank 1 sensor 2","Oxygen sensor voltage - bank 1 sensor 3","Oxygen sensor voltage - bank 1 sensor 4","Oxygen sensor voltage - bank 2 sensor 1","Oxygen sensor voltage - bank 2 sensor 2","Oxygen sensor voltage - bank 2 sensor 3","Oxygen sensor voltage - bank 2 sensor 4"};
+	for(int a = 0; a < 9; a++)
+	{
+		if(mode5checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE5Titles[a];
+			byteFile << ',' << MODE5Titles[a];
+		}
+	}
+
+	//mode 6
+	std::string MODE6Titles[] = {"PID 0","PID 1","PID 2","PID 3","PID 4","PID 5"};
+	for(int a = 0; a < 6; a++)
+	{
+		if(mode6checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE6Titles[a];
+			byteFile << ',' << MODE6Titles[a];
+		}
+	}
+
+	//mode 7
+	if(mode7checkboxstate != BST_UNCHECKED)
+	{
+		dataFile << ',' << "Pending Diagnostic Trouble Codes";
+		byteFile << ',' << "Pending Diagnostic Trouble Codes";
+	}
+
+	//mode 8
+	std::string MODE8Titles[] = {"PID 0","PID 1"};
+	for(int a = 0; a < 2; a++)
+	{
+		if(mode8checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE8Titles[a];
+			byteFile << ',' << MODE8Titles[a];
+		}
+	}
+
+	//mode 9
+	std::string MODE9Titles[] = {"Mode 9 supported PIDs","VIN message count","VIN","CAL ID message count","CAL ID","CVN message count","CVN"};
+	for(int a = 0; a < 7; a++)
+	{
+		if(mode9checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE9Titles[a];
+			byteFile << ',' << MODE9Titles[a];
+		}
+	}
+
+	//mode 0x22
+	std::string MODE22Titles[] = {"512","513","515","516","517","518","519","520","521","522","523","524","525","ECU part no.","530","531","532","533","534","536","537","538","539","Calibration ID","544","Make, model and year","549","550","551","552","553","554","555","556","557","558","559","560","561","562","563","564","565","566","567","568","569","570","571","572","573","577","583","584","585","586","591","592","593","594","595","596","598","599","601","602","603","605","606","608","609","610","612","613","614","615","616","617","618","619","620","621"};
+	for(int a = 0; a < 82; a++)
+	{
+		if(mode22checkboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE22Titles[a];
+			byteFile << ',' << MODE22Titles[a];
+		}
+	}
+
+	//mode 2F
+	std::string MODE2FTitles[] = {"0x100","0x101","0x102","0x103","0x104","0x120","0x121","0x122","0x125","0x126","0x127","0x12A","0x140","0x141","0x142","0x143","0x144","0x146","0x147","0x148","0x149","0x14A","0x14B","0x160","0x161","0x162","0x163","0x164"};
+	for(int a = 0; a < 28; a++)
+	{
+		if(mode2Fcheckboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODE2FTitles[a];
+			byteFile << ',' << MODE2FTitles[a];
+		}
+	}
+
+	//mode 3B
+	if(mode3Bcheckboxstate != BST_UNCHECKED)
+	{
+			dataFile << ',' << "VIN write";
+			byteFile << ',' << "VIN write";
+	}
+
+	//mode SHORT
+	std::string MODESHORTTitles[] = {"PID 2","PID 4"};
+	for(int a = 0; a < 2; a++)
+	{
+		if(modeSHORTcheckboxstate[a] != BST_UNCHECKED)
+		{
+			dataFile << ',' << MODESHORTTitles[a];
+			byteFile << ',' << MODESHORTTitles[a];
+		}
+	}
+
+	dataFile << '\n';
+	byteFile << '\n';
+}
+
+std::string decodeDTC(byte firstByte, byte secondByte)
+{
+	std::string DTC = "";
+	//loop through the pairs of bytes to interpret DTCs
+	int letterCode = ((firstByte >> 7) & 0x1)*2 + ((firstByte >> 6) & 0x1);//will be 0,1,2, or 3
+	if(letterCode == 0)
+	{
+		DTC.push_back('P');
+	}
+	else if(letterCode == 1)
+	{
+		DTC.push_back('C');
+	}
+	else if(letterCode == 2)
+	{
+		DTC.push_back('B');
+	}
+	else if(letterCode == 3)
+	{
+		DTC.push_back('U');
+	}
+	int firstDecimal = ((firstByte >> 5) & 0x1)*2 + ((firstByte >> 4) & 0x1);
+	int secondDecimal = ((firstByte >> 3) & 0x1)*8 + ((firstByte >> 2) & 0x1)*4 + ((firstByte >> 1) & 0x1)*2 + ((firstByte >> 0) & 0x1);
+	int thirdDecimal = ((secondByte >> 7) & 0x1)*8 + ((secondByte >> 6) & 0x1)*4 + ((secondByte >> 5) & 0x1)*2 + ((secondByte >> 4) & 0x1);
+	int fourthDecimal = ((secondByte >> 3) & 0x1)*8 + ((secondByte >> 2) & 0x1)*4 + ((secondByte >> 1) & 0x1)*2 + ((secondByte >> 0) & 0x1);
+	char stringByte [14];
+	std::string convertedDecimal = itoa(firstDecimal,stringByte,10);
+	DTC.append(convertedDecimal);
+	convertedDecimal = itoa(secondDecimal,stringByte,10);
+	DTC.append(convertedDecimal);
+	convertedDecimal = itoa(thirdDecimal,stringByte,10);
+	DTC.append(convertedDecimal);
+	convertedDecimal = itoa(fourthDecimal,stringByte,10);
+	DTC.append(convertedDecimal);
+	return DTC;
 }
