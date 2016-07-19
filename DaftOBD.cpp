@@ -4610,13 +4610,1538 @@ bool serialPollingCycle(HANDLE serialPortHandle)
     	}
     }
     //PID 549
-
-
-
+    if(mode22checkboxstate[26] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 549:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,37,12};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,37,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 550
+    if(mode22checkboxstate[27] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 550:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,38,13};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,38,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 551
+    if(mode22checkboxstate[28] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 551:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,39,14};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,39,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 552
+    if(mode22checkboxstate[29] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 552:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,40,15};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,40,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 553
+    if(mode22checkboxstate[30] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 552:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,41,16};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,41,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 554
+    if(mode22checkboxstate[31] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 553:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,42,17};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,42,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 555
+    if(mode22checkboxstate[32] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 555:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,43,18};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,43,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 556
+    if(mode22checkboxstate[33] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 556:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,44,19};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,44,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 557
+    if(mode22checkboxstate[34] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 557:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,45,20};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,45,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 558
+    if(mode22checkboxstate[35] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 558:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,46,21};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,46,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 559
+    if(mode22checkboxstate[36] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 559:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,47,22};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,47,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 560
+    if(mode22checkboxstate[37] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 560:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,48,23};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,48,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 561
+    if(mode22checkboxstate[38] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 561:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,49,24};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,49,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 562
+    if(mode22checkboxstate[39] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 562:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,50,25};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,50,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 563
+    if(mode22checkboxstate[40] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 563:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,51,26};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,51,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 564
+    if(mode22checkboxstate[41] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 564:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,52,27};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,52,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 565
+    if(mode22checkboxstate[42] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 565:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,53,28};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,53,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 566
+    if(mode22checkboxstate[43] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 566:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,54,29};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,54,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 567
+    if(mode22checkboxstate[44] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 567:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,55,30};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,55,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 568
+    if(mode22checkboxstate[45] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 568:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,56,31};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,56,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 569
+    if(mode22checkboxstate[46] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 569:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,57,32};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,57,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 570
+    if(mode22checkboxstate[47] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 570:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,58,33};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,58,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 571
+    if(mode22checkboxstate[48] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 571:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,59,34};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,59,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 572
+    if(mode22checkboxstate[49] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 572:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,60,35};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,60,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 573
+    if(mode22checkboxstate[50] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 573: PIDs available 0x41 - 0x60 ?
+    	byte sendBytes[7] = {104,106,241,34,2,61,36};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,61,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int PIDplace = 64;
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		for(int j = 7; j > -1; j--)
+    		{
+    			PIDplace += 1;
+    			if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+    			{
+    				writeData << PIDplace << ' ';
+    			}
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 577
+    if(mode22checkboxstate[51] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 577:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,65,40};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,65,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 583
+    if(mode22checkboxstate[52] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 583:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,71,46};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,71,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 584
+    if(mode22checkboxstate[53] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 584:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,72,47};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,72,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 585
+    if(mode22checkboxstate[54] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 585:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,73,48};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,73,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 586
+    if(mode22checkboxstate[55] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 586:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,74,49};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,77,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 8; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 591
+    if(mode22checkboxstate[56] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 591:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,79,54};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,79,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 8; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 592
+    if(mode22checkboxstate[57] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 592:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,80,55};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,80,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 8; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 593
+    if(mode22checkboxstate[58] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 593:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,81,56};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,81,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 8; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 594
+    if(mode22checkboxstate[59] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 594:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,82,57};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,82,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 8; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 595
+    if(mode22checkboxstate[60] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 595:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,83,58};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,83,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 596
+    if(mode22checkboxstate[61] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 596:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,84,59};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,84,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 598
+    if(mode22checkboxstate[62] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 598:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,86,61};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,86,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 599
+    if(mode22checkboxstate[63] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 599:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,87,62};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,87,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 601
+    if(mode22checkboxstate[64] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 601:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,89,64};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,89,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 602
+    if(mode22checkboxstate[65] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 602:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,90,65};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,90,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 603
+    if(mode22checkboxstate[66] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 603:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,91,66};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,91,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 605
+    if(mode22checkboxstate[67] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 605:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,93,68};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,93,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 606
+    if(mode22checkboxstate[68] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 606:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,94,69};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,94,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 608
+    if(mode22checkboxstate[69] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 608:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,96,71};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,96,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	int PIDplace = 96;
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		for(int j = 7; j > -1; j--)
+    		{
+    			PIDplace += 1;
+    			if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+    			{
+    				writeData << PIDplace << ' ';
+    			}
+    		}
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 609
+    if(mode22checkboxstate[70] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 609:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,97,72};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,97,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 610
+    if(mode22checkboxstate[71] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 610:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,98,73};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,98,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 612
+    if(mode22checkboxstate[72] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 612:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,100,75};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,100,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 613
+    if(mode22checkboxstate[73] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 613:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,101,76};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,101,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 614
+    if(mode22checkboxstate[74] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 614:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,102,77};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,102,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 615
+    if(mode22checkboxstate[75] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 615:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,103,78};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,103,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 616
+    if(mode22checkboxstate[76] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 616:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,104,79};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,104,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 617
+    if(mode22checkboxstate[77] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 617:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,105,80};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,105,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 618
+    if(mode22checkboxstate[78] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 618:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,106,81};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,106,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 619
+    if(mode22checkboxstate[79] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 619:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,107,82};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,100);
+    	if(numBytesRead < 8)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,107,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 7; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 620
+    if(mode22checkboxstate[80] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 620:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,108,83};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,100);
+    	if(numBytesRead < 11)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,108,x,x,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 10; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
+    //PID 621
+    if(mode22checkboxstate[81] != BST_UNCHECKED && success == true)
+    {
+    	//mode 0x22 PID 621:  ?
+    	byte sendBytes[7] = {104,106,241,34,2,109,84};
+    	writeToSerialPort(serialPortHandle, sendBytes, 7);
+    	readFromSerialPort(serialPortHandle, recvdBytes,7,100);//read back what we just sent
+    	int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,100);
+    	if(numBytesRead < 9)
+    	{
+    		//we've failed the read and should flag to quit the polling
+    		success = false;
+    	}
+    	//
+    	//the return packet looks like 72,107,16,98,2,109,x,x,sum
+    	writeBytes << ',';
+    	writeData << ',';
+    	for(int i = 6; i < 8; i++)//loop through bytes
+    	{
+    		writeData << recvdBytes[i] << ' ';
+    	}
+    	for(int k = 0; k < numBytesRead; k++)
+    	{
+    		writeBytes << recvdBytes[k] << ' ';
+    		recvdBytes[k] = 0;//clear the read buffer for the next set of data
+    	}
+    }
 
     //**************************************************************************************
 
     //Mode 0x2F
+
 
     //**************************************************************************************
 
