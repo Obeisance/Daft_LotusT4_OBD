@@ -22,13 +22,6 @@
 using namespace Gdiplus;
 //using namespace std;
 
-VOID OnPaint(HDC hdc)
-{
-   Graphics graphics(hdc);
-   Pen      pen(Color(255, 0, 0, 255));
-   graphics.DrawLine(&pen, 0, 0, 200, 100);
-}
-
 /* declare Windows procedure */
 LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
 
@@ -62,6 +55,8 @@ int logParamsWidth = 0;
 int logParamsHeight = 0;
 int logParamsScrollPosX = 0;
 int logParamsScrollPosY = 0;
+int windowWidth = 644;
+int windowHeight = 395;
 
 //for the com port select
 int ItemIndex = 0;
@@ -135,13 +130,26 @@ HWND OBD3BPID0,OBD3BPID1;
 int mode3Bcheckboxstate = 0;
 char mode3BVIN[18] = {'S','C','C','P','C','1','1','1','0','5','H','A','3','0','0','0','0'};
 
-//OBD MODE short message PID buttons
-HWND OBDSHORTPID2,OBDSHORTPID4;
-int modeSHORTcheckboxstate[2] = {0,0};
-
 
 /* Make the class name into a global variable */
 char szClassName[ ] = "CodeBlocksWindowApp";
+
+VOID clearGraphics(HDC hdc)
+{
+	Graphics graphics(hdc);
+	graphics.Clear(Color::LightGray);
+}
+
+VOID OnPaint(HDC hdc)
+{
+   Graphics graphics(hdc);
+   Pen      pen(Color(0,0,0));
+   //graphics.DrawLine(&pen, plotWindowX+100, plotWindowY+20, plotWindowX+100, plotWindowY-50+logParamsHeight);
+   SolidBrush* brush = new SolidBrush(Color::White);
+   graphics.Clear(Color::LightGray);
+   graphics.FillRectangle(brush,plotWindowX+100, plotWindowY+20, windowWidth - (plotWindowX + 100 + 50), windowHeight - (plotWindowY+100));
+   graphics.DrawRectangle(&pen,plotWindowX+100, plotWindowY+20, windowWidth - (plotWindowX + 100 + 50), windowHeight - (plotWindowY+100));
+}
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow)
 {
@@ -176,7 +184,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 0;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,644,395,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -310,7 +318,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 		        SetScrollInfo (logParamsScrollH, SB_CTL, &si, TRUE);
 		        GetScrollInfo (logParamsScrollH, SB_CTL, &si);
 		        logParamsScrollPosX = si.nPos;
-		        drawLogParamsTable(selectLogParams, 210,(HIWORD (lParam))-(20+logParamsY), 18 * (logParamsScrollPosX), logParamsScrollPosY);
+		        drawLogParamsTable(selectLogParams, 210,logParamsHeight, 18 * (logParamsScrollPosX), logParamsScrollPosY);
 
 		        break;
 
@@ -369,7 +377,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 		        SetScrollInfo (logParamsScrollV, SB_CTL, &si, TRUE);
 		        GetScrollInfo (logParamsScrollV, SB_CTL, &si);
 		        logParamsScrollPosY = si.nPos;
-		        drawLogParamsTable(selectLogParams, 210,(HIWORD (lParam))-(20+logParamsY), 18 * (logParamsScrollPosX), logParamsScrollPosY);
+		        drawLogParamsTable(selectLogParams, 210,logParamsHeight, 18 * (logParamsScrollPosX), logParamsScrollPosY);
 
 
 		        break;
@@ -384,22 +392,28 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 			DestroyWindow(logParamsScrollH);
 			DestroyWindow(logParamsScrollV);
 			plotwindow = CreateWindowEx(0,"STATIC", "Data Plot",WS_VISIBLE | WS_CHILD| WS_BORDER,plotWindowX,plotWindowY,80,18,hwnd,NULL,NULL,NULL);
+
 			//updatePlot(plotwindow,(LOWORD (lParam))-(20+plotWindowX),(HIWORD (lParam))-(20+plotWindowY));
 
 			logParamsWidth = 210;
-			logParamsHeight = (HIWORD (lParam))-(20+logParamsY);
+			logParamsHeight = (HIWORD (lParam))-(20+logParamsY)-40;
 			logParamsTitle = CreateWindowEx(0,"STATIC", "Select Log/Plot Parameters",WS_VISIBLE | WS_CHILD | WS_BORDER | SS_CENTER ,logParamsX,logParamsY,logParamsWidth-20,20,hwnd,NULL,NULL,NULL);
-			selectLogParams = CreateWindowEx(0,"STATIC", "",WS_VISIBLE | WS_CHILD | WS_BORDER,logParamsX,logParamsY+20,logParamsWidth-20,logParamsHeight - 40,hwnd,NULL,NULL,NULL);
+			selectLogParams = CreateWindowEx(0,"STATIC", "",WS_VISIBLE | WS_CHILD | WS_BORDER,logParamsX,logParamsY+20,logParamsWidth-20,logParamsHeight,hwnd,NULL,NULL,NULL);
 			//si.nTrackPos = logParamsScrollPosX; //set horizontal scroll position
 			//SetScrollInfo(logParamsScrollH, SB_HORZ,&si,TRUE);
-			logParamsScrollV = CreateWindowEx(0,"SCROLLBAR", "Vertical scroll bar", WS_VISIBLE | WS_CHILD | SBS_VERT,logParamsX+logParamsWidth-20,logParamsY,20,logParamsHeight-20,hwnd,NULL,NULL,NULL);
+			logParamsScrollV = CreateWindowEx(0,"SCROLLBAR", "Vertical scroll bar", WS_VISIBLE | WS_CHILD | SBS_VERT,logParamsX+logParamsWidth-20,logParamsY,20,logParamsHeight+20,hwnd,NULL,NULL,NULL);
 			//si.nPage = logParamsHeight; //set vertical scroll height
 			//si.nTrackPos = logParamsScrollPosY; //set vertical scroll position
 			//SetScrollInfo(logParamsScrollH, SB_VERT,&si,TRUE);
-			logParamsScrollH = CreateWindowEx(0,"SCROLLBAR", "Horizontal scroll bar", WS_VISIBLE | WS_CHILD | SBS_HORZ,logParamsX,logParamsY + logParamsHeight-20,logParamsWidth-20,20,hwnd,NULL,NULL,NULL);
-			drawLogParamsTable(selectLogParams, 210,(HIWORD (lParam))-(20+logParamsY), logParamsScrollPosX, logParamsScrollPosY);
+			logParamsScrollH = CreateWindowEx(0,"SCROLLBAR", "Horizontal scroll bar", WS_VISIBLE | WS_CHILD | SBS_HORZ,logParamsX,logParamsY + logParamsHeight+20,logParamsWidth-20,20,hwnd,NULL,NULL,NULL);
+			drawLogParamsTable(selectLogParams, 210,logParamsHeight, logParamsScrollPosX, logParamsScrollPosY);
 
+			windowWidth = (LOWORD (lParam));
+			windowHeight = (HIWORD (lParam));
 
+		    // posting WM_PAINT
+			InvalidateRect(hwnd, NULL, FALSE);
+			PostMessage(hwnd, WM_PAINT, 0, 0);
 
 			break;
 
@@ -487,9 +501,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
 void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scrollPosH, int scrollPosV)
 {
-	int x_offset = 5 - scrollPosH;
-	int y_offset = 5 - scrollPosV;
-
 	int listOccupantHeight = 18;
 	int mode1Height = 29*listOccupantHeight+5;
 	int mode2y_offset = mode1Height;
@@ -514,14 +525,16 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	int mode2FHeight = listOccupantHeight*29+5;
 	int mode3By_offset = mode2Fy_offset+mode2FHeight;
 	int mode3BHeight = listOccupantHeight*2+5;
-	int modeSHORTy_offset = mode3By_offset+mode3BHeight;
-	int modeSHORTHeight = 0;//listOccupantHeight*3+5;
 
 
 	int parameterTableWidth = 270;
-	int parameterTableHeight = modeSHORTy_offset+modeSHORTHeight;
+	int parameterTableHeight = mode3By_offset+mode3BHeight;
 
-	//if(y_offset > -1*mode1Height)
+	int x_offset = 5 - scrollPosH;
+	double fraction = scrollPosV*(parameterTableHeight-parentHeight+20)/3136;
+	int y_offset = 5 - fraction;
+
+	if(y_offset > -1*mode1Height)
 	{
 	//mode 1 parameter table
 	mode1 = CreateWindow("BUTTON", "MODE 0x1:Real Time Data",WS_VISIBLE | WS_CHILD|BS_GROUPBOX ,x_offset,y_offset,parameterTableWidth,mode1Height,parent,NULL,NULL,NULL);
@@ -554,7 +567,7 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD1PID43 = CreateWindow("BUTTON", "Absolute load value",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,27*listOccupantHeight,parameterTableWidth-20,18,mode1,(HMENU) 29,NULL,NULL);
 	OBD1PID45 = CreateWindow("BUTTON", "Relative throttle position",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,28*listOccupantHeight,parameterTableWidth-20,18,mode1,(HMENU) 30,NULL,NULL);
 	}
-	//if(y_offset+mode2y_offset < parentHeight && y_offset+mode2y_offset+mode2Height > 0)
+	if(y_offset+mode2y_offset < parentHeight && y_offset+mode2y_offset+mode2Height > 0)
 	{
 	mode2 = CreateWindow("BUTTON", "MODE 0x2:Freeze Frame Data",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode2y_offset+y_offset,parameterTableWidth,mode2Height,parent,NULL,NULL,NULL);
 	OBD2PID0 = CreateWindow("BUTTON", "PIDs supported 1-20",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 3,NULL,NULL);
@@ -569,17 +582,17 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD2PID16 = CreateWindow("BUTTON", "Mass airflow rate",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,10*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 12,NULL,NULL);
 	OBD2PID17 = CreateWindow("BUTTON", "Throttle position",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,11*listOccupantHeight,parameterTableWidth-20,18,mode2,(HMENU) 13,NULL,NULL);
 	}
-	//if(y_offset+mode3y_offset < parentHeight && y_offset+mode3y_offset+mode3Height > 0)
+	if(y_offset+mode3y_offset < parentHeight && y_offset+mode3y_offset+mode3Height > 0)
 	{
 	mode3 = CreateWindow("BUTTON", "MODE 0x3:Read DTCs",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode3y_offset+y_offset,parameterTableWidth,mode3Height,parent,NULL,NULL,NULL);
 	OBD3PID0 = CreateWindow("BUTTON", "Read DTCs",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode3,(HMENU) 3,NULL,NULL);
 	}
-	//if(y_offset+mode4y_offset < parentHeight && y_offset+mode4y_offset+mode4Height > 0)
+	if(y_offset+mode4y_offset < parentHeight && y_offset+mode4y_offset+mode4Height > 0)
 	{
 	mode4 = CreateWindow("BUTTON", "MODE 0x4:Clear DTCs",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode4y_offset+y_offset,parameterTableWidth,mode4Height,parent,NULL,NULL,NULL);
 	OBD4PID0 = CreateWindow("BUTTON", "Clear DTCs",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode4,(HMENU) 3,NULL,NULL);
 	}
-	//if(y_offset+mode5y_offset < parentHeight && y_offset+mode5y_offset+mode5Height > 0)
+	if(y_offset+mode5y_offset < parentHeight && y_offset+mode5y_offset+mode5Height > 0)
 	{
 	mode5 = CreateWindow("BUTTON", "MODE 0x5:O2 sensor",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode5y_offset+y_offset,parameterTableWidth,mode5Height,parent,NULL,NULL,NULL);
 	OBD5PID0 = CreateWindow("BUTTON", "OBD monitor IDs supported 1-20",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode5,(HMENU) 3,NULL,NULL);
@@ -592,7 +605,7 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD5PID7 = CreateWindow("BUTTON", "Oxygen sensor 3 bank 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,8*listOccupantHeight,parameterTableWidth-20,18,mode5,(HMENU) 10,NULL,NULL);
 	OBD5PID8 = CreateWindow("BUTTON", "Oxygen sensor 4 bank 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,9*listOccupantHeight,parameterTableWidth-20,18,mode5,(HMENU) 11,NULL,NULL);
 	}
-	//if(y_offset+mode6y_offset < parentHeight && y_offset+mode6y_offset+mode6Height > 0)
+	if(y_offset+mode6y_offset < parentHeight && y_offset+mode6y_offset+mode6Height > 0)
 	{
 	mode6 = CreateWindow("BUTTON", "MODE 0x6:Test results",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode6y_offset+y_offset,parameterTableWidth,mode6Height,parent,NULL,NULL,NULL);
 	OBD6PID0 = CreateWindow("BUTTON", "OBD monitor IDs supported 1-20",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode6,(HMENU) 3,NULL,NULL);
@@ -602,18 +615,18 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD6PID4 = CreateWindow("BUTTON", "Test 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,5*listOccupantHeight,parameterTableWidth-20,18,mode6,(HMENU) 7,NULL,NULL);
 	OBD6PID5 = CreateWindow("BUTTON", "Test 5",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,6*listOccupantHeight,parameterTableWidth-20,18,mode6,(HMENU) 8,NULL,NULL);
 	}
-	//if(y_offset+mode7y_offset < parentHeight && y_offset+mode7y_offset+mode7Height > 0)
+	if(y_offset+mode7y_offset < parentHeight && y_offset+mode7y_offset+mode7Height > 0)
 	{
 	mode7 = CreateWindow("BUTTON", "MODE 0x7:Pending DTCs",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode7y_offset+y_offset,parameterTableWidth,mode7Height,parent,NULL,NULL,NULL);
 	OBD7PID0 = CreateWindow("BUTTON", "Pending DTCs",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode7,(HMENU) 3,NULL,NULL);
 	}
-	//if(y_offset+mode8y_offset < parentHeight && y_offset+mode8y_offset+mode8Height > 0)
+	if(y_offset+mode8y_offset < parentHeight && y_offset+mode8y_offset+mode8Height > 0)
 	{
 	mode8 = CreateWindow("BUTTON", "MODE 0x8:Control components",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode8y_offset+y_offset,parameterTableWidth,mode8Height,parent,NULL,NULL,NULL);
 	OBD8PID0 = CreateWindow("BUTTON", "Component IDs supported 1-20",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode8,(HMENU) 3,NULL,NULL);
 	OBD8PID1 = CreateWindow("BUTTON", "Component 1",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,2*listOccupantHeight,parameterTableWidth-20,18,mode8,(HMENU) 4,NULL,NULL);
 	}
-	//if(y_offset+mode9y_offset < parentHeight && y_offset+mode9y_offset+mode9Height > 0)
+	if(y_offset+mode9y_offset < parentHeight && y_offset+mode9y_offset+mode9Height > 0)
 	{
 	mode9 = CreateWindow("BUTTON", "MODE 0x9:Request vehicle info",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode9y_offset+y_offset,parameterTableWidth,mode9Height,parent,NULL,NULL,NULL);
 	OBD9PID0 = CreateWindow("BUTTON", "OBD monitor IDs supported 1-20",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 3,NULL,NULL);
@@ -625,7 +638,7 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD9PID6 = CreateWindow("BUTTON", "Cal Validation No.",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,7*listOccupantHeight,parameterTableWidth-20,18,mode9,(HMENU) 9,NULL,NULL);
 	}
 
-	//if(y_offset+mode22y_offset < parentHeight && y_offset+mode22y_offset+mode22Height > 0)
+	if(y_offset+mode22y_offset < parentHeight && y_offset+mode22y_offset+mode22Height > 0)
 	{
 	//OBD MODE 0x22 PID buttons, 82 PIDs
 	mode22 = CreateWindow("BUTTON", "MODE 0x22:Performance data",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode22y_offset+y_offset,parameterTableWidth,mode22Height,parent,NULL,NULL,NULL);
@@ -713,7 +726,7 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD22PID621 = CreateWindow("BUTTON", "621",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,82*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 84,NULL,NULL);
 	}
 
-	//if(y_offset+mode2Fy_offset < parentHeight && y_offset+mode2Fy_offset+mode2FHeight > 0)
+	if(y_offset+mode2Fy_offset < parentHeight && y_offset+mode2Fy_offset+mode2FHeight > 0)
 	{
 	//OBD MODE 0x2F PID buttons, 28 PIDs
 	mode2F = CreateWindow("BUTTON", "MODE 0x2F:Veh.func.~~DANGER~~",WS_VISIBLE | WS_CHILD|BS_GROUPBOX ,x_offset,mode2Fy_offset+y_offset,parameterTableWidth,mode2FHeight,parent,NULL,NULL,NULL);
@@ -747,20 +760,12 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD2FPID164 = CreateWindow("BUTTON", "0x164",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,28*listOccupantHeight,parameterTableWidth-20,18,mode2F,(HMENU) 30,NULL,NULL);
 	}
 
-	//if(y_offset+mode3By_offset < parentHeight && y_offset+mode3By_offset+mode3BHeight > 0)
+	if(y_offset+mode3By_offset < parentHeight && y_offset+mode3By_offset+mode3BHeight > 0)
 	{
 	//OBD MODE 0x3B PID buttons
 	mode3B = CreateWindow("BUTTON", "MODE 0x3B:Write VIN",WS_VISIBLE | WS_CHILD|BS_GROUPBOX ,x_offset,mode3By_offset+y_offset,parameterTableWidth,mode3BHeight,parent,NULL,NULL,NULL);
 	OBD3BPID0 = CreateWindow("BUTTON", "",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,20,18,mode3B,(HMENU) 3,NULL,NULL);
 	OBD3BPID1 = CreateWindow("EDIT", mode3BVIN,WS_VISIBLE | WS_CHILD| WS_BORDER |ES_UPPERCASE ,25,1*listOccupantHeight,parameterTableWidth-95,18,mode3B,NULL,NULL,NULL);
-	}
-	//if(y_offset+modeSHORTy_offset < parentHeight && y_offset+modeSHORTy_offset+modeSHORTHeight > 0)
-	{
-	//OBD MODE short message PID buttons
-	/*modeSHORT = CreateWindow("BUTTON", "MODE SHORT: Read veh info.",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,modeSHORTy_offset+y_offset,parameterTableWidth,modeSHORTHeight,parent,NULL,NULL,NULL);
-	OBDSHORTPID2 = CreateWindow("BUTTON", "VIN",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,modeSHORT,(HMENU) 3,NULL,NULL);
-	OBDSHORTPID4 = CreateWindow("BUTTON", "CAL ID, make, model and year",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,2*listOccupantHeight,parameterTableWidth-20,18,modeSHORT,(HMENU) 4,NULL,NULL);
-	*/
 	}
 
 
@@ -803,7 +808,6 @@ void clearLogParamsTable()
 	DestroyWindow(mode22);
 	DestroyWindow(mode2F);
 	DestroyWindow(mode3B);
-	//DestroyWindow(modeSHORT);
 	return;
 }
 
@@ -904,11 +908,6 @@ void saveLogCheckBoxSettings()
 	mode3BVIN[9] = '5';
 	mode3BVIN[10] = 'H';
 	}
-	/*//mode SHORT PIDs
-	for(int i = 0; i < 2; i++)
-	{
-		modeSHORTcheckboxstate[i] = IsDlgButtonChecked(modeSHORT,3+i);
-	}*/
 	return;
 }
 
@@ -1039,18 +1038,6 @@ void restoreLogCheckBoxSettings()
 	{
 		CheckDlgButton(mode3B,3,BST_CHECKED);
 	}
-	/*//mode SHORT PIDs
-	for(int i = 0; i < 2; i++)
-	{
-		if(modeSHORTcheckboxstate[i] == BST_CHECKED)
-		{
-			CheckDlgButton(modeSHORT,i+3,BST_CHECKED);
-		}
-		else if(modeSHORTcheckboxstate[i] == BST_INDETERMINATE)
-		{
-			CheckDlgButton(modeSHORT,i+3,BST_INDETERMINATE);
-		}
-	}*/
 	return;
 }
 
@@ -7348,17 +7335,6 @@ void populateFileHeaders(std::ofstream &dataFile, std::ofstream &byteFile)
 	{
 			dataFile << ',' << "VIN write";
 			byteFile << ',' << "VIN write";
-	}
-
-	//mode SHORT
-	std::string MODESHORTTitles[] = {"PID 2","PID 4"};
-	for(int a = 0; a < 2; a++)
-	{
-		if(modeSHORTcheckboxstate[a] != BST_UNCHECKED)
-		{
-			dataFile << ',' << MODESHORTTitles[a];
-			byteFile << ',' << MODESHORTTitles[a];
-		}
 	}
 
 	dataFile << '\n';
