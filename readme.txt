@@ -18,3 +18,14 @@ The program is a work in progress.
 This program uses the windows API and the FTDI API
 Download the FTDI drivers at:
 http://www.ftdichip.com/Drivers/D2XX.htm
+
+In order to use the pre-compiled version of Daft OBD
+download the following files and places them in the same folder
+on your computer:
+
+DaftOBD.exe
+libgcc_s_dw2-1.dll
+libstdc++-6.dll
+
+also download the FTDI drivers as a setup executable, unzip and
+install them. This should enable the OBD program to work.
