@@ -20,7 +20,7 @@ Download the FTDI drivers at:
 http://www.ftdichip.com/Drivers/D2XX.htm
 
 In order to use the pre-compiled version of Daft OBD
-download the following files and places them in the same folder
+download the following files and place them in the same folder
 on your computer:
 
 DaftOBD.exe

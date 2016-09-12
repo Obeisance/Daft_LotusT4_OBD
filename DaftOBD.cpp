@@ -187,6 +187,11 @@ VOID OnPaint(HDC hdc)
    graphics.FillRectangle(brush,plotXOrigin, plotYOrigin, plotWidth, plotHeight);
    graphics.DrawRectangle(&pen,plotXOrigin, plotYOrigin, plotWidth, plotHeight);
 
+   xMax = times[0];
+   xMin = times[0];
+   yMax = allData[0][0];
+   yMin = allData[0][0];
+
    //check for maximum plot values
    for(int a = 0; a < 100; a++)
    {
@@ -323,7 +328,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 0;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.3",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.4",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -390,11 +395,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 	{
 		case WM_CREATE:	//this case occurs when the window is created
 			//during this case, we draw all of the objects in our window
-
-			//create the list of loggable parameters
-			//selectLogParams = CreateWindowEx(0,"STATIC", "Select the parameters to log:",WS_VISIBLE | WS_CHILD | WS_BORDER,logParamsX,logParamsY,210,(HIWORD (lParam))-(20+logParamsY),hwnd,NULL,NULL,NULL);
-			//drawLogParamsTable(selectLogParams, 210,(HIWORD (lParam))-(20+logParamsY), logParamsScrollPosX, logParamsScrollPosY);
-
 
 			//prepare to plot some of the logged parameters
 			plotwindow = CreateWindowEx(0,"STATIC", "Data Plot",WS_VISIBLE | WS_CHILD| WS_BORDER,plotWindowX,plotWindowY,80,18,hwnd,NULL,NULL,NULL);
@@ -758,7 +758,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 						//close the data files
 						writeBytes.close();
 						writeData.close();
-						//RedrawWindow(status, NULL, NULL, RDW_UPDATENOW);
 
 
 						if(numPlottedVariables > 0)
@@ -1587,62 +1586,8 @@ void updatePlottingData(int mode, int pid, double data, int &numVariablesPlotted
 {
 	//update the data stored in the array for plotting
 
-	//the columns are arranged in order of the checkbox list
-	//thus, start with '0 variables plotted' and run through
-	//the ordered list of possible plottable variables on the way
-	//up to the input mode and PID.
-	//Increment a counter each time we encounter a variable
-	//tagged for plotting. That counter serves as the column
-	//index in the stored data array where we will update the
-	//value
-	int plotDataColumn = 0;
-	/*
-	numVariablesPlotted = 0;
+	int plotDataColumn = -1;
 
-	//loop through all possible-to-be-plotted variables
-	//to determine which vector the data belongs in
-	for(int a = 0; a < 28; a ++)
-	{
-		if(mode1checkboxstate[a] == BST_INDETERMINATE)
-		{
-			if(mode == 1 && pid == a && numVariablesPlotted < 10)
-			{
-				plotDataColumn = numVariablesPlotted;
-			}
-			if(numVariablesPlotted < 9)
-			{
-				numVariablesPlotted += 1;
-			}
-		}
-	}
-	for(int b = 0; b < 11; b ++)
-	{
-		if(mode2checkboxstate[b] == BST_INDETERMINATE)
-		{
-			if(mode == 2 && pid == b && numVariablesPlotted < 10)
-			{
-				plotDataColumn = numVariablesPlotted;
-			}
-			if(numVariablesPlotted < 9)
-			{
-				numVariablesPlotted += 1;
-			}
-		}
-	}
-	for(int c = 0; c < 9; c ++)
-	{
-		if(mode5checkboxstate[c] == BST_INDETERMINATE)
-		{
-			if(mode == 5 && pid == c && numVariablesPlotted < 10)
-			{
-				plotDataColumn = numVariablesPlotted;
-			}
-			if(numVariablesPlotted < 9)
-			{
-				numVariablesPlotted += 1;
-			}
-		}
-	}*/
 	if(numVariablesPlotted > 0)
 	{
 		//loop through the vectors which store the plot modes and PIDs to see which one
@@ -1658,12 +1603,15 @@ void updatePlottingData(int mode, int pid, double data, int &numVariablesPlotted
 		}
 
 		//update the stored data - form: allData[100][10] - a global data array
-		for(int k = 0; k < 99; k++)
+		if(plotDataColumn >= 0)
 		{
-			allData[k][plotDataColumn] = allData[k+1][plotDataColumn];
+			for(int k = 0; k < 99; k++)
+			{
+				allData[k][plotDataColumn] = allData[k+1][plotDataColumn];
+			}
+			//add the new data in the last place
+			allData[99][plotDataColumn] = data;
 		}
-		//add the new data in the last place
-		allData[99][plotDataColumn] = data;
 	}
 }
 
