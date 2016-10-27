@@ -85,7 +85,8 @@ int readFromSerialPort(HANDLE serialPortHandle, uint8_t* serialBytesRecvd, int s
 	    {
 			serialBytesRecvd[recvdBufferPosition] = recvdByte;
 			recvdBufferPosition += 1;
-			lastByteTime = t2;//the time that the previous byte was read in
+			//lastByteTime = t2;//the time that the previous byte was read in
+			QueryPerformanceCounter(&lastByteTime);//the time that the previous byte was read in
 			haveReceivedBytes = true;//raise a flag that we've begun receiving a response
 
 			//update the starttimer in order to extend the timeout
@@ -114,6 +115,7 @@ int readFromSerialPort(HANDLE serialPortHandle, uint8_t* serialBytesRecvd, int s
 bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::ofstream &byteFile, int mode, int pid, uint8_t* outGoingData, double &returnData)
 {
 	bool success = true;
+	int timeout = 1000;
 	//for each logging parameter, send a message, recieve a message, interpret the message and save the data
 
 	//initialize a read-in data buffer
@@ -711,8 +713,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,4,200};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			/*readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);*/
+			uint8_t readPacket[7] = {72,107,16,65,4,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1021,7 +1025,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-				dataFile << "poll file";
+				dataFile << "poll fail";
 
 			}
 			else
@@ -1176,7 +1180,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 				double voltage = recvdBytes[5]/200.00;
 				double STFT = recvdBytes[6]/1.28 - 100;
-				dataFile << std::setprecision(2) << std::fixed << voltage << ' ' << STFT;
+				dataFile << std::setprecision(2) << std::fixed << voltage << ',' << STFT;
 				returnData = voltage;
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -1215,7 +1219,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 				double voltage = recvdBytes[5]/200.00;
 				double STFT = recvdBytes[6]/1.28 - 100;
-				dataFile << std::setprecision(2) << std::fixed << voltage << ' ' << STFT;
+				dataFile << std::setprecision(2) << std::fixed << voltage << ',' << STFT;
 				returnData = voltage;
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4335,8 +4339,12 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//if(mode22checkboxstate[23] != BST_UNCHECKED && success == true && placeCounter == 89)
 		{
 			//mode 0x22 PID 540-543: Calibration ID in ASCII
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 23;
+
+			int packetPlace = 0;
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,28,3};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
@@ -4346,27 +4354,29 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,28,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			int packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,28,x,x,x,x,sum
+
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4384,25 +4394,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,29,x,x,x,x,sum
-			packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,29,x,x,x,x,sum
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4420,25 +4433,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,30,x,x,x,x,sum
-			packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,30,x,x,x,x,sum
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4456,25 +4472,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,31,x,x,x,x,sum
-			packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,31,x,x,x,x,sum
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4490,6 +4509,8 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//if(mode22checkboxstate[24] != BST_UNCHECKED && success == true && placeCounter == 90)
 		{
 			//mode 0x22 PID 544: PIDs available 0x21 - 0x40 ?
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 24;
 
@@ -4501,22 +4522,24 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,32,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			int PIDplace = 32;
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				for(int j = 7; j > -1; j--)
+				//
+				//the return packet looks like 72,107,16,98,2,32,x,x,x,x,sum
+
+				int PIDplace = 32;
+				for(int i = 6; i < 10; i++)//loop through bytes
 				{
-					PIDplace += 1;
-					if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+					for(int j = 7; j > -1; j--)
 					{
-						dataFile << PIDplace << ' ';
+						PIDplace += 1;
+						if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+						{
+							dataFile << PIDplace << ' ';
+						}
 					}
 				}
 			}
@@ -4533,8 +4556,12 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//if(mode22checkboxstate[25] != BST_UNCHECKED && success == true && placeCounter == 91)
 		{
 			//mode 0x22 PID 545-548: Make, model and year in ASCII
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 25;
+
+			int packetPlace = 0;
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,33,8};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
@@ -4544,27 +4571,29 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,33,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			int packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,33,x,x,x,x,sum
+
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4582,25 +4611,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,34,x,x,x,x,sum
-			packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,34,x,x,x,x,sum
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4618,25 +4650,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,35,x,x,x,x,sum
-			packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,35,x,x,x,x,sum
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4654,25 +4689,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//return groups of 4 ASCII characters
-			//the return packet looks like 72,107,16,98,2,36,x,x,x,x,sum
-			packetPlace = 0;
-			for(int i = 0; i < numBytesRead;i++)
+			else
 			{
-				if((i-packetPlace) > 5 && (i-packetPlace) < 10)
+				//return groups of 4 ASCII characters
+				//the return packet looks like 72,107,16,98,2,36,x,x,x,x,sum
+				packetPlace = 0;
+				for(int i = 0; i < numBytesRead;i++)
 				{
-					uint8_t data = recvdBytes[i];
-					if(data >= 32 && data <= 122)//include ascii chars
+					if((i-packetPlace) > 5 && (i-packetPlace) < 10)
 					{
-						dataFile << data;
+						uint8_t data = recvdBytes[i];
+						if(data >= 32 && data <= 122)//include ascii chars
+						{
+							dataFile << data;
+						}
 					}
-				}
-				else if((i-packetPlace) == 10)
-				{
-					packetPlace += 11;
+					else if((i-packetPlace) == 10)
+					{
+						packetPlace += 11;
+					}
 				}
 			}
 			for(int k = 0; k < numBytesRead; k++)
@@ -4687,7 +4725,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 549
 			//if(mode22checkboxstate[26] != BST_UNCHECKED && success == true && placeCounter == 92)
 		{
-			//mode 0x22 PID 549:  ?
+			//mode 0x22 PID 549:  time at 0-1.5% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 26;
 
@@ -4699,16 +4739,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,37,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 0-1.5% throttle (.1 s increment)
+				//the return packet looks like 72,107,16,98,2,37,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
 			for(int k = 0; k < numBytesRead; k++)
 			{
@@ -4722,7 +4764,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 550
 			//if(mode22checkboxstate[27] != BST_UNCHECKED && success == true && placeCounter == 93)
 		{
-			//mode 0x22 PID 550:  ?
+			//mode 0x22 PID 550: time at 1.5-15% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 27;
 
@@ -4734,17 +4778,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,38,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 1.5-15% throttle (0.1s increment)
+				//the return packet looks like 72,107,16,98,2,38,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4757,7 +4804,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 551
 			//if(mode22checkboxstate[28] != BST_UNCHECKED && success == true && placeCounter == 94)
 		{
-			//mode 0x22 PID 551:  ?
+			//mode 0x22 PID 551: time at 15-25% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 28;
 
@@ -4769,17 +4818,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,39,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 15-25% throttle (0.1 s increment)
+				//the return packet looks like 72,107,16,98,2,39,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4792,7 +4844,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 552
 			//if(mode22checkboxstate[29] != BST_UNCHECKED && success == true && placeCounter == 95)
 		{
-			//mode 0x22 PID 552:  ?
+			//mode 0x22 PID 552:  time at 25-35% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 29;
 
@@ -4804,17 +4858,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,40,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 25-35% throttle (.1 s increment)
+				//the return packet looks like 72,107,16,98,2,40,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4827,7 +4884,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 553
 			//if(mode22checkboxstate[30] != BST_UNCHECKED && success == true && placeCounter == 96)
 		{
-			//mode 0x22 PID 552:  ?
+			//mode 0x22 PID 552: time at 35-50% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 30;
 
@@ -4839,17 +4898,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,41,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 35-50% throttle (0.1 s increment)
+				//the return packet looks like 72,107,16,98,2,41,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4862,7 +4924,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 554
 			//if(mode22checkboxstate[31] != BST_UNCHECKED && success == true && placeCounter == 97)
 		{
-			//mode 0x22 PID 553:  ?
+			//mode 0x22 PID 553: time at 50-65% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 31;
 
@@ -4874,17 +4938,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,42,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 50-65% throttle (.1 s increment)
+				//the return packet looks like 72,107,16,98,2,42,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4897,7 +4964,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 555
 			//if(mode22checkboxstate[32] != BST_UNCHECKED && success == true && placeCounter == 98)
 		{
-			//mode 0x22 PID 555:  ?
+			//mode 0x22 PID 555: time at 65-80% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 32;
 
@@ -4909,17 +4978,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,43,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 65-80% throttle (.1 s increment)
+				//the return packet looks like 72,107,16,98,2,43,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4932,7 +5004,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 556
 			//if(mode22checkboxstate[33] != BST_UNCHECKED && success == true && placeCounter == 99)
 		{
-			//mode 0x22 PID 556:  ?
+			//mode 0x22 PID 556:  time at 80-100% throttle
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 33;
 
@@ -4944,17 +5018,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,44,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 80-100% throttle (0.1s increment)
+				//the return packet looks like 72,107,16,98,2,44,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -4967,7 +5044,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 557
 			//if(mode22checkboxstate[34] != BST_UNCHECKED && success == true && placeCounter == 100)
 		{
-			//mode 0x22 PID 557:  ?
+			//mode 0x22 PID 557:  time at 500-1500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 34;
 
@@ -4979,17 +5058,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,45,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 500-1500 rpm (0.1s increment)
+				//the return packet looks like 72,107,16,98,2,45,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5002,7 +5084,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 558
 			//if(mode22checkboxstate[35] != BST_UNCHECKED && success == true && placeCounter == 101)
 		{
-			//mode 0x22 PID 558:  ?
+			//mode 0x22 PID 558: time at 1500-2500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 35;
 
@@ -5014,17 +5098,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,46,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 1500-2500 rpm (s)
+				//the return packet looks like 72,107,16,98,2,46,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5037,7 +5124,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 559
 			//if(mode22checkboxstate[36] != BST_UNCHECKED && success == true && placeCounter == 102)
 		{
-			//mode 0x22 PID 559:  ?
+			//mode 0x22 PID 559: time at 2500-3500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 36;
 
@@ -5049,17 +5138,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,47,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 2500-3500 rpm (s)
+				//the return packet looks like 72,107,16,98,2,47,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5072,7 +5164,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		//PID 560
 		//if(mode22checkboxstate[37] != BST_UNCHECKED && success == true && placeCounter == 103)
 		{
-			//mode 0x22 PID 560:  ?
+			//mode 0x22 PID 560: time at 3500-4500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 37;
 
@@ -5084,17 +5178,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,48,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 3500-4500 rpm (s)
+				//the return packet looks like 72,107,16,98,2,48,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5107,7 +5204,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 561
 			//if(mode22checkboxstate[38] != BST_UNCHECKED && success == true && placeCounter == 104)
 		{
-			//mode 0x22 PID 561:  ?
+			//mode 0x22 PID 561: time at 4500-5500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 38;
 
@@ -5119,17 +5218,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,49,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 4500-5500 rpm (s)
+				//the return packet looks like 72,107,16,98,2,49,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5142,7 +5244,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 562
 			//if(mode22checkboxstate[39] != BST_UNCHECKED && success == true && placeCounter == 105)
 		{
-			//mode 0x22 PID 562:  ?
+			//mode 0x22 PID 562: time at 5500-6500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 39;
 
@@ -5154,17 +5258,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,50,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 5500-6500 rpm (s)
+				//the return packet looks like 72,107,16,98,2,50,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5177,7 +5284,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 563
 			//if(mode22checkboxstate[40] != BST_UNCHECKED && success == true && placeCounter == 106)
 		{
-			//mode 0x22 PID 563:  ?
+			//mode 0x22 PID 563: time at 6500-7000 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 40;
 
@@ -5189,17 +5298,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,51,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 6500-7000 rpm (s)
+				//the return packet looks like 72,107,16,98,2,51,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5212,7 +5324,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 564
 			//if(mode22checkboxstate[41] != BST_UNCHECKED && success == true && placeCounter == 107)
 		{
-			//mode 0x22 PID 564:  ?
+			//mode 0x22 PID 564:  time at 7000-7500 rpm
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 41;
 
@@ -5224,17 +5338,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,52,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at 7000-7500 rpm (s)
+				//the return packet looks like 72,107,16,98,2,52,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5247,7 +5364,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 565
 			//if(mode22checkboxstate[42] != BST_UNCHECKED && success == true && placeCounter == 108)
 		{
-			//mode 0x22 PID 565:  ?
+			//mode 0x22 PID 565: time at wheel speed 0-30 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 42;
 
@@ -5259,17 +5378,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,53,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 0-30 kph
+				//the return packet looks like 72,107,16,98,2,53,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5282,7 +5404,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 566
 			//if(mode22checkboxstate[43] != BST_UNCHECKED && success == true && placeCounter == 109)
 		{
-			//mode 0x22 PID 566:  ?
+			//mode 0x22 PID 566: time at wheel speed 30-60 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 43;
 
@@ -5294,17 +5418,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,54,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 30-60 kph
+				//the return packet looks like 72,107,16,98,2,54,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5317,7 +5444,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 567
 			//if(mode22checkboxstate[44] != BST_UNCHECKED && success == true && placeCounter == 110)
 		{
-			//mode 0x22 PID 567:  ?
+			//mode 0x22 PID 567: time at wheel speed 60-90 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 44;
 
@@ -5329,17 +5458,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,55,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 60-90 kph
+				//the return packet looks like 72,107,16,98,2,55,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5352,7 +5484,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 568
 			//if(mode22checkboxstate[45] != BST_UNCHECKED && success == true && placeCounter == 111)
 		{
-			//mode 0x22 PID 568:  ?
+			//mode 0x22 PID 568:  time at wheel speed 90-120 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 45;
 
@@ -5364,17 +5498,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,56,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 90-120 kph
+				//the return packet looks like 72,107,16,98,2,56,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5387,7 +5524,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 569
 			//if(mode22checkboxstate[46] != BST_UNCHECKED && success == true && placeCounter == 112)
 		{
-			//mode 0x22 PID 569:  ?
+			//mode 0x22 PID 569: time at wheel speed 120-150 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 46;
 
@@ -5399,17 +5538,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,57,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 120-150 kph
+				//the return packet looks like 72,107,16,98,2,57,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5422,7 +5564,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 570
 			//if(mode22checkboxstate[47] != BST_UNCHECKED && success == true && placeCounter == 113)
 		{
-			//mode 0x22 PID 570:  ?
+			//mode 0x22 PID 570:  time at wheel speed 150-180 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 47;
 
@@ -5434,17 +5578,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,58,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 150-180 kph
+				//the return packet looks like 72,107,16,98,2,58,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5457,7 +5604,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 571
 			//if(mode22checkboxstate[48] != BST_UNCHECKED && success == true && placeCounter == 114)
 		{
-			//mode 0x22 PID 571:  ?
+			//mode 0x22 PID 571: time at wheel speed 180-210 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 48;
 
@@ -5469,17 +5618,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,59,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 180-210 kph
+				//the return packet looks like 72,107,16,98,2,59,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5492,7 +5644,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 572
 			//if(mode22checkboxstate[49] != BST_UNCHECKED && success == true && placeCounter == 115)
 		{
-			//mode 0x22 PID 572:  ?
+			//mode 0x22 PID 572: time at wheel speed 210-240 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 49;
 
@@ -5504,17 +5658,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,60,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time at wheel speed 210-240 kph (s)
+				//the return packet looks like 72,107,16,98,2,60,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5528,6 +5685,8 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//if(mode22checkboxstate[50] != BST_UNCHECKED && success == true && placeCounter == 116)
 		{
 			//mode 0x22 PID 573: PIDs available 0x41 - 0x60 ?
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 50;
 
@@ -5539,22 +5698,24 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,61,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			int PIDplace = 64;
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				for(int j = 7; j > -1; j--)
+				//
+				//the return packet looks like 72,107,16,98,2,61,x,x,x,x,sum
+
+				int PIDplace = 64;
+				for(int i = 6; i < 10; i++)//loop through bytes
 				{
-					PIDplace += 1;
-					if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+					for(int j = 7; j > -1; j--)
 					{
-						dataFile << PIDplace << ' ';
+						PIDplace += 1;
+						if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+						{
+							dataFile << PIDplace << ' ';
+						}
 					}
 				}
 			}
@@ -5570,7 +5731,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 577
 			//if(mode22checkboxstate[51] != BST_UNCHECKED && success == true && placeCounter == 117)
 		{
-			//mode 0x22 PID 577:  ?
+			//mode 0x22 PID 577: time between 105-110 C coolant temperature
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 51;
 
@@ -5582,17 +5745,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,65,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time between 105-110 C coolant temperature
+				//the return packet looks like 72,107,16,98,2,65,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5605,7 +5771,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 583
 			//if(mode22checkboxstate[52] != BST_UNCHECKED && success == true && placeCounter == 118)
 		{
-			//mode 0x22 PID 583:  ?
+			//mode 0x22 PID 583:  time between 110-115 C coolant temperature
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 52;
 
@@ -5617,17 +5785,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,71,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time between 110-115 C coolant temperature
+				//the return packet looks like 72,107,16,98,2,71,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5640,7 +5811,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 584
 			//if(mode22checkboxstate[53] != BST_UNCHECKED && success == true && placeCounter == 119)
 		{
-			//mode 0x22 PID 584:  ?
+			//mode 0x22 PID 584: time between 115-120 C coolant temperature
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 53;
 
@@ -5652,17 +5825,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,72,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time between 115-120 C coolant temperature
+				//the return packet looks like 72,107,16,98,2,72,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5675,7 +5851,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 585
 			//if(mode22checkboxstate[54] != BST_UNCHECKED && success == true && placeCounter == 120)
 		{
-			//mode 0x22 PID 585:  ?
+			//mode 0x22 PID 585: time above 120 C coolant temperature
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 54;
 
@@ -5687,17 +5865,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,73,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//time above 120 C coolant temperature
+				//the return packet looks like 72,107,16,98,2,73,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5710,7 +5891,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 586
 			//if(mode22checkboxstate[55] != BST_UNCHECKED && success == true && placeCounter == 121)
 		{
-			//mode 0x22 PID 586:  ?
+			//mode 0x22 PID 586:  high RPM 1
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 55;
 
@@ -5722,17 +5905,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,77,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 8; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//high rpm 1
+				//the return packet looks like 72,107,16,98,2,77,x,x,sum
+
+				double rpm = recvdBytes[6]*256 + recvdBytes[7];
+				dataFile << std::setprecision(2) << std::fixed << rpm;
+				returnData = rpm;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5745,7 +5930,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 591
 			//if(mode22checkboxstate[56] != BST_UNCHECKED && success == true && placeCounter == 122)
 		{
-			//mode 0x22 PID 591:  ?
+			//mode 0x22 PID 591: high rpm 2
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 56;
 
@@ -5757,17 +5944,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,79,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 8; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//high rpm 2
+				//the return packet looks like 72,107,16,98,2,79,x,x,sum
+
+				double rpm = recvdBytes[6]*256 + recvdBytes[7];
+				dataFile << std::setprecision(2) << std::fixed << rpm;
+				returnData = rpm;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5780,7 +5969,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 592
 			//if(mode22checkboxstate[57] != BST_UNCHECKED && success == true && placeCounter == 123)
 		{
-			//mode 0x22 PID 592:  ?
+			//mode 0x22 PID 592: high rpm 3
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 57;
 
@@ -5792,17 +5983,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,80,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 8; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//high rpm 3
+				//the return packet looks like 72,107,16,98,2,80,x,x,sum
+
+				double rpm = recvdBytes[6]*256 + recvdBytes[7];
+				dataFile << std::setprecision(2) << std::fixed << rpm;
+				returnData = rpm;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5815,7 +6008,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 593
 			//if(mode22checkboxstate[58] != BST_UNCHECKED && success == true && placeCounter == 124)
 		{
-			//mode 0x22 PID 593:  ?
+			//mode 0x22 PID 593: high rpm 4
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 58;
 
@@ -5827,17 +6022,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,81,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 8; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//high rpm 4
+				//the return packet looks like 72,107,16,98,2,81,x,x,sum
+
+				double rpm = recvdBytes[6]*256 + recvdBytes[7];
+				dataFile << std::setprecision(2) << std::fixed << rpm;
+				returnData = rpm;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5850,7 +6047,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 594
 			//if(mode22checkboxstate[59] != BST_UNCHECKED && success == true && placeCounter == 125)
 		{
-			//mode 0x22 PID 594:  ?
+			//mode 0x22 PID 594: high rpm 5
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 59;
 
@@ -5862,17 +6061,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,82,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 8; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//high rpm 5
+				//the return packet looks like 72,107,16,98,2,82,x,x,sum
+
+				double rpm = recvdBytes[6]*256 + recvdBytes[7];
+				dataFile << std::setprecision(2) << std::fixed << rpm;
+				returnData = rpm;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5885,7 +6086,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 595
 			//if(mode22checkboxstate[60] != BST_UNCHECKED && success == true && placeCounter == 126)
 		{
-			//mode 0x22 PID 595:  ?
+			//mode 0x22 PID 595: coolant temp at high rpm 1
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 60;
 
@@ -5897,17 +6100,17 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,83,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//coolant temperature at high rpm 1
+				//the return packet looks like 72,107,16,98,2,83,x,sum
+				double temperature = recvdBytes[6]*0.6487 - 45.619;
+				dataFile << std::setprecision(2) << std::fixed << temperature;
+				returnData = temperature;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5920,7 +6123,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 596
 			//if(mode22checkboxstate[61] != BST_UNCHECKED && success == true && placeCounter == 127)
 		{
-			//mode 0x22 PID 596:  ?
+			//mode 0x22 PID 596:  engine hrs at high rpm 1
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 61;
 
@@ -5932,17 +6137,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,84,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//engine hrs at high rpm 1
+				//the return packet looks like 72,107,16,98,2,84,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5955,7 +6163,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 598
 			//if(mode22checkboxstate[62] != BST_UNCHECKED && success == true && placeCounter == 128)
 		{
-			//mode 0x22 PID 598:  ?
+			//mode 0x22 PID 598: coolant temperature at high rpm 2
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 62;
 
@@ -5967,17 +6177,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,86,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//coolant temperature at high rpm 2
+				//the return packet looks like 72,107,16,98,2,86,x,sum
+
+				double temperature = recvdBytes[6]*0.6487 - 45.619;
+				dataFile << std::setprecision(2) << std::fixed << temperature;
+				returnData = temperature;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -5990,7 +6202,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 599
 			//if(mode22checkboxstate[63] != BST_UNCHECKED && success == true && placeCounter == 129)
 		{
-			//mode 0x22 PID 599:  ?
+			//mode 0x22 PID 599: engine hrs at high rpm 2
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 63;
 
@@ -6002,17 +6216,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,87,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//engine hrs at high rpm 2
+				//the return packet looks like 72,107,16,98,2,87,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6025,7 +6242,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 601
 			//if(mode22checkboxstate[64] != BST_UNCHECKED && success == true && placeCounter == 130)
 		{
-			//mode 0x22 PID 601:  ?
+			//mode 0x22 PID 601: coolant temperature at high rpm 3
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 64;
 
@@ -6037,17 +6256,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,89,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//coolant temperature at high rpm 3
+				//the return packet looks like 72,107,16,98,2,89,x,sum
+
+				double temperature = recvdBytes[6]*0.6487 - 45.619;
+				dataFile << std::setprecision(2) << std::fixed << temperature;
+				returnData = temperature;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6060,7 +6281,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 602
 			//if(mode22checkboxstate[65] != BST_UNCHECKED && success == true && placeCounter == 131)
 		{
-			//mode 0x22 PID 602:  ?
+			//mode 0x22 PID 602: engine hrs at high rpm 3
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 65;
 
@@ -6072,17 +6295,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,90,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//engine hrs at high rpm 3 (s)
+				//the return packet looks like 72,107,16,98,2,90,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6095,7 +6321,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 603
 			//if(mode22checkboxstate[66] != BST_UNCHECKED && success == true && placeCounter == 132)
 		{
-			//mode 0x22 PID 603:  ?
+			//mode 0x22 PID 603: coolant temperature at high rpm 4
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 66;
 
@@ -6107,17 +6335,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,91,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//coolant temperature at high rpm 4
+				//the return packet looks like 72,107,16,98,2,91,x,sum
+
+				double temperature = recvdBytes[6]*0.6487 - 45.619;
+				dataFile << std::setprecision(2) << std::fixed << temperature;
+				returnData = temperature;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6130,7 +6360,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 605
 			//if(mode22checkboxstate[67] != BST_UNCHECKED && success == true && placeCounter == 133)
 		{
-			//mode 0x22 PID 605:  ?
+			//mode 0x22 PID 605: engine hrs at high rpm 4
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 67;
 
@@ -6142,17 +6374,20 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,93,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//engine hrs at high rpm 4
+				//the return packet looks like 72,107,16,98,2,93,x,x,x,x,sum
+
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6165,7 +6400,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 606
 			//if(mode22checkboxstate[68] != BST_UNCHECKED && success == true && placeCounter == 134)
 		{
-			//mode 0x22 PID 606:  ?
+			//mode 0x22 PID 606: coolant temperature at high rpm 5
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 68;
 
@@ -6177,17 +6414,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,94,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//coolant temperature at high rpm 5
+				//the return packet looks like 72,107,16,98,2,94,x,sum
+
+				double temperature = recvdBytes[6]*0.6487 - 45.619;
+				dataFile << std::setprecision(2) << std::fixed << temperature;
+				returnData = temperature;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6200,7 +6439,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 608
 			//if(mode22checkboxstate[69] != BST_UNCHECKED && success == true && placeCounter == 135)
 		{
-			//mode 0x22 PID 608:  ?
+			//mode 0x22 PID 608: available PID list
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 69;
 
@@ -6212,25 +6453,28 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,96,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			int PIDplace = 96;
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				for(int j = 7; j > -1; j--)
+				//
+				//the return packet looks like 72,107,16,98,2,96,x,x,x,x,sum
+
+				int PIDplace = 96;
+				for(int i = 6; i < 10; i++)//loop through bytes
 				{
-					PIDplace += 1;
-					if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+					for(int j = 7; j > -1; j--)
 					{
-						dataFile << PIDplace << ' ';
+						PIDplace += 1;
+						if(((recvdBytes[i] >> j) & 0x1))//shift and mask to check bit flags
+						{
+							dataFile << PIDplace << ' ';
+						}
 					}
 				}
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6243,7 +6487,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 609
 			//if(mode22checkboxstate[70] != BST_UNCHECKED && success == true && placeCounter == 136)
 		{
-			//mode 0x22 PID 609:  ?
+			//mode 0x22 PID 609:  engine hours at high rpm 5
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 70;
 
@@ -6255,17 +6501,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,97,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//engine hrs at high rpm 5 (0.1 s increment)
+				//the return packet looks like 72,107,16,98,2,97,x,x,x,x,sum
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double timer = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6278,7 +6525,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 610
 			//if(mode22checkboxstate[71] != BST_UNCHECKED && success == true && placeCounter == 137)
 		{
-			//mode 0x22 PID 610:  ?
+			//mode 0x22 PID 610:  max wheel speed 1
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 71;
 
@@ -6290,17 +6539,17 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,98,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//max wheel speed 1 kph
+				//the return packet looks like 72,107,16,98,2,98,x,sum
+				dataFile << (int) recvdBytes[6];
+				returnData = (int) recvdBytes[6];
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6313,7 +6562,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 612
 			//if(mode22checkboxstate[72] != BST_UNCHECKED && success == true && placeCounter == 138)
 		{
-			//mode 0x22 PID 612:  ?
+			//mode 0x22 PID 612:  max wheel speed 2
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 72;
 
@@ -6325,17 +6576,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,100,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//max wheel speed 2 kph
+				//the return packet looks like 72,107,16,98,2,100,x,sum
+				dataFile << (int) recvdBytes[6];
+				returnData = (int) recvdBytes[6];
 			}
+
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6348,7 +6600,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 613
 			//if(mode22checkboxstate[73] != BST_UNCHECKED && success == true && placeCounter == 139)
 		{
-			//mode 0x22 PID 613:  ?
+			//mode 0x22 PID 613:  max wheel speed 3
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 73;
 
@@ -6360,17 +6614,17 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,101,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//max wheel speed 3 kph
+				//the return packet looks like 72,107,16,98,2,101,x,sum
+				dataFile << (int) recvdBytes[6];
+				returnData = (int) recvdBytes[6];
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6383,7 +6637,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 614
 			//if(mode22checkboxstate[74] != BST_UNCHECKED && success == true && placeCounter == 140)
 		{
-			//mode 0x22 PID 614:  ?
+			//mode 0x22 PID 614:  max wheel speed 4
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 74;
 
@@ -6395,17 +6651,17 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,102,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//max wheel speed 4 kph
+				//the return packet looks like 72,107,16,98,2,102,x,sum
+				dataFile << (int) recvdBytes[6];
+				returnData = (int) recvdBytes[6];
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6418,7 +6674,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 615
 			//if(mode22checkboxstate[75] != BST_UNCHECKED && success == true && placeCounter == 141)
 		{
-			//mode 0x22 PID 615:  ?
+			//mode 0x22 PID 615:  max wheel speed 5
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 75;
 
@@ -6430,17 +6688,16 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,103,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//max wheel speed 5 kph
+				//the return packet looks like 72,107,16,98,2,103,x,sum
+				dataFile << (int) recvdBytes[6];
+				returnData = (int) recvdBytes[6];
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6453,7 +6710,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 616
 			//if(mode22checkboxstate[76] != BST_UNCHECKED && success == true && placeCounter == 142)
 		{
-			//mode 0x22 PID 616:  ?
+			//mode 0x22 PID 616:  fastest 0-100 kph launch
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 76;
 
@@ -6465,17 +6724,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,104,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//fastest 0-100 kph launch (0.1 s increments)
+				//the return packet looks like 72,107,16,98,2,104,x,sum
+				double timer = recvdBytes[6]/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6488,7 +6748,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 617
 			//if(mode22checkboxstate[77] != BST_UNCHECKED && success == true && placeCounter == 143)
 		{
-			//mode 0x22 PID 617:  ?
+			//mode 0x22 PID 617:  fastest 0-160 kph launch
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 77;
 
@@ -6500,17 +6762,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,105,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//fastest launch 0-160 kph (0.1 sec increments)
+				//the return packet looks like 72,107,16,98,2,105,x,sum
+				double timer = recvdBytes[6]/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6523,7 +6786,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 618
 			//if(mode22checkboxstate[78] != BST_UNCHECKED && success == true && placeCounter == 144)
 		{
-			//mode 0x22 PID 618:  ?
+			//mode 0x22 PID 618:  most recent 0-100 kph
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 78;
 
@@ -6535,17 +6800,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,106,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//most recent 0-100 kph launch (0.1 sec increments)
+				//the return packet looks like 72,107,16,98,2,106,x,sum
+				double timer = recvdBytes[6]/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6558,7 +6824,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 619
 			//if(mode22checkboxstate[79] != BST_UNCHECKED && success == true && placeCounter == 145)
 		{
-			//mode 0x22 PID 619:  ?
+			//mode 0x22 PID 619:  most recent 0-160 kph launch
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 79;
 
@@ -6570,17 +6838,17 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,107,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 7; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//byte is time (0.1 sec increments) from 0-100 mph
+				//the return packet looks like 72,107,16,98,2,107,x,sum
+				double timer = recvdBytes[6]/10.0;
+				dataFile << std::setprecision(2) << std::fixed << timer;
+				returnData = timer;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6593,7 +6861,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 620
 			//if(mode22checkboxstate[80] != BST_UNCHECKED && success == true && placeCounter == 146)
 		{
-			//mode 0x22 PID 620:  ?
+			//mode 0x22 PID 620:  total engine hours
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 80;
 
@@ -6605,17 +6875,19 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
+				dataFile << "poll fail";
 
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,108,x,x,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 10; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//total engine hours, 32 bit counter, 0.1s increments
+				//the return packet looks like 72,107,16,98,2,108,x,x,x,x,sum
+				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
+				double engineHrs = counter/10.0;
+				dataFile << std::setprecision(2) << std::fixed << engineHrs;
+				returnData = engineHrs;
 			}
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -6628,7 +6900,9 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			//PID 621
 			//if(mode22checkboxstate[81] != BST_UNCHECKED && success == true && placeCounter == 147)
 		{
-			//mode 0x22 PID 621:  ?
+			//mode 0x22 PID 621:  number of standing starts
+			byteFile << ',';
+			dataFile << ',';
 			//mode = 34;
 			//pid = 81;
 
@@ -6640,17 +6914,18 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			{
 				//we've failed the read and should flag to quit the polling
 				success = false;
-
-
+				dataFile << "poll fail";
 			}
-			//
-			//the return packet looks like 72,107,16,98,2,109,x,x,sum
-			byteFile << ',';
-			dataFile << ',';
-			for(int i = 6; i < 8; i++)//loop through bytes
+			else
 			{
-				dataFile << recvdBytes[i] << ' ';
+				//the return packet looks like 72,107,16,98,2,109,x,x,sum
+				//where the data is a 16 bit counter
+				double standingStarts = 256*recvdBytes[6] + recvdBytes[7];
+				dataFile << std::setprecision(2) << std::fixed << standingStarts;
+				returnData = standingStarts;
 			}
+
+
 			for(int k = 0; k < numBytesRead; k++)
 			{
 				byteFile << (int) recvdBytes[k] << ' ';
@@ -7959,4 +8234,38 @@ uint8_t checkSum(uint8_t* bytes, int number)
 		sum += bytes[i];
 	}
 	return sum;
+}
+
+int readAndCompareSerial(HANDLE serialPortHandle, uint8_t* serialBytesRecvd, int sizeOfSerialByteBuffer, int readBackSentByteNumber, uint8_t* serialPacketStructure, int sizeSerialPacket, int numPackets, int delayMS)
+{
+	uint8_t sentBytes[readBackSentByteNumber];
+	readFromSerialPort(serialPortHandle, sentBytes, readBackSentByteNumber, delayMS);//read back what we just sent
+	int numBytesRead = readFromSerialPort(serialPortHandle, serialBytesRecvd, sizeOfSerialByteBuffer, delayMS);
+
+	//check that the packet structure is correct
+	//loop through the received packet
+	for(int i = 0; i < numBytesRead; i++)
+	{
+		int j = i % sizeSerialPacket;
+		if(serialBytesRecvd[i] != serialPacketStructure[j] && serialPacketStructure[j] != 255)
+		{
+			std::cout << "improper packet bytes" << '\n';
+		}
+	}
+
+	for(int k = 0; k < numPackets; k++)
+	{
+		uint8_t checkPacket[sizeSerialPacket];
+		for(int l = 0; l < sizeSerialPacket; l++)
+		{
+			checkPacket[l] = serialBytesRecvd[k*sizeSerialPacket + l];
+		}
+		uint8_t sum = checkSum(checkPacket,sizeSerialPacket - 1);
+		if(sum != checkPacket[sizeSerialPacket - 1])
+		{
+			std::cout << "checksum fail" << '\n';
+		}
+	}
+
+	return numBytesRead;
 }

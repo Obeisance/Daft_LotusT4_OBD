@@ -11,8 +11,8 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <Unknwn.h>
-#include <windows.h>
+#include <Unknwn.h>//for windows comm
+#include <windows.h>//for windows
 #include "ftd2xx.h"//included to directly drive the FTDI com port device
 #include <string>
 #include <sstream>
@@ -328,7 +328,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 0;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.4",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.5",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -572,6 +572,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					{
 						SetWindowText(status,"Check Log File");
 					}
+					initFlag0 = false;
+					initFlag1 = false;
+					initFlagRedraw = false;
 					initFlag2 = false;
 					KillTimer(hwnd, logPollTimer);
 					/*for(int j = 0; j < 100; j++)
@@ -639,8 +642,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					initFlag1 = false;
 					initFlagRedraw = false;
 
+
 					attemptsAtInit = 0;//reset our init attempt counter
 
+					/*
 					//prepare to save bytes and interpreted data
 					std::ofstream writeBytes("daftOBD_byte_log.txt", std::ios::app);//append to the file
 					std::ofstream writeData("daftOBD_data_log.txt", std::ios::app);//append to the file
@@ -653,6 +658,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					//close the data files
 					writeBytes.close();
 					writeData.close();
+					*/
 
 					std::cout << "setting up COM port" << '\n';
 					//open the serial port
@@ -669,10 +675,12 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					//troubleshooting code without car:
 					//initSuccess = true;
 
+					/*
 					//begin a global timer
 					QueryPerformanceFrequency(&systemFrequency);// get ticks per second
 					QueryPerformanceCounter(&startTime);// start timer
 					lastPollUpdate = startTime;
+					*/
 
 					if(!initSuccess)
 					{
@@ -682,6 +690,24 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					}
 					else
 					{
+						//prepare to save bytes and interpreted data
+						std::ofstream writeBytes("daftOBD_byte_log.txt", std::ios::app);//append to the file
+						std::ofstream writeData("daftOBD_data_log.txt", std::ios::app);//append to the file
+
+						std::cout << "prep file headers" << '\n';
+						//for everything which has a check box, write the header in the files
+						populateFileHeaders(writeData, writeBytes);
+
+						std::cout << "done with file headers" << '\n';
+						//close the data files
+						writeBytes.close();
+						writeData.close();
+
+						//begin a global timer
+						QueryPerformanceFrequency(&systemFrequency);// get ticks per second
+						QueryPerformanceCounter(&startTime);// start timer
+						lastPollUpdate = startTime;
+
 						placeInPoll = 0;
 						SetWindowText(status,"Polling...");
 						initFlag2 = true;//we have successfully initiated
@@ -937,7 +963,7 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	{
 	//OBD MODE 0x22 PID buttons, 82 PIDs
 	mode22 = CreateWindow("BUTTON", "MODE 0x22:Performance data",WS_VISIBLE | WS_CHILD|BS_GROUPBOX,x_offset,mode22y_offset+y_offset,parameterTableWidth,mode22Height,parent,NULL,NULL,NULL);
-	OBD22PID512 = CreateWindow("BUTTON", "512",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 3,NULL,NULL);
+	OBD22PID512 = CreateWindow("BUTTON", "PID 512",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,1*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 3,NULL,NULL);
 	OBD22PID513 = CreateWindow("BUTTON", "513",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,2*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 4,NULL,NULL);
 	OBD22PID515 = CreateWindow("BUTTON", "515",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,3*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 5,NULL,NULL);
 	OBD22PID516 = CreateWindow("BUTTON", "516",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,4*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 6,NULL,NULL);
@@ -954,71 +980,71 @@ void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scro
 	OBD22PID530 = CreateWindow("BUTTON", "530",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,15*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 17,NULL,NULL);
 	OBD22PID531 = CreateWindow("BUTTON", "531",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,16*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 18,NULL,NULL);
 	OBD22PID532 = CreateWindow("BUTTON", "532",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,17*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 19,NULL,NULL);
-	OBD22PID533 = CreateWindow("BUTTON", "533",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,18*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 20,NULL,NULL);
-	OBD22PID534 = CreateWindow("BUTTON", "534",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,19*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 21,NULL,NULL);
+	OBD22PID533 = CreateWindow("BUTTON", "PortC data",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,18*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 20,NULL,NULL);
+	OBD22PID534 = CreateWindow("BUTTON", "PortF0 data",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,19*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 21,NULL,NULL);
 	OBD22PID536 = CreateWindow("BUTTON", "536",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,20*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 22,NULL,NULL);
 	OBD22PID537 = CreateWindow("BUTTON", "537",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,21*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 23,NULL,NULL);
 	OBD22PID538 = CreateWindow("BUTTON", "538",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,22*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 24,NULL,NULL);
 	OBD22PID539 = CreateWindow("BUTTON", "539",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,23*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 25,NULL,NULL);
 	OBD22PID540to543 = CreateWindow("BUTTON", "Calibration ID",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,24*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 26,NULL,NULL);
-	OBD22PID544 = CreateWindow("BUTTON", "544",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,25*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 27,NULL,NULL);
-	OBD22PID545to548 = CreateWindow("BUTTOn", "Make, model and year",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,26*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 28,NULL,NULL);
-	OBD22PID549 = CreateWindow("BUTTON", "549",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,27*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 29,NULL,NULL);
-	OBD22PID550 = CreateWindow("BUTTON", "550",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,28*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 30,NULL,NULL);
-	OBD22PID551 = CreateWindow("BUTTON", "551",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,29*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 31,NULL,NULL);
-	OBD22PID552 = CreateWindow("BUTTON", "552",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,30*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 32,NULL,NULL);
-	OBD22PID553 = CreateWindow("BUTTON", "553",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,31*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 33,NULL,NULL);
-	OBD22PID554 = CreateWindow("BUTTON", "554",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,32*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 34,NULL,NULL);
-	OBD22PID555 = CreateWindow("BUTTON", "555",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,33*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 35,NULL,NULL);
-	OBD22PID556 = CreateWindow("BUTTON", "556",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,34*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 36,NULL,NULL);
-	OBD22PID557 = CreateWindow("BUTTON", "557",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,35*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 37,NULL,NULL);
-	OBD22PID558 = CreateWindow("BUTTON", "558",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,36*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 38,NULL,NULL);
-	OBD22PID559 = CreateWindow("BUTTON", "559",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,37*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 39,NULL,NULL);
-	OBD22PID560 = CreateWindow("BUTTON", "560",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,38*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 40,NULL,NULL);
-	OBD22PID561 = CreateWindow("BUTTON", "561",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,39*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 41,NULL,NULL);
-	OBD22PID562 = CreateWindow("BUTTON", "562",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,40*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 42,NULL,NULL);
-	OBD22PID563 = CreateWindow("BUTTON", "563",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,41*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 43,NULL,NULL);
-	OBD22PID564 = CreateWindow("BUTTON", "564",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,42*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 44,NULL,NULL);
-	OBD22PID565 = CreateWindow("BUTTON", "565",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,43*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 45,NULL,NULL);
-	OBD22PID566 = CreateWindow("BUTTON", "566",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,44*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 46,NULL,NULL);
-	OBD22PID567 = CreateWindow("BUTTON", "567",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,45*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 47,NULL,NULL);
-	OBD22PID568 = CreateWindow("BUTTON", "568",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,46*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 48,NULL,NULL);
-	OBD22PID569 = CreateWindow("BUTTON", "569",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,47*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 49,NULL,NULL);
-	OBD22PID570 = CreateWindow("BUTTON", "570",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,48*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 50,NULL,NULL);
-	OBD22PID571 = CreateWindow("BUTTON", "571",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,49*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 51,NULL,NULL);
-	OBD22PID572 = CreateWindow("BUTTON", "572",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,50*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 52,NULL,NULL);
-	OBD22PID573 = CreateWindow("BUTTON", "573",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,51*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 53,NULL,NULL);
-	OBD22PID577 = CreateWindow("BUTTON", "577",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,52*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 54,NULL,NULL);
-	OBD22PID583 = CreateWindow("BUTTON", "583",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,53*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 55,NULL,NULL);
-	OBD22PID584 = CreateWindow("BUTTON", "584",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,54*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 56,NULL,NULL);
-	OBD22PID585 = CreateWindow("BUTTON", "585",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,55*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 57,NULL,NULL);
-	OBD22PID586 = CreateWindow("BUTTON", "586",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,56*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 58,NULL,NULL);
-	OBD22PID591 = CreateWindow("BUTTON", "591",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,57*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 59,NULL,NULL);
-	OBD22PID592 = CreateWindow("BUTTON", "592",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,58*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 60,NULL,NULL);
-	OBD22PID593 = CreateWindow("BUTTON", "593",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,59*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 61,NULL,NULL);
-	OBD22PID594 = CreateWindow("BUTTON", "594",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,60*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 62,NULL,NULL);
-	OBD22PID595 = CreateWindow("BUTTON", "595",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,61*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 63,NULL,NULL);
-	OBD22PID596 = CreateWindow("BUTTON", "596",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,62*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 64,NULL,NULL);
-	OBD22PID598 = CreateWindow("BUTTON", "598",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,63*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 65,NULL,NULL);
-	OBD22PID599 = CreateWindow("BUTTON", "599",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,64*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 66,NULL,NULL);
-	OBD22PID601 = CreateWindow("BUTTON", "601",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,65*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 67,NULL,NULL);
-	OBD22PID602 = CreateWindow("BUTTON", "602",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,66*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 68,NULL,NULL);
-	OBD22PID603 = CreateWindow("BUTTON", "603",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,67*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 69,NULL,NULL);
-	OBD22PID605 = CreateWindow("BUTTON", "605",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,68*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 70,NULL,NULL);
-	OBD22PID606 = CreateWindow("BUTTON", "606",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,69*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 71,NULL,NULL);
-	OBD22PID608 = CreateWindow("BUTTON", "608",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,70*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 72,NULL,NULL);
-	OBD22PID609 = CreateWindow("BUTTON", "609",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,71*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 73,NULL,NULL);
-	OBD22PID610 = CreateWindow("BUTTON", "610",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,72*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 74,NULL,NULL);
-	OBD22PID612 = CreateWindow("BUTTON", "612",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,73*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 75,NULL,NULL);
-	OBD22PID613 = CreateWindow("BUTTON", "613",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,74*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 76,NULL,NULL);
-	OBD22PID614 = CreateWindow("BUTTON", "614",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,75*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 77,NULL,NULL);
-	OBD22PID615 = CreateWindow("BUTTON", "615",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,76*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 78,NULL,NULL);
-	OBD22PID616 = CreateWindow("BUTTON", "616",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,77*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 79,NULL,NULL);
-	OBD22PID617 = CreateWindow("BUTTON", "617",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,78*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 80,NULL,NULL);
-	OBD22PID618 = CreateWindow("BUTTON", "618",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,79*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 81,NULL,NULL);
-	OBD22PID619 = CreateWindow("BUTTON", "619",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,80*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 82,NULL,NULL);
-	OBD22PID620 = CreateWindow("BUTTON", "620",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,81*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 83,NULL,NULL);
-	OBD22PID621 = CreateWindow("BUTTON", "621",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,82*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 84,NULL,NULL);
+	OBD22PID544 = CreateWindow("BUTTON", "PID 544",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,25*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 27,NULL,NULL);
+	OBD22PID545to548 = CreateWindow("BUTTON", "Make, model and year",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,5,26*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 28,NULL,NULL);
+	OBD22PID549 = CreateWindow("BUTTON", "Time with 0-1.5% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,27*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 29,NULL,NULL);
+	OBD22PID550 = CreateWindow("BUTTON", "Time with 1.5-15% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,28*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 30,NULL,NULL);
+	OBD22PID551 = CreateWindow("BUTTON", "Time with 15-25% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,29*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 31,NULL,NULL);
+	OBD22PID552 = CreateWindow("BUTTON", "Time with 25-35% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,30*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 32,NULL,NULL);
+	OBD22PID553 = CreateWindow("BUTTON", "Time with 35-50% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,31*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 33,NULL,NULL);
+	OBD22PID554 = CreateWindow("BUTTON", "Time with 50-65% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,32*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 34,NULL,NULL);
+	OBD22PID555 = CreateWindow("BUTTON", "Time with 65-80% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,33*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 35,NULL,NULL);
+	OBD22PID556 = CreateWindow("BUTTON", "Time with 80-100% throttle",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,34*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 36,NULL,NULL);
+	OBD22PID557 = CreateWindow("BUTTON", "Time with 500-1500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,35*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 37,NULL,NULL);
+	OBD22PID558 = CreateWindow("BUTTON", "Time with 1500-2500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,36*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 38,NULL,NULL);
+	OBD22PID559 = CreateWindow("BUTTON", "Time with 2500-3500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,37*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 39,NULL,NULL);
+	OBD22PID560 = CreateWindow("BUTTON", "Time with 3500-4500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,38*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 40,NULL,NULL);
+	OBD22PID561 = CreateWindow("BUTTON", "Time with 4500-5500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,39*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 41,NULL,NULL);
+	OBD22PID562 = CreateWindow("BUTTON", "Time with 5500-6500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,40*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 42,NULL,NULL);
+	OBD22PID563 = CreateWindow("BUTTON", "Time with 6500-7000 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,41*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 43,NULL,NULL);
+	OBD22PID564 = CreateWindow("BUTTON", "Time with 7000-7500 rpm",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,42*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 44,NULL,NULL);
+	OBD22PID565 = CreateWindow("BUTTON", "Time at 0-30 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,43*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 45,NULL,NULL);
+	OBD22PID566 = CreateWindow("BUTTON", "Time at 30-60 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,44*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 46,NULL,NULL);
+	OBD22PID567 = CreateWindow("BUTTON", "Time at 60-90 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,45*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 47,NULL,NULL);
+	OBD22PID568 = CreateWindow("BUTTON", "Time at 90-120 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,46*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 48,NULL,NULL);
+	OBD22PID569 = CreateWindow("BUTTON", "Time at 120-150 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,47*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 49,NULL,NULL);
+	OBD22PID570 = CreateWindow("BUTTON", "Time at 150-180 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,48*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 50,NULL,NULL);
+	OBD22PID571 = CreateWindow("BUTTON", "Time at 180-210 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,49*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 51,NULL,NULL);
+	OBD22PID572 = CreateWindow("BUTTON", "Time at 210-240 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,50*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 52,NULL,NULL);
+	OBD22PID573 = CreateWindow("BUTTON", "PID 573",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,51*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 53,NULL,NULL);
+	OBD22PID577 = CreateWindow("BUTTON", "Time with coolant 105-110C",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,52*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 54,NULL,NULL);
+	OBD22PID583 = CreateWindow("BUTTON", "Time with coolant 110-115C",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,53*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 55,NULL,NULL);
+	OBD22PID584 = CreateWindow("BUTTON", "Time with coolant 115-120C",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,54*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 56,NULL,NULL);
+	OBD22PID585 = CreateWindow("BUTTON", "Time with coolant 120+C",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,55*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 57,NULL,NULL);
+	OBD22PID586 = CreateWindow("BUTTON", "High RPM 1",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,56*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 58,NULL,NULL);
+	OBD22PID591 = CreateWindow("BUTTON", "High RPM 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,57*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 59,NULL,NULL);
+	OBD22PID592 = CreateWindow("BUTTON", "High RPM 3",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,58*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 60,NULL,NULL);
+	OBD22PID593 = CreateWindow("BUTTON", "High RPM 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,59*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 61,NULL,NULL);
+	OBD22PID594 = CreateWindow("BUTTON", "High RPM 5",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,60*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 62,NULL,NULL);
+	OBD22PID595 = CreateWindow("BUTTON", "Engine coolant temp at high rpm 1",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,61*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 63,NULL,NULL);
+	OBD22PID596 = CreateWindow("BUTTON", "Engine hrs at high rpm 1",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,62*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 64,NULL,NULL);
+	OBD22PID598 = CreateWindow("BUTTON", "Engine coolant temp at high rpm 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,63*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 65,NULL,NULL);
+	OBD22PID599 = CreateWindow("BUTTON", "Engine hrs at high rpm 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,64*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 66,NULL,NULL);
+	OBD22PID601 = CreateWindow("BUTTON", "Engine coolant temp at high rpm 3",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,65*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 67,NULL,NULL);
+	OBD22PID602 = CreateWindow("BUTTON", "Engine hrs at high rpm 3",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,66*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 68,NULL,NULL);
+	OBD22PID603 = CreateWindow("BUTTON", "Engine coolant temp at high rpm 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,67*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 69,NULL,NULL);
+	OBD22PID605 = CreateWindow("BUTTON", "Engine hrs at high rpm 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,68*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 70,NULL,NULL);
+	OBD22PID606 = CreateWindow("BUTTON", "Engine coolant temp at high rpm 5",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,69*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 71,NULL,NULL);
+	OBD22PID608 = CreateWindow("BUTTON", "PID 608",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,70*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 72,NULL,NULL);
+	OBD22PID609 = CreateWindow("BUTTON", "Engine hrs at high rpm 5",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,71*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 73,NULL,NULL);
+	OBD22PID610 = CreateWindow("BUTTON", "Max speed (km/h) 1",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,72*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 74,NULL,NULL);
+	OBD22PID612 = CreateWindow("BUTTON", "Max speed (km/h) 2",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,73*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 75,NULL,NULL);
+	OBD22PID613 = CreateWindow("BUTTON", "Max speed (km/h) 3",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,74*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 76,NULL,NULL);
+	OBD22PID614 = CreateWindow("BUTTON", "Max speed (km/h) 4",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,75*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 77,NULL,NULL);
+	OBD22PID615 = CreateWindow("BUTTON", "Max speed (km/h) 5",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,76*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 78,NULL,NULL);
+	OBD22PID616 = CreateWindow("BUTTON", "Fastest 0-100 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,77*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 79,NULL,NULL);
+	OBD22PID617 = CreateWindow("BUTTON", "Fastest 0-160 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,78*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 80,NULL,NULL);
+	OBD22PID618 = CreateWindow("BUTTON", "Most recent 0-100 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,79*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 81,NULL,NULL);
+	OBD22PID619 = CreateWindow("BUTTON", "Most recent 0-160 km/h",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,80*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 82,NULL,NULL);
+	OBD22PID620 = CreateWindow("BUTTON", "Total engine runtime",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,81*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 83,NULL,NULL);
+	OBD22PID621 = CreateWindow("BUTTON", "Number of standing starts",WS_VISIBLE | WS_CHILD|BS_AUTO3STATE,5,82*listOccupantHeight,parameterTableWidth-20,18,mode22,(HMENU) 84,NULL,NULL);
 	}
 
 	if(y_offset+mode2Fy_offset < parentHeight && y_offset+mode2Fy_offset+mode2FHeight > 0)
@@ -1382,7 +1408,7 @@ void populateFileHeaders(std::ofstream &dataFile, std::ofstream &byteFile)
 
 	//28 1 2
 	//mode 1
-	std::string MODE1Titles[] = {"PIDs supported 1-20","Monitor Status Since DTCs cleared","DTC which triggered freeze frame","Fuel system status","Calc'd engine load (%)","Coolant Temp (C)","Short term fuel trim - Bank 1(%)","Long term fuel trim - Bank 1 (%)","Engine speed (rpm)","Vehicle speed (km/h)","Timing advance (deg. before TDC)","Intake air temp (C)","Mass air flow (g/sec)","Throttle position (%)","Oxygen sensors present","Oxygen sensor 1 (V or %)","Oxygen sensor 2 (V or %)","OBD standards this vehicle conforms to","Run time since engine start (s)","PIDs supported 21-40","Distance traveled with MIL on (km)","Command evaporative purge (%)","Fuel tank level (%)","Absolute pressure (kPa)","PIDs supported 41-60","Control module voltage (V)","Absolute load (%)","Relative throttle position (%)"};
+	std::string MODE1Titles[] = {"PIDs supported 1-20","Monitor Status Since DTCs cleared","DTC which triggered freeze frame","Fuel system status","Calc'd engine load (%)","Coolant Temp (C)","Short term fuel trim - Bank 1(%)","Long term fuel trim - Bank 1 (%)","Engine speed (rpm)","Vehicle speed (km/h)","Timing advance (deg. before TDC)","Intake air temp (C)","Mass air flow (g/sec)","Throttle position (%)","Oxygen sensors present","Oxygen sensor 1 (V),Oxygen sensor 1 short term fuel trim (%)","Oxygen sensor 2 (V),Oxygen sensor 2 short term fuel trim (%)","OBD standards this vehicle conforms to","Run time since engine start (s)","PIDs supported 21-40","Distance traveled with MIL on (km)","Command evaporative purge (%)","Fuel tank level (%)","Absolute pressure (kPa)","PIDs supported 41-60","Control module voltage (V)","Absolute load (%)","Relative throttle position (%)"};
 	for(int a = 0; a < 28; a++)
 	{
 		//update the table which contains loggable modes and PIDs
@@ -1523,7 +1549,7 @@ void populateFileHeaders(std::ofstream &dataFile, std::ofstream &byteFile)
 	}
 
 	//mode 0x22
-	std::string MODE22Titles[] = {"512","513","515","516","517","518","519","520","521","522","523","524","525","ECU part no.","530","531","532","533","534","536","537","538","539","Calibration ID","544","Make, model and year","549","550","551","552","553","554","555","556","557","558","559","560","561","562","563","564","565","566","567","568","569","570","571","572","573","577","583","584","585","586","591","592","593","594","595","596","598","599","601","602","603","605","606","608","609","610","612","613","614","615","616","617","618","619","620","621"};
+	std::string MODE22Titles[] = {"512","513","515","516","517","518","519","520","521","522","523","524","525","ECU part no.","530","531","532","533","534","536","537","538","539","Calibration ID","544","Make model and year","Time at 0-1.5% throttle (s)","Time at 1.5-15% throttle (s)","Time at 15-25% throttle (s)","Time at 25-35% throttle (s)","Time at 35-50% throttle (s)","Time at 50-65% throttle (s)","Time at 65-80% throttle (s)","Time at 80-100% throttle (s)","Time with engine speed 500-1500 rpm (s)","Time with engine speed 1500-2500 rpm (s)","Time with engine speed 2500-3500 rpm (s)","Time with engine speed 3500-4500 rpm (s)","Time with engine speed 4500-5500 rpm (s)","Time with engine speed 5500-6500 rpm (s)","Time with engine speed 6500-7000 rpm (s)","Time with engine speed 7000-7500 rpm (s)","Time at wheel speed 0-30 km/h (s)","Time at wheel speed 30-60 km/h (s)","Time at wheel speed 60-90 km/h (s)","Time at wheel speed 90-120 km/h (s)","Time at wheel speed 120-150 km/h (s)","Time at wheel speed 150-180 km/h (s)","Time at wheel speed 180-210 km/h (s)","Time at wheel speed 210-240 km/h (s)","573","Time with coolant temperature 105-110C (s)","Time with coolant temperature 110-115C (s)","Time with coolant temperature 115-120C (s)","Time with coolant temperature 120+C (s)","High RPM 1","High RPM 2","High RPM 3","High RPM 4","High RPM 5","Engine coolant temp at high rpm 1 ( C)","Engine hrs at high rpm 1 (s)","Engine coolant temp at high rpm 2 ( C)","Engine hrs at high rpm 2 (s)","Engine coolant temp at high rpm 3 ( C)","Engine hrs at high rpm 3 (s)","Engine coolant temp at high rpm 4 ( C)","Engine hrs at high rpm 4 (s)","Engine coolant temp at high rpm 5 ( C)","608","Engine hrs at high rpm 5 (s)","Max wheel speed (km/h) 1","Max wheel speed (km/h) 2","Max wheel speed (km/h) 3","Max wheel speed (km/h) 4","Max wheel speed (km/h) 5","Fastest 0-100 km/h (s)","Fastest 0-160 km/h (s)","Most recent 0-100 km/h (s)","Most recent 0-160 km/h (s)","Total engine runtime (s)","Number of standing starts (launches)"};
 	for(int a = 0; a < 82; a++)
 	{
 		//update the table which contains loggable modes and PIDs

@@ -46,3 +46,12 @@ HANDLE sendOBDInit(HANDLE serialPortHandle, TCHAR* ListItem, bool &initStatus, i
 
 //calculate the checksum of a number of bytes
 uint8_t checkSum(uint8_t* bytes, int number);
+
+//read serial data and compare to known structure
+//pass in the serial port handle, a pointer to a serial
+//data buffer as well as the allowable number of read
+//in bytes, a pointer to an array containing the
+//structure of the packet (255 where the byte
+//does not matter) and the number of
+//received bytes as well as an allowable comm timeout
+int readAndCompareSerial(HANDLE serialPortHandle, uint8_t* serialBytesRecvd, int sizeOfSerialByteBuffer, int readBackSentByteNumber, uint8_t* serialPacketStructure, int sizeSerialPacket, int numPackets, int delayMS);
