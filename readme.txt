@@ -1,8 +1,7 @@
 This is a very daft implementation of an OBD logger.
 
 Using the ISO-9141 OBD-II protocol and a VAG COM cable
-similar to:
-https://www.amazon.com/Obdii-Diagnostic-Adapter-Converter-Cable/dp/B00M3TZT02/184-8304260-2868605?ie=UTF8&keywords=ftdi%20odb&qid=1354729983&ref_=sr_1_1&sr=8-1
+(VAG COM cable, KKL 409.1, having the FT232RL chip by FTDI)
 
 This program was written in order to interface with
 a 2005 lotus elise (with the T4 ECU). The lower OBD
