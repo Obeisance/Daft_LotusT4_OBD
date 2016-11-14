@@ -156,8 +156,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,0,196};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			uint8_t readPacket[10] = {72,107,16,65,0,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 10, 6, readPacket, 10, 1, timeout);
 			if(numBytesRead < 10)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -202,8 +204,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,1,197};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			uint8_t readPacket[10] = {72,107,16,65,1,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 10, 6, readPacket, 10, 1, timeout);
 			if(numBytesRead < 10)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -565,8 +569,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,2,198};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,2,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -630,8 +636,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,3,199};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,3,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -753,8 +761,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,5,201};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,5,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -791,8 +801,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,6,202};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,6,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -829,8 +841,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,7,203};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,7,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -867,8 +881,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,12,208};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,12,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -905,8 +921,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,13,209};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,13,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -943,8 +961,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,14,210};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,14,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -981,8 +1001,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,15,211};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,15,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1019,8 +1041,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,16,212};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,16,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1057,8 +1081,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,17,213};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,17,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1095,8 +1121,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,19,215};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,19,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1164,8 +1192,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,20,216};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,20,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1203,8 +1233,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,21,217};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,21,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1242,8 +1274,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,28,224};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,28,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1390,8 +1424,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,31,227};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,31,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1428,8 +1464,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,32,228};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			uint8_t readPacket[10] = {72,107,16,65,32,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 10, 6, readPacket, 10, 1, timeout);
 			if(numBytesRead < 10)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1476,8 +1514,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,33,229};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,33,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1515,8 +1555,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,46,242};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,46,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1553,8 +1595,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,47,243};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,47,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1591,8 +1635,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,51,247};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,51,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1629,8 +1675,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,64,4};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,10,1000);
+			uint8_t readPacket[10] = {72,107,16,65,64,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 10, 6, readPacket, 10, 1, timeout);
 			if(numBytesRead < 10)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1676,8 +1724,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,66,6};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,66,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1714,8 +1764,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,67,7};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,65,67,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 6, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -1752,8 +1804,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[6] = {104,106,241,1,69,9};
 			writeToSerialPort(serialPortHandle, sendBytes, 6);
-			readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,6,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,7,1000);
+			uint8_t readPacket[7] = {72,107,16,65,69,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 7, 6, readPacket, 7, 1, timeout);
 			if(numBytesRead < 7)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4733,8 +4787,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,37,12};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,37,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4772,8 +4828,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,38,13};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,38,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4812,8 +4870,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,39,14};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,39,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4852,8 +4912,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,40,15};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,40,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4892,8 +4954,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,41,16};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,41,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4932,8 +4996,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,42,17};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,42,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -4972,8 +5038,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,43,18};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,43,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5012,8 +5080,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,44,19};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,44,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5052,8 +5122,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,45,20};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,45,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5092,8 +5164,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,46,21};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,46,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5132,8 +5206,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,47,22};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,47,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5172,8 +5248,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,48,23};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,48,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5212,8 +5290,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,49,24};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,49,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5252,8 +5332,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,50,25};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,50,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5292,8 +5374,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,51,26};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,51,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5332,8 +5416,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,52,27};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,52,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5372,8 +5458,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,53,28};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,53,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5412,8 +5500,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,54,29};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,54,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5452,8 +5542,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,55,30};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,55,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5492,8 +5584,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,56,31};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,56,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5532,8 +5626,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,57,32};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,57,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5572,8 +5668,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,58,33};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,58,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5612,8 +5710,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,59,34};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,59,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5652,8 +5752,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,60,35};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,60,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5681,19 +5783,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 50:
-			//PID 573
+			//PID 576
 			//if(mode22checkboxstate[50] != BST_UNCHECKED && success == true && placeCounter == 116)
 		{
-			//mode 0x22 PID 573: PIDs available 0x41 - 0x60 ?
+			//mode 0x22 PID 576: PIDs available 0x41 - 0x60 ?
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 50;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,61,36};
+			uint8_t sendBytes[7] = {104,106,241,34,2,64,39};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,64,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5704,7 +5808,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//
-				//the return packet looks like 72,107,16,98,2,61,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,64,x,x,x,x,sum
 
 				int PIDplace = 64;
 				for(int i = 6; i < 10; i++)//loop through bytes
@@ -5728,19 +5832,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 51:
-			//PID 577
+			//PID 582
 			//if(mode22checkboxstate[51] != BST_UNCHECKED && success == true && placeCounter == 117)
 		{
-			//mode 0x22 PID 577: time between 105-110 C coolant temperature
+			//mode 0x22 PID 582: time between 105-110 C coolant temperature
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 51;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,65,40};
+			uint8_t sendBytes[7] = {104,106,241,34,2,70,45};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,70,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5751,7 +5857,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//time between 105-110 C coolant temperature
-				//the return packet looks like 72,107,16,98,2,65,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,70,x,x,x,x,sum
 
 				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
 				double timer = counter/10.0;
@@ -5779,8 +5885,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,71,46};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,71,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5819,8 +5927,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,72,47};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,72,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5859,8 +5969,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,73,48};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,73,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5888,19 +6000,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 55:
-			//PID 586
+			//PID 590
 			//if(mode22checkboxstate[55] != BST_UNCHECKED && success == true && placeCounter == 121)
 		{
-			//mode 0x22 PID 586:  high RPM 1
+			//mode 0x22 PID 590:  high RPM 1
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 55;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,74,49};
+			uint8_t sendBytes[7] = {104,106,241,34,2,78,53};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			uint8_t readPacket[9] = {72,107,16,98,2,78,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 9, 7, readPacket, 9, 1, timeout);
 			if(numBytesRead < 9)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5911,7 +6025,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//high rpm 1
-				//the return packet looks like 72,107,16,98,2,77,x,x,sum
+				//the return packet looks like 72,107,16,98,2,78,x,x,sum
 
 				double rpm = recvdBytes[6]*256 + recvdBytes[7];
 				dataFile << std::setprecision(2) << std::fixed << rpm;
@@ -5938,8 +6052,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,79,54};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			uint8_t readPacket[9] = {72,107,16,98,2,79,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 9, 7, readPacket, 9, 1, timeout);
 			if(numBytesRead < 9)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -5977,8 +6093,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,80,55};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			uint8_t readPacket[9] = {72,107,16,98,2,80,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 9, 7, readPacket, 9, 1, timeout);
 			if(numBytesRead < 9)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6016,8 +6134,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,81,56};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			uint8_t readPacket[9] = {72,107,16,98,2,81,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 9, 7, readPacket, 9, 1, timeout);
 			if(numBytesRead < 9)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6055,8 +6175,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,82,57};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			uint8_t readPacket[9] = {72,107,16,98,2,82,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 9, 7, readPacket, 9, 1, timeout);
 			if(numBytesRead < 9)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6094,8 +6216,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,83,58};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,83,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6120,19 +6244,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 61:
-			//PID 596
+			//PID 597
 			//if(mode22checkboxstate[61] != BST_UNCHECKED && success == true && placeCounter == 127)
 		{
-			//mode 0x22 PID 596:  engine hrs at high rpm 1
+			//mode 0x22 PID 597:  engine hrs at high rpm 1
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 61;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,84,59};
+			uint8_t sendBytes[7] = {104,106,241,34,2,85,60};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,85,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6143,7 +6269,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//engine hrs at high rpm 1
-				//the return packet looks like 72,107,16,98,2,84,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,85,x,x,x,x,sum
 
 				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
 				double timer = counter/10.0;
@@ -6171,8 +6297,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,86,61};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,86,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6199,19 +6327,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 63:
-			//PID 599
+			//PID 600
 			//if(mode22checkboxstate[63] != BST_UNCHECKED && success == true && placeCounter == 129)
 		{
-			//mode 0x22 PID 599: engine hrs at high rpm 2
+			//mode 0x22 PID 600: engine hrs at high rpm 2
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 63;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,87,62};
+			uint8_t sendBytes[7] = {104,106,241,34,2,88,63};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,88,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6222,7 +6352,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//engine hrs at high rpm 2
-				//the return packet looks like 72,107,16,98,2,87,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,88,x,x,x,x,sum
 
 				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
 				double timer = counter/10.0;
@@ -6250,8 +6380,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,89,64};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,89,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6278,19 +6410,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 65:
-			//PID 602
+			//PID 603
 			//if(mode22checkboxstate[65] != BST_UNCHECKED && success == true && placeCounter == 131)
 		{
-			//mode 0x22 PID 602: engine hrs at high rpm 3
+			//mode 0x22 PID 603: engine hrs at high rpm 3
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 65;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,90,65};
+			uint8_t sendBytes[7] = {104,106,241,34,2,91,66};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,91,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6301,7 +6435,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//engine hrs at high rpm 3 (s)
-				//the return packet looks like 72,107,16,98,2,90,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,91,x,x,x,x,sum
 
 				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
 				double timer = counter/10.0;
@@ -6318,19 +6452,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 66:
-			//PID 603
+			//PID 604
 			//if(mode22checkboxstate[66] != BST_UNCHECKED && success == true && placeCounter == 132)
 		{
-			//mode 0x22 PID 603: coolant temperature at high rpm 4
+			//mode 0x22 PID 604: coolant temperature at high rpm 4
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 66;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,91,66};
+			uint8_t sendBytes[7] = {104,106,241,34,2,92,67};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,92,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6341,7 +6477,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//coolant temperature at high rpm 4
-				//the return packet looks like 72,107,16,98,2,91,x,sum
+				//the return packet looks like 72,107,16,98,2,92,x,sum
 
 				double temperature = recvdBytes[6]*0.6487 - 45.619;
 				dataFile << std::setprecision(2) << std::fixed << temperature;
@@ -6357,19 +6493,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 67:
-			//PID 605
+			//PID 606
 			//if(mode22checkboxstate[67] != BST_UNCHECKED && success == true && placeCounter == 133)
 		{
-			//mode 0x22 PID 605: engine hrs at high rpm 4
+			//mode 0x22 PID 606: engine hrs at high rpm 4
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 67;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,93,68};
+			uint8_t sendBytes[7] = {104,106,241,34,2,94,69};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,94,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6380,7 +6518,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//engine hrs at high rpm 4
-				//the return packet looks like 72,107,16,98,2,93,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,94,x,x,x,x,sum
 
 				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
 				double timer = counter/10.0;
@@ -6397,19 +6535,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 68:
-			//PID 606
+			//PID 607
 			//if(mode22checkboxstate[68] != BST_UNCHECKED && success == true && placeCounter == 134)
 		{
-			//mode 0x22 PID 606: coolant temperature at high rpm 5
+			//mode 0x22 PID 607: coolant temperature at high rpm 5
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 68;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,94,69};
+			uint8_t sendBytes[7] = {104,106,241,34,2,95,70};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,95,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6420,7 +6560,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//coolant temperature at high rpm 5
-				//the return packet looks like 72,107,16,98,2,94,x,sum
+				//the return packet looks like 72,107,16,98,2,95,x,sum
 
 				double temperature = recvdBytes[6]*0.6487 - 45.619;
 				dataFile << std::setprecision(2) << std::fixed << temperature;
@@ -6447,8 +6587,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,96,71};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,96,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6484,19 +6626,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 70:
-			//PID 609
+			//PID 610
 			//if(mode22checkboxstate[70] != BST_UNCHECKED && success == true && placeCounter == 136)
 		{
-			//mode 0x22 PID 609:  engine hours at high rpm 5
+			//mode 0x22 PID 610:  engine hours at high rpm 5
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 70;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,97,72};
+			uint8_t sendBytes[7] = {104,106,241,34,2,98,73};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,98,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6506,7 +6650,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//engine hrs at high rpm 5 (0.1 s increment)
-				//the return packet looks like 72,107,16,98,2,97,x,x,x,x,sum
+				//the return packet looks like 72,107,16,98,2,98,x,x,x,x,sum
 				long counter = recvdBytes[6]*16777216 + recvdBytes[7]*65536 + recvdBytes[8]*256 + recvdBytes[9];
 				double timer = counter/10.0;
 				dataFile << std::setprecision(2) << std::fixed << timer;
@@ -6522,19 +6666,21 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 		break;
 
 		case 71:
-			//PID 610
+			//PID 611
 			//if(mode22checkboxstate[71] != BST_UNCHECKED && success == true && placeCounter == 137)
 		{
-			//mode 0x22 PID 610:  max wheel speed 1
+			//mode 0x22 PID 611:  max wheel speed 1
 			byteFile << ',';
 			dataFile << ',';
 			//mode = 34;
 			//pid = 71;
 
-			uint8_t sendBytes[7] = {104,106,241,34,2,98,73};
+			uint8_t sendBytes[7] = {104,106,241,34,2,99,74};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,99,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6545,7 +6691,7 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 			else
 			{
 				//max wheel speed 1 kph
-				//the return packet looks like 72,107,16,98,2,98,x,sum
+				//the return packet looks like 72,107,16,98,2,99,x,sum
 				dataFile << (int) recvdBytes[6];
 				returnData = (int) recvdBytes[6];
 			}
@@ -6570,8 +6716,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,100,75};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,100,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6608,8 +6756,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,101,76};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,101,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6645,8 +6795,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,102,77};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,102,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6682,8 +6834,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,103,78};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,103,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6718,8 +6872,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,104,79};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,104,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6756,8 +6912,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,105,80};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,105,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6794,8 +6952,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,106,81};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,106,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6832,8 +6992,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,107,82};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,8,1000);
+			uint8_t readPacket[8] = {72,107,16,98,2,107,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 8, 7, readPacket, 8, 1, timeout);
 			if(numBytesRead < 8)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6869,8 +7031,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,108,83};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,98,2,108,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6908,8 +7072,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[7] = {104,106,241,34,2,109,84};
 			writeToSerialPort(serialPortHandle, sendBytes, 7);
-			readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,7,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,9,1000);
+			uint8_t readPacket[9] = {72,107,16,98,2,109,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 9, 7, readPacket, 9, 1, timeout);
 			if(numBytesRead < 9)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -6951,8 +7117,10 @@ bool serialPollingCycle(HANDLE serialPortHandle,std::ofstream &dataFile, std::of
 
 			uint8_t sendBytes[8] = {104,106,241,47,1,0,0,243};
 			writeToSerialPort(serialPortHandle, sendBytes, 8);
-			readFromSerialPort(serialPortHandle, recvdBytes,8,500);//read back what we just sent
-			int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			//readFromSerialPort(serialPortHandle, recvdBytes,8,500);//read back what we just sent
+			//int numBytesRead = readFromSerialPort(serialPortHandle, recvdBytes,11,1000);
+			uint8_t readPacket[11] = {72,107,16,111,1,0,255,255,255,255,255};//structure of return packet: 255 = any value
+			int numBytesRead = readAndCompareSerial(serialPortHandle, recvdBytes, 11, 7, readPacket, 11, 1, timeout);
 			if(numBytesRead < 11)
 			{
 				//we've failed the read and should flag to quit the polling
@@ -8239,18 +8407,123 @@ uint8_t checkSum(uint8_t* bytes, int number)
 int readAndCompareSerial(HANDLE serialPortHandle, uint8_t* serialBytesRecvd, int sizeOfSerialByteBuffer, int readBackSentByteNumber, uint8_t* serialPacketStructure, int sizeSerialPacket, int numPackets, int delayMS)
 {
 	uint8_t sentBytes[readBackSentByteNumber];
-	readFromSerialPort(serialPortHandle, sentBytes, readBackSentByteNumber, delayMS);//read back what we just sent
+	int returnSendBytes = readFromSerialPort(serialPortHandle, sentBytes, readBackSentByteNumber, delayMS);//read back what we just sent
+	//check to see that we read back the whole sent message
+	//if not, try to read in the rest of the bytes
+	if(returnSendBytes < readBackSentByteNumber)
+	{
+		//using the read function like this will allow for
+		//up to delayMS between each byte instead of the
+		//original 100 ms
+		for(int i = 0; i < (readBackSentByteNumber - returnSendBytes); i++)
+		{
+			readFromSerialPort(serialPortHandle, sentBytes, 1, delayMS);//read back what we just sent
+		}
+	}
 	int numBytesRead = readFromSerialPort(serialPortHandle, serialBytesRecvd, sizeOfSerialByteBuffer, delayMS);
+
+	//if we received some bytes, but not enough, continue reading in bytes
+	//this is a second try in case the original timeout was not sufficient
+	if(numBytesRead < sizeOfSerialByteBuffer && numBytesRead != 0)
+	{
+		int remainingBytesNeeded = sizeOfSerialByteBuffer - numBytesRead;
+		uint8_t moreBytes[remainingBytesNeeded];
+		int readMoreBytes = readFromSerialPort(serialPortHandle, moreBytes, remainingBytesNeeded, delayMS);
+		//add the newly read bytes to the other byte buffer
+		for(int i = 0; i < readMoreBytes; i++)
+		{
+			if(i+numBytesRead < sizeOfSerialByteBuffer)
+			{
+				serialBytesRecvd[i+numBytesRead] = moreBytes[i];
+			}
+		}
+		numBytesRead += readMoreBytes;
+	}
 
 	//check that the packet structure is correct
 	//loop through the received packet
+	bool packetError = false;
 	for(int i = 0; i < numBytesRead; i++)
 	{
 		int j = i % sizeSerialPacket;
 		if(serialBytesRecvd[i] != serialPacketStructure[j] && serialPacketStructure[j] != 255)
 		{
-			std::cout << "improper packet bytes" << '\n';
+			packetError = true;
+			break;
 		}
+	}
+
+	//if we had an error in the packet relative to what we expected
+	//check to see if there is an offset in byte location in the
+	//buffer
+	int offset = 0;
+	if(packetError == true)
+	{
+		//for each of the expected packet bytes
+		//loop through the received bytes to try and
+		//find a match
+		bool mismatch = false;
+		for(int j = 0; j < sizeSerialPacket; j++)
+		{
+			for(int i = 0; i < numBytesRead && i < sizeSerialPacket; i++)
+			{
+				if(serialPacketStructure[j] == serialBytesRecvd[i])
+				{
+					//reset our match flag
+					mismatch = false;
+					//if we have a match, look at nearby bytes to see if
+					//the sequence is correct
+					for(int k = 0; k+i < numBytesRead && k+j < sizeSerialPacket; k++)
+					{
+						if(serialBytesRecvd[i+k] != serialPacketStructure[j+k] && serialPacketStructure[j+k] != 255)
+						{
+							//there is a mismatch, so we have not found
+							//a packet-correcting byte place offset
+							mismatch = true;
+							break;
+						}
+					}
+					if(mismatch == false)
+					{
+						offset = i-j;
+						break;
+					}
+				}
+			}
+			if(offset != 0)
+			{
+				//we've found a match for the packet pattern in the received bytes
+				//and need to offset the data so that it can be interpreted
+				if(offset < 0)
+				{
+					//shift the packet to the right
+					for(int i = sizeOfSerialByteBuffer; i+offset >= 0; i--)
+					{
+						serialBytesRecvd[i] = serialBytesRecvd[i+offset];
+					}
+					numBytesRead = numBytesRead - offset;
+				}
+				else if(offset > 0)
+				{
+					//shift the packet to the left
+					for(int i = 0; i+offset < sizeOfSerialByteBuffer; i++)
+					{
+						serialBytesRecvd[i] = serialBytesRecvd[i+offset];
+					}
+					//the packet may be missing data, so try once again to
+					//read in remaining bytes and add them to the buffer
+					uint8_t finalBytes[offset];
+					int lastBytes = readFromSerialPort(serialPortHandle, finalBytes, offset, delayMS);
+					for(int j = 0; j+offset+1 < sizeOfSerialByteBuffer && j < offset; j++)
+					{
+						serialBytesRecvd[j+offset+1] = finalBytes[j];
+					}
+					numBytesRead = numBytesRead - offset + lastBytes;
+				}
+			}
+		}
+
+
 	}
 
 	for(int k = 0; k < numPackets; k++)
