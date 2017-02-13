@@ -22,11 +22,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "OBDpolling.h"
+#include "lotusReflash.h"
 using namespace Gdiplus;
 //using namespace std;
 
 /* declare Windows procedure */
 LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK reflashWindowProcedure (HWND, UINT, WPARAM, LPARAM);
 
 //function list
 void drawLogParamsTable(HWND parent, int parentWidth, int parentHeight, int scrollPosH, int scrollPosY);//make the list of loggable parameters
@@ -43,7 +45,7 @@ void reDrawAll(HWND hwnd, LPARAM lParam); //uses global variables to redraw all 
 //herein I greatly abuse global variables
 
 //global variables for window handles
-HWND selectLogParams, logParamsTitle, logParamsScrollH, logParamsScrollV, logbutton, continuousButton, plotwindow, plot, plotParam, indicateBaudRate, baudrateSelect,mode1,mode2,mode3,mode4,mode5,mode6,mode7,mode8,mode9,mode22,mode2F,mode3B,modeSHORT;
+HWND selectLogParams, logParamsTitle, logParamsScrollH, logParamsScrollV, logbutton, continuousButton, plotwindow, plot, plotParam, indicateBaudRate, baudrateSelect,mode1,mode2,mode3,mode4,mode5,mode6,mode7,mode8,mode9,mode22,mode2F,mode3B,reflashModeButton;
 HWND comSelect;
 HANDLE serialPort;
 
@@ -297,14 +299,28 @@ VOID OnPaint(HDC hdc)
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow)
 {
- 	HWND hwnd;		//this is the handle for our window
+ 	HWND hwnd,reflashModeWindow;		//this are the handles for our windows
 	MSG messages;	//here messages to the application window are saved
-	WNDCLASSEX wincl;	//data strcuture for the windowclass
+	WNDCLASSEX wincl,RFMwincl;	//data strcuture for the windowclass
 	GdiplusStartupInput gdiplusStartupInput;
 	ULONG_PTR           gdiplusToken;
 
 	// Initialize GDI+.
 	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+    /*The Windows Structure For The Second Window*/
+    RFMwincl.hInstance = hThisInstance;
+    RFMwincl.lpszClassName = "ReflashModeClassName";
+    RFMwincl.lpfnWndProc = reflashWindowProcedure;
+    RFMwincl.style = CS_DBLCLKS;
+    RFMwincl.cbSize = sizeof(WNDCLASSEX);
+    RFMwincl.hIcon = LoadIcon (NULL, IDI_APPLICATION);
+    RFMwincl.hIconSm = LoadIcon (NULL, IDI_APPLICATION);
+    RFMwincl.hCursor = LoadCursor (NULL, IDC_ARROW);
+    RFMwincl.lpszMenuName = NULL;
+    RFMwincl.cbClsExtra = 0;
+    RFMwincl.cbWndExtra = 0;
+    RFMwincl.hbrBackground = (HBRUSH) COLOR_BACKGROUND;
 
 	/* the window structure */
 	wincl.hInstance = hThisInstance;
@@ -327,8 +343,14 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	if(!RegisterClassEx (&wincl))
 		return 0;
 
+	/* Register the second windows class, and if it fails quit the program
+	       returning a 1 so that we know where it failed*/
+	ATOM RFMclass = RegisterClassEx(&RFMwincl);
+	if(!RFMclass)
+		return 1;
+
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.6",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.7",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -342,8 +364,24 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			//program instance handler
 			//no window creation data
 
+	reflashModeWindow = CreateWindowEx( 0,
+	                        "ReflashModeClassName",
+	                        "Reflash Mode",
+	                        WS_OVERLAPPEDWINDOW,
+	                        CW_USEDEFAULT,
+	                        CW_USEDEFAULT,
+	                        windowWidth,
+	                        windowHeight,
+	                        HWND_DESKTOP,
+	                        NULL,
+	                        hThisInstance,
+	                        NULL);
+
+
 	//make the window visible on the screen
 	ShowWindow(hwnd,nCmdShow);
+	ShowWindow(reflashModeWindow,nCmdShow);
+	ShowWindow(reflashModeWindow,SW_HIDE);
 
 	/*
 	//begin a global timer
@@ -600,6 +638,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					continuousLogging = true;
 				}
 				break;
+			case 4:
+			{
+				//reflash mode button pressed
+				ShowWindow(hwnd,SW_HIDE);
+				HWND windowHandle = FindWindowEx(NULL,NULL,"ReflashModeClassName",NULL);
+				ShowWindow(windowHandle,SW_SHOW);
+				break;
+			}
 			default:
 				break;
 			}
@@ -1669,6 +1715,7 @@ void reDrawAll(HWND hwnd, LPARAM lParam)
 	DestroyWindow(xTitle);
 	DestroyWindow(statusLabel);
 	DestroyWindow(status);
+	DestroyWindow(reflashModeButton);
 
 	//update stored window dimensions
 	logParamsWidth = 210;
@@ -1704,4 +1751,167 @@ void reDrawAll(HWND hwnd, LPARAM lParam)
 	siX.fMask = SIF_POS;
 	SetScrollInfo (logParamsScrollV, SB_CTL, &siY, TRUE);
 	SetScrollInfo (logParamsScrollH, SB_CTL, &siX, TRUE);
+
+	//reflashmode button
+	reflashModeButton = CreateWindow("BUTTON", "Reflash Mode",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,logParamsX+55+145,logParamsY+30+logParamsHeight,100,25,hwnd,(HMENU) 4,NULL,NULL);
+}
+
+
+/* CALLBACK for the second window */
+LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_SIZE:
+    {
+    	//also gets called on the first draw
+    	HWND returnButton = CreateWindow("BUTTON", "Return to OBD mode",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10,5,150,25,hwnd,(HMENU) 1,NULL,NULL);
+
+    	//initiate com port button
+    	//create the combo box dropdown list
+    	HWND comPortSelect = CreateWindow("COMBOBOX", TEXT(""), WS_VISIBLE | WS_CHILD| WS_BORDER | CBS_DROPDOWNLIST,480,5,100,200,hwnd,(HMENU) 2,NULL,NULL);
+    	checkForAndPopulateComPortList(comPortSelect);//populate the com port dropdown list
+    	SendMessage(comPortSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
+    	SendMessage(comPortSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
+
+    	HWND inputFileName = CreateWindow("STATIC", "Input file name of s-record which contains bytes for reflashing:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,40,450,19,hwnd,NULL,NULL,NULL);
+    	HWND input = CreateWindow("EDIT", "",WS_VISIBLE | WS_CHILD,5,65,600,20,hwnd,NULL,NULL,NULL);
+
+    	HWND inputReflashRange = CreateWindow("STATIC", "Input file name which contains address ranges for reflashing:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,90,450,19,hwnd,NULL,NULL,NULL);
+    	HWND reflashRange = CreateWindow("EDIT", "",WS_VISIBLE | WS_CHILD,5,115,600,20,hwnd,NULL,NULL,NULL);
+
+    	//initiate encoding bytes button
+    	//create the combo box dropdown list
+    	HWND encodeByteTypeSelect = CreateWindow("COMBOBOX", TEXT("Dev Bytes"), WS_VISIBLE | WS_CHILD| WS_BORDER | CBS_DROPDOWNLIST,10,140,150,200,hwnd,(HMENU) 2,NULL,NULL);
+    	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "Standard Bytes");
+    	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "Dev Bytes");
+    	SendMessage(encodeByteTypeSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
+    	SendMessage(encodeByteTypeSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
+
+    	HWND encodeMessageButton = CreateWindow("BUTTON", "Encode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10,140,170,25,hwnd,(HMENU) 3,NULL,NULL);
+    	HWND decodeMessageButton = CreateWindow("BUTTON", "Test Decode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10+10+10+170,140,210,25,hwnd,(HMENU) 4,NULL,NULL);
+
+    	HWND Instructions = CreateWindow("STATIC", "1) Write the name of the s-record file which contains rom with the bytes we'll send to the ECU as well as the name of the file which contains hex address ranges line-by-line \n 2) Choose the reflash encryption byte set \n 3) Encode the packet-> check the text file logs \n 4) Press 'Reflash ROM' and turn car to key-on",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,170,600,100,hwnd,NULL,NULL,NULL);
+
+    	HWND reflash = CreateWindow("BUTTON", "Reflash ROM",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10,280,100,25,hwnd,(HMENU) 5,NULL,NULL);
+    	break;
+    }
+    case WM_COMMAND:
+    {
+    	//first, load some of the window handles so that we can collect information from them
+    	//these are found in order so if any changes are made then the labels will be incorrect
+    	HWND parentWindowHandle = FindWindowEx(NULL,NULL,"ReflashModeClassName",NULL);//find the handle for the reflash mode window
+    	HWND returntoobdWindowHandle = FindWindowEx(parentWindowHandle,NULL,NULL,NULL);//find the handle for the return to obd mode button
+    	HWND comportSelectWindowHandle = FindWindowEx(parentWindowHandle,returntoobdWindowHandle,NULL,NULL);//find the handle for the comport select drop down
+    	HWND inputFileNameWindowHandle = FindWindowEx(parentWindowHandle,comportSelectWindowHandle,NULL,NULL);//find the handle for the input file name title
+    	HWND inputWindowHandle = FindWindowEx(parentWindowHandle,inputFileNameWindowHandle,NULL,NULL);//find the handle for the input file name
+    	HWND fileRangeTitleWindowHandle = FindWindowEx(parentWindowHandle,inputWindowHandle,NULL,NULL);//find the handle for the address range file name title
+    	HWND fileRangeWindowHandle = FindWindowEx(parentWindowHandle,fileRangeTitleWindowHandle,NULL,NULL);//find the handle for the address range file name title
+    	HWND encodeBytesWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the window where we select encoding bytes
+
+
+    	switch(LOWORD (wParam))
+    	{
+    	case 1:
+    	{
+    		//return to regular operating mode
+    		ShowWindow(hwnd,SW_HIDE);//hide this window
+    		HWND windowHandle = FindWindowEx(NULL,NULL,szClassName,NULL);//find the handle for the main window
+    		ShowWindow(windowHandle,SW_SHOW);//show the main window
+    		break;
+    	}
+    	case 3:
+    	{
+    		//we now want to encode a reflash packet
+
+    		//extract the file names
+    		char windowText[100];
+    		//first, get the s-record file name
+    		int length = GetWindowText(inputWindowHandle,windowText,100);
+    		string srecFile = "";
+    		for(int i = 0; i < length; i++)
+    		{
+    			srecFile.push_back(windowText[i]);
+    		}
+    		//cout << srecFile << '\n';
+    		//next, get the address range file name
+    		string addressRangeFile = "";
+    		length = GetWindowText(fileRangeWindowHandle,windowText,100);
+    		for(int i = 0; i < length; i++)
+    		{
+    			addressRangeFile.push_back(windowText[i]);
+    		}
+    		//cout << addressRangeFile << '\n';
+    		//next, grab the key byte type from the drop down
+    		int keyByteSet = SendMessage(encodeBytesWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+    		cout << "Key byte set: " << keyByteSet << '\n';
+
+    		//finally, encode a message to send to the ECU
+    		//this takes some time, so the program may act like it hangs for a bit...
+    		cout << "Creating reflash packet... please wait" << '\n';
+    		createReflashPacket(srecFile, addressRangeFile, keyByteSet);
+    		cout << "Finished creating reflashing packet" << '\n';
+
+    		//try to return the filled in parameters to what they were before the operation
+    		SendMessage(encodeBytesWindowHandle, CB_SETCURSEL, (WPARAM)keyByteSet, (LPARAM)0);//set the cursor to the keyByte-th item on the list (WPARAM)
+    		RedrawWindow(encodeBytesWindowHandle, NULL, NULL, RDW_UPDATENOW);
+    		TCHAR const * psz = srecFile.c_str();
+    		SetWindowText(inputWindowHandle,psz);
+    		RedrawWindow(inputWindowHandle, NULL, NULL, RDW_UPDATENOW);
+    		TCHAR const * psx = addressRangeFile.c_str();
+    		SetWindowText(fileRangeWindowHandle,psx);
+    		RedrawWindow(fileRangeWindowHandle, NULL, NULL, RDW_UPDATENOW);
+    		break;
+    	}
+    	case 4:
+    	{
+    		//we want to test decode an encoded file
+    		//figure out which key byte set we need...
+    		int keyByteSet = SendMessage(encodeBytesWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+    		//decode the file
+    		cout << "Decoding the encoded file... please wait" << '\n';
+    		testReflashPacket(keyByteSet);
+    		cout << "Finished decoding the packet: please check the text file 'testDecodedFlashPacket.txt' and compare to your s-record" << '\n';
+    		break;
+    	}
+    	case 5:
+    	{
+    		//we want to flash the ECU
+
+    		//open a COM port
+    		//update the stored com port value
+    		int comIndex = SendMessage(comportSelectWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+    		SendMessage(comportSelectWindowHandle, (UINT) CB_GETLBTEXT, (WPARAM) comIndex, (LPARAM) ListItem);//global var ListItem will now contain the COM port name
+
+    		char baud[5] = {'3','1','2','0','5'};
+    		HANDLE comPortHandle = setupComPort(baud, ListItem);//open the com port
+
+    		//run the 'pull l-line low' and send [1,113,114], read 0x8D routine
+    		comPortHandle = initializeReflashMode(comPortHandle, ListItem);
+
+    		//begin the timed routines by setting a timer
+    		//SetTimer(hwnd, logPollTimer, 100, (TIMERPROC) NULL);
+    		break;
+    	}
+    	default:
+    		break;
+    	}
+    	break;
+    }
+    	case WM_DESTROY:
+    	{
+    		PostQuitMessage (0);       /* send a WM_QUIT to the message queue */
+    		break;
+    	}
+    	case WM_TIMER:
+		{
+    		KillTimer(hwnd, logPollTimer);
+    		cout << "hello!" << '\n';
+    		break;
+		}
+    	default:                      /* for messages that we don't deal with */
+    		return DefWindowProc (hwnd, message, wParam, lParam);
+    }
+
+    return 0;
 }

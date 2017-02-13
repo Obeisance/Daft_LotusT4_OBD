@@ -4,7 +4,7 @@
 #include <fstream> //for text file read
 #include <iostream> //for cout
 #include <iomanip> //in order to set cout precision
-#include <stdint.h> //allow uint9_t type
+#include <stdint.h> //allow uint8_t type
 #include "ftd2xx.h"//included to directly drive the FTDI com port device
 
 //input a handle to a serial port, a pointer to an integer array and
