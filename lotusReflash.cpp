@@ -831,7 +831,7 @@ uint8_t getByteFromLine(string line)
 }
 
 
-HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem)
+HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &success)
 {
 
 	//read in and save the serial port settings
@@ -905,6 +905,7 @@ HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem)
 	if(recvdBytes[0] != 0x8D)
 	{
 		cout << "init recv'd: " << (int) recvdBytes[0] << '\n';
+		success = false;
 	}
 
 	return serialPortHandle;
@@ -1031,4 +1032,40 @@ string srecReader(string filename, long address, long &lastFilePosition)
 	string data = srecReader("6-16-06 ECU Read", 0x1000F, filePosition);
 	cout << "filePosition: " << filePosition << ", data: " << data << '\n';
 	 */
+}
+
+uint8_t readCodedMessageIntoBuffer(long &lastPosition, uint8_t* byteBuffer)
+{
+	ifstream myfile("encodedFlashBytes.txt");//line by line are decimal values denoting bytes
+	uint8_t bytesInPacket = 0;
+	if (myfile.is_open())
+	{
+		myfile.seekg(lastPosition);//return to the last opened position
+		string line = "";
+		int bytesToRead = 0;
+		int bytePlace = 0;
+		int lineSize = 0;
+		while(getline(myfile, line))
+		{
+			lineSize = line.length() + 2 ;//include newline char and return
+			lastPosition += lineSize;
+			uint8_t currentByte = getByteFromLine(line);
+			//cout << (int) currentByte << ' ' << line << ' ' << (int) lineSize << '\n';
+			if(bytePlace == 0)
+			{
+				bytesInPacket = currentByte;
+				bytesInPacket += 2;
+			}
+
+			byteBuffer[bytePlace] = currentByte;
+			bytePlace += 1;
+
+			if(bytePlace == bytesInPacket)
+			{
+				break;
+			}
+		}
+	}
+	myfile.close();
+	return bytesInPacket;
 }

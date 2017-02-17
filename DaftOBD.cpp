@@ -47,7 +47,7 @@ void reDrawAll(HWND hwnd, LPARAM lParam); //uses global variables to redraw all 
 //global variables for window handles
 HWND selectLogParams, logParamsTitle, logParamsScrollH, logParamsScrollV, logbutton, continuousButton, plotwindow, plot, plotParam, indicateBaudRate, baudrateSelect,mode1,mode2,mode3,mode4,mode5,mode6,mode7,mode8,mode9,mode22,mode2F,mode3B,reflashModeButton;
 HWND comSelect;
-HANDLE serialPort;
+HANDLE serialPort, comPortHandle;
 
 //set client relative window positions
 int plotWindowX = 220;
@@ -85,6 +85,8 @@ int numLogParams = 0;
 int logMode[50] = {0};
 int logPID[50] = {0};
 uint8_t logDataSend[50][7] = {0};
+long lastPositionForReflashing = 0;
+uint8_t reflashingTimerProcMode = 0;
 
 //for data plotting
 int plotXOrigin = 0;
@@ -350,7 +352,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.7",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.8",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -731,6 +733,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 					if(!initSuccess)
 					{
 						SetWindowText(status,"Init Fail");
+						CloseHandle(serialPort);
 						logButtonToggle = false;
 						RedrawWindow(status, NULL, NULL, RDW_UPDATENOW);
 					}
@@ -1884,13 +1887,24 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		SendMessage(comportSelectWindowHandle, (UINT) CB_GETLBTEXT, (WPARAM) comIndex, (LPARAM) ListItem);//global var ListItem will now contain the COM port name
 
     		char baud[5] = {'3','1','2','0','5'};
-    		HANDLE comPortHandle = setupComPort(baud, ListItem);//open the com port
+    		comPortHandle = setupComPort(baud, ListItem);//open the com port
 
     		//run the 'pull l-line low' and send [1,113,114], read 0x8D routine
-    		comPortHandle = initializeReflashMode(comPortHandle, ListItem);
+    		bool success = true;
+    		comPortHandle = initializeReflashMode(comPortHandle, ListItem, success);
 
     		//begin the timed routines by setting a timer
-    		//SetTimer(hwnd, logPollTimer, 100, (TIMERPROC) NULL);
+    		if(success == true)
+    		{
+    			cout << "reflash mode begin; time to send bytes.." << '\n';
+    			lastPositionForReflashing = 0;
+    			reflashingTimerProcMode = 0;
+    			SetTimer(hwnd, logPollTimer, 100, (TIMERPROC) NULL);
+    		}
+    		else
+    		{
+    			CloseHandle(comPortHandle);
+    		}
     		break;
     	}
     	default:
@@ -1906,7 +1920,59 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	case WM_TIMER:
 		{
     		KillTimer(hwnd, logPollTimer);
-    		cout << "hello!" << '\n';
+    		//cout << "hello!" << '\n';
+    		if(reflashingTimerProcMode == 0)
+    		{
+    			uint8_t byteBuffer[256];
+
+    			int numBytesToSend = readCodedMessageIntoBuffer(lastPositionForReflashing, byteBuffer);
+    			if(numBytesToSend == 0)
+    			{
+    				reflashingTimerProcMode = 2;//signal to end
+    			}
+
+    			/*cout << "Send " << (int) numBytesToSend << " bytes" << '\n';
+    			for(int i = 0; i < numBytesToSend; i++)
+    			{
+    				cout << (int) byteBuffer[i] << ' ';
+    			}
+    			cout << '\n';*/
+
+    			//send the bytes too
+    			writeToSerialPort(comPortHandle, byteBuffer, numBytesToSend);//send
+    			reflashingTimerProcMode += 1;
+    		}
+    		if(reflashingTimerProcMode == 1)
+    		{
+    			//read response from ECU and reply
+    			//we expect 0x02, 0x72, 0xFF, 0x73
+    			//or 0x02, 0x72, 0xFF, 0x74
+    			uint8_t responseBytes[4] = {0,0,0,0};
+    			readFromSerialPort(comPortHandle, responseBytes,4,1000);//read in bytes
+
+    			//finally, we send back 0xFD
+    			uint8_t toSend[1] = {0xFD};
+    			writeToSerialPort(comPortHandle, toSend, 1);//send
+
+    			//prepare to send more bytes if things are okay
+    			if(responseBytes[3] == 0x73)
+    			{
+    				reflashingTimerProcMode -= 1;
+    			}
+    			else
+    			{
+    				cout << "reflash response from ECU indicates we're finished: " << (int) responseBytes[0] << ' ' << (int) responseBytes[1] << ' ' << (int) responseBytes[2] << ' ' << (int) responseBytes[3] << '\n';
+    				reflashingTimerProcMode = 2;
+    			}
+    		}
+    		if(reflashingTimerProcMode != 2)
+    		{
+    			SetTimer(hwnd, logPollTimer, 100, (TIMERPROC) NULL);
+    		}
+    		else
+    		{
+    			CloseHandle(comPortHandle);
+    		}
     		break;
 		}
     	default:                      /* for messages that we don't deal with */

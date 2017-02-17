@@ -23,6 +23,8 @@ void testReflashPacket(int encodeByteSet);
 
 uint8_t getByteFromLine(string line);
 
-HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem);
+HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &success);
 
 string srecReader(string filename, long address, long &lastFilePosition);
+
+uint8_t readCodedMessageIntoBuffer(long &lastPosition, uint8_t* byteBuffer);
