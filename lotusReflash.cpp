@@ -43,8 +43,9 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	//255 - (19+27) = 209 bytes for data -> 2/3 -> 139 bytes -> round down to 138 to keep even
 	//however the timing for the bytes dictates that only 116 bytes can get through per message
 	//116 - (19) = 97 bytes for the sub packet -> decoded  this leaves 2/3*97 = 64 bytes
-	uint8_t maxBytesInMessage = 64;
-	uint32_t maxBytesAllowedToSend = 511;
+	uint8_t maxBytesInMessage = 64;//this limitation is set by the interrupt timer
+	uint32_t maxBytesAllowedToSend = 511;//the decoded byte save point in the ECU only allows for 511 bytes to be indexed
+	uint8_t maxMessagesAllowedToSend = 1;//somehow, when more than one message is sent, the ECU reports an error state
 
 	//bring in a file which contains address ranges which we would like to reflash
 	//string reflashRanges = "6-16-06 ECU read reflash ranges.txt";
@@ -81,9 +82,9 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 			if(totalNumAddressesFromSrec == 0)
 			{
 				//we're on the first message, so we have fewer bytes for the data part of the message
-				bytesAllowedForMessage -= 2;
-				numBytes += 11;
-				extraBytes = 1;//to make up for the odd number in the sector erase command section
+				//bytesAllowedForMessage -= 2;
+				//numBytes += 11;
+				extraBytes = 11+1;//+1 to make up for the odd number in the sector erase command section
 			}
 
 
@@ -107,7 +108,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				numBytes += 1;
 			}
 
-			if(numBytes > bytesAllowedForMessage)
+			if(numBytes+extraBytes > bytesAllowedForMessage)
 			{
 				//we have too many bytes for a single packet
 
@@ -115,7 +116,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				//the new range we will poll next
 				addressLine = "";
 				//find the new starting address
-				uint16_t lowOrderAddrByte = address[2] + bytesAllowedForMessage;
+				uint16_t lowOrderAddrByte = address[2] + bytesAllowedForMessage - extraBytes;
 				uint8_t mod = lowOrderAddrByte%256;
 				uint8_t divide = (lowOrderAddrByte - mod)/256;
 				string temp = decToHex(address[0]);
@@ -127,7 +128,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				addressLine.append(temp);
 				addressLine.push_back('-');
 
-				//now find the new ending address
+				//now find the new ending address (same as before)
 				long startAddr = address[2] + address[1]*256 + address[0]*256*256 + numBytes;
 				uint8_t lowOrderByte = startAddr%256;
 				int div = (startAddr-lowOrderByte)/256;
@@ -144,7 +145,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				//raise a flag so that we keep working on this range
 				needNextLine = false;
 				//lower the number of bytes we're about to send
-				numBytes = bytesAllowedForMessage;
+				numBytes = bytesAllowedForMessage - extraBytes;
 			}
 			else
 			{
@@ -152,15 +153,16 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 			}
 
 			//lets increment counters for allowable bytes to send
-			if(totalNumBytesFromSrec + numBytes <= maxBytesAllowedToSend)
+			if(totalNumBytesFromSrec + numBytes + extraBytes <= maxBytesAllowedToSend)
 			{
 				//increment the total byte counter
-				totalNumBytesFromSrec += numBytes + extraBytes;
-				if(numBytes > bytesAllowedForMessage)
+				totalNumBytesFromSrec += (numBytes + extraBytes);
+				//cout << "numbytes: " << (int) numBytes << '\n';
+				/*if(numBytes > bytesAllowedForMessage)
 				{
 					//we want to send more bytes than can fit in this message
 					totalNumAddressesFromSrec += 1;//so we'll have to extend into another message
-				}
+				}*/
 				totalNumAddressesFromSrec += 1;//add one message for the main requested bytes
 			}
 		}
@@ -202,7 +204,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	//finally, open a file to save the packets to
 	ofstream outputPacket("encodedFlashBytes.txt", ios::trunc);
 	//ofstream encoding("watchEncodingProcess.txt", ios::trunc);
-	//ofstream subPacketBytes("unencrypted sub packet.txt", ios::trunc);
+	ofstream subPacketBytes("unencrypted sub packet.txt", ios::trunc);
 
 	if(addressRanges.is_open())
 	{
@@ -305,8 +307,8 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				getNextRange = true;
 			}
 
-			//subPacketBytes << "address: " << (int) startAddress[0] << ' ' << (int) startAddress[1] << ' ' << (int) startAddress[2]<< '\n';
-			//subPacketBytes << "number of bytes: " << (int) numBytes << '\n';
+			subPacketBytes << "address: " << (int) startAddress[0] << ' ' << (int) startAddress[1] << ' ' << (int) startAddress[2]<< '\n';
+			subPacketBytes << "number of bytes: " << (int) numBytes << '\n';
 
 			//now, use the decimal version reader to bring in numBytes from the address
 			uint8_t subPacket[256];
@@ -353,17 +355,18 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 
 			if(totalNumAddressesFromSrec == thisMessageNumber)
 			{
+				//put the word sum into the sub packet too- but as little endian
 				uint8_t mod = decodedByteSum%256;
-				subPacket[index + 5 + numBytes + 1] = (decodedByteSum - mod)/256;
-				subPacket[index + 5 + numBytes + 2] = mod;
+				subPacket[index + 5 + numBytes + extraByteNumber + 1] = mod;//low order byte
+				subPacket[index + 5 + numBytes + extraByteNumber + 2] = (decodedByteSum - mod)/256;//high order byte
 				numBytes += 2;
 			}
-			/*subPacketBytes << "SubPacket: ";
+			subPacketBytes << "SubPacket: ";
 			for(uint32_t k = 0; k < numBytes + 6 + index + extraByteNumber;k++)
 			{
 				subPacketBytes<<(int) subPacket[k]<< ' ';
 			}
-			subPacketBytes << '\n';*/
+			subPacketBytes << '\n';
 
 
 			//Next, we must encrypt the sub-packet which will be used for reflashing.
@@ -502,10 +505,10 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 
 	//now that we're finished with making the encrypted packets
 	//add in the 'done with reflash mode' packet
-	outputPacket << "1" << '\n' << "115" << '\n' << "116" << '\n';
+	outputPacket << "1" << '\n' << "115" << '\n' << "116";
 
 	//outputPacket << "finished" << '\n';
-	//subPacketBytes.close();
+	subPacketBytes.close();
 	addressRanges.close();
 	outputPacket.close();
 	//encoding.close();
@@ -909,7 +912,7 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 					//then, check our decoded packet sum
 					if(byteIndex == decodedWordSumIndex-5)
 					{
-						wordSumFromDecode = 256*decodedByteLow + decodedByteHigh;
+						wordSumFromDecode = decodedByteLow + 256*decodedByteHigh;
 						cout << "Sum of decoded words: " << wordSum << ", same- as encoded: " << wordSumFromDecode << '\n';
 					}
 					else

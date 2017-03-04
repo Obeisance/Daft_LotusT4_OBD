@@ -1943,7 +1943,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				double elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
     				std::cout << "time after reading in message: " << elapsedRunTime << '\n';*/
 
-    				if(numBytesToSend == 0)
+    				if(numBytesToSend == 0 || byteBuffer[1] == 115)
     				{
     					finished = true;
     					reflashingTimerProcMode = 2;//signal to end
