@@ -30,44 +30,172 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	// = 19 bytes
 
 	//sub-packet:
-	//3 unknown bytes
-	//8 'flash sector clear' flag bytes
+	//{3 unknown bytes
+	//8 'flash sector clear' flag bytes} <- only in first packet
 	//1 ID byte
 	//1 number byte
 	//3 address bytes
 	//1 sum byte
-	// = 17 bytes-> make it 18 to be safe
-	//this takes up 27 bytes in the main packet
+	//{2 word sum bytes} <- only in final packet
+	// = xx
+	//this takes up xx*3/2 bytes in the main packet
 
 	//255 - (19+27) = 209 bytes for data -> 2/3 -> 139 bytes -> round down to 138 to keep even
+	//however the timing for the bytes dictates that only 116 bytes can get through per message
+	//116 - (19) = 97 bytes for the sub packet -> decoded  this leaves 2/3*97 = 64 bytes
+	uint8_t maxBytesInMessage = 64;
+	uint32_t maxBytesAllowedToSend = 511;
 
 	//bring in a file which contains address ranges which we would like to reflash
 	//string reflashRanges = "6-16-06 ECU read reflash ranges.txt";
 	//getline(cin,reflashRanges);
 	ifstream addressRanges(reflashRanges.c_str());
+
+	//try to figure out the number of addresses and bytes are requested to be flashed
 	uint32_t totalNumBytesFromSrec = 0;
+	uint32_t totalNumAddressesFromSrec = 0;//this equals the number of messages too
 	if(addressRanges.is_open())
 	{
 		string addressLine = "";
-		while(getline(addressRanges, addressLine))
+		bool notFinishedFirstCheck = true;
+		bool needNextLine = true;
+		while(notFinishedFirstCheck)
 		{
+			if(needNextLine)
+			{
+				if(!getline(addressRanges, addressLine))
+				{
+					notFinishedFirstCheck = false;
+					break;
+				}
+			}
+
+			//interpret the line to read a certain number of bytes from a given address
 			uint8_t address[3] = {0,0,0};
 			uint32_t numBytes = interpretAddressRange(addressLine, address);
+			uint8_t extraBytes = 0;
+
+			//then decide how many bytes we can send based on which message we're sending
+			uint8_t bytesAllowedForMessage = maxBytesInMessage - 2;//subtract 2
+			//because I'm not sure how to deal with identifying the final message
+			if(totalNumAddressesFromSrec == 0)
+			{
+				//we're on the first message, so we have fewer bytes for the data part of the message
+				bytesAllowedForMessage -= 2;
+				numBytes += 11;
+				extraBytes = 1;//to make up for the odd number in the sector erase command section
+			}
+
+
+			//lets count the number of bytes in this message
+			if(address[0] < 0x01 && address[1] < 0xB)
+			{
+				//we don't want to change anything close to the bootloader memory range (below 0xA8FA)
+				continue;//skip to the next iteration of the while loop
+			}
 			if(address[2]%2 != 0)
 			{
+				//the low order byte of the address is not even
 				//we cannot send bytes to an odd address
-				totalNumBytesFromSrec += 1;
+				numBytes += 1;
 			}
 			if(numBytes%2 != 0)
 			{
+				//an odd number of bytes to send from an even address
+				//will end on an odd address
 				//we cannot send bytes to an odd address
-				totalNumBytesFromSrec += 1;
+				numBytes += 1;
 			}
-			totalNumBytesFromSrec += numBytes;
+
+			if(numBytes > bytesAllowedForMessage)
+			{
+				//we have too many bytes for a single packet
+
+				//we should rewrite the 'line' string to contain
+				//the new range we will poll next
+				addressLine = "";
+				//find the new starting address
+				uint16_t lowOrderAddrByte = address[2] + bytesAllowedForMessage;
+				uint8_t mod = lowOrderAddrByte%256;
+				uint8_t divide = (lowOrderAddrByte - mod)/256;
+				string temp = decToHex(address[0]);
+				//then write to the 'line' string
+				addressLine.append(temp);
+				temp = decToHex(address[1] + divide);
+				addressLine.append(temp);
+				temp = decToHex(mod);
+				addressLine.append(temp);
+				addressLine.push_back('-');
+
+				//now find the new ending address
+				long startAddr = address[2] + address[1]*256 + address[0]*256*256 + numBytes;
+				uint8_t lowOrderByte = startAddr%256;
+				int div = (startAddr-lowOrderByte)/256;
+				uint8_t secondOrderByte = div%256;
+				uint8_t thirdOrderByte = (div-secondOrderByte)/256;
+				//and write this to the 'line' string
+				temp = decToHex(thirdOrderByte);
+				addressLine.append(temp);
+				temp = decToHex(secondOrderByte);
+				addressLine.append(temp);
+				temp = decToHex(lowOrderByte);
+				addressLine.append(temp);
+
+				//raise a flag so that we keep working on this range
+				needNextLine = false;
+				//lower the number of bytes we're about to send
+				numBytes = bytesAllowedForMessage;
+			}
+			else
+			{
+				needNextLine = true;
+			}
+
+			//lets increment counters for allowable bytes to send
+			if(totalNumBytesFromSrec + numBytes <= maxBytesAllowedToSend)
+			{
+				//increment the total byte counter
+				totalNumBytesFromSrec += numBytes + extraBytes;
+				if(numBytes > bytesAllowedForMessage)
+				{
+					//we want to send more bytes than can fit in this message
+					totalNumAddressesFromSrec += 1;//so we'll have to extend into another message
+				}
+				totalNumAddressesFromSrec += 1;//add one message for the main requested bytes
+			}
 		}
 	}
 	addressRanges.close();
 	addressRanges.open(reflashRanges.c_str());
+
+	//The first step is anticipating the full packet 'index of decoded packet
+	//word sum' number. This number includes all of the sub packet bytes
+
+	//there are three bytes used for every two in the decoded packet:
+	//thus, we know there will be bytes from the s-record, +11 bytes indicating
+	//'sector clear state' (that is, 3+8, but it's included in the total num bytes from SREC),
+	//6 bytes containing sum, address, and
+	//number !for each packet! + 2 word sum bytes. All of these make up the decoded sub packet
+	//where each word is worth 3 bytes in the final byte count
+
+	//there will be 12 unknown function bytes in the main packet along with
+	//4 'index of word sum' bytes (subtract 1 for index location)
+	//and then the index has 5 added to it...
+
+	int indexOfWordSum = ((totalNumBytesFromSrec+6*totalNumAddressesFromSrec+2)/2)*3 + totalNumAddressesFromSrec*(4+12)-1 + 5;
+
+	//split this number into four bytes
+	uint8_t lowOrderKeyByte = indexOfWordSum%256;
+	int firstDivision = (indexOfWordSum-lowOrderKeyByte)/256;
+	uint8_t secondOrderKeyByte = firstDivision%256;
+	int secondDivision = (firstDivision - secondOrderKeyByte)/256;
+	uint8_t thirdOrderKeyByte = secondDivision%256;
+	int thirdDivision = (secondDivision - thirdOrderKeyByte)/256;
+	uint8_t fourthOrderKeyByte = thirdDivision%256;
+	//take the sum of those bytes and 9744
+	uint16_t encryptingKeyWord = 9744 + lowOrderKeyByte + secondOrderKeyByte + thirdOrderKeyByte + fourthOrderKeyByte;
+	//invert that sum
+	encryptingKeyWord = ~encryptingKeyWord;
 
 	//cout << totalNumBytesFromSrec << '\n';
 
@@ -81,8 +209,24 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 		bool isFinished = false;
 		bool getNextRange = true;
 		string line = "";
+		uint16_t decodedByteSum = 0;
+		bool firstMessage = true;
+		uint8_t thisMessageNumber = 0;
 		while(isFinished == false)
 		{
+
+			//perform special actions if we're on the first message
+			uint8_t numBytesAllowableThisMessage = maxBytesInMessage - 2;
+			uint8_t index = 0;//for populating the sub-packet
+			uint8_t extraByteNumber = 0;//in order to accommodate the odd 11 bytes in the first message
+			if(firstMessage)
+			{
+				numBytesAllowableThisMessage -= (11 + 2);//11 for the sector reflash, -2 for extra space;
+				index = 11;
+				extraByteNumber = 1;
+				firstMessage = false;
+			}
+
 			if(getNextRange == true)//if we need to read in a new range of data to write to the ECU, do so
 			{
 				if(!getline(addressRanges, line))
@@ -93,6 +237,8 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 			}
 			uint8_t startAddress[3] = {0,0,0};
 			uint32_t numBytes = interpretAddressRange(line, startAddress);
+
+			thisMessageNumber += 1;//increment the count of which message we are on
 			//cout << (int) numBytes << '\n';
 
 			//check to make sure we're trying to write to a
@@ -115,7 +261,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				numBytes += 1;//make sure to include the data originally requested
 			}
 
-			if(numBytes > 138)
+			if(numBytes > numBytesAllowableThisMessage)
 			{
 				//we have too many bytes for a single packet
 
@@ -123,7 +269,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				//the new range we will poll next
 				line = "";
 				//find the new starting address
-				uint16_t lowOrderAddrByte = startAddress[2] + 138;
+				uint16_t lowOrderAddrByte = startAddress[2] + numBytesAllowableThisMessage;
 				uint8_t mod = lowOrderAddrByte%256;
 				uint8_t divide = (lowOrderAddrByte - mod)/256;
 				string temp = decToHex(startAddress[0]);
@@ -152,7 +298,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				//raise a flag so that we keep working on this range
 				getNextRange = false;
 				//lower the number of bytes we're about to send
-				numBytes = 138;
+				numBytes = numBytesAllowableThisMessage;
 			}
 			else
 			{
@@ -168,12 +314,15 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 			{
 				subPacket[i] = 0;
 			}
+
+
+
 			//then set the ID, numBytes and addr bytes
-			subPacket[11] = 85;
-			subPacket[12] = numBytes + 5;//this count includes the ID, number and address bytes
-			subPacket[13] = startAddress[0];
-			subPacket[14] = startAddress[1];
-			subPacket[15] = startAddress[2];
+			subPacket[index] = 85;
+			subPacket[index+1] = numBytes + 5;//this count includes the ID, number and address bytes
+			subPacket[index+2] = startAddress[0];
+			subPacket[index+3] = startAddress[1];
+			subPacket[index+4] = startAddress[2];
 			//then populate the data bytes
 			long startAddr = startAddress[2] + startAddress[1]*256 + startAddress[0]*256*256;
 			long lastFilePosition = 0;
@@ -192,43 +341,36 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 					}
 				}
 				//place the decimal data in the sub packet
-				subPacket[16+i] = data;
+				subPacket[index+5+i] = data;
 			}
 			//the calculate the sumByte and write data to the output file
 			for(uint32_t k = 0; k < numBytes + 5; k++)
 			{
-				subPacket[16+numBytes] += subPacket[11+k];
+				subPacket[index+5+numBytes] += subPacket[index+k];
+				decodedByteSum += subPacket[index+k];
+			}
+			decodedByteSum += subPacket[index + 5 + numBytes];
 
+			if(totalNumAddressesFromSrec == thisMessageNumber)
+			{
+				uint8_t mod = decodedByteSum%256;
+				subPacket[index + 5 + numBytes + 1] = (decodedByteSum - mod)/256;
+				subPacket[index + 5 + numBytes + 2] = mod;
+				numBytes += 2;
 			}
 			/*subPacketBytes << "SubPacket: ";
-			for(uint32_t k = 0; k < numBytes + 17;k++)
+			for(uint32_t k = 0; k < numBytes + 6 + index + extraByteNumber;k++)
 			{
 				subPacketBytes<<(int) subPacket[k]<< ' ';
 			}
 			subPacketBytes << '\n';*/
 
 
-			//next, we must encrypt the sub-packet which will be used for reflashing
-			//the first step is anticipating the full packet 'number of bytes coming
-			//over k-line' number. This number includes all of the main packet bytes
-			//beyond the number and ID bytes
-			//there are three bytes used for every two in the decoded packet
-			int totalBytesToSend = ((totalNumBytesFromSrec+11+6+1)/2)*3 + 12 + 1 + 4;
-			totalNumBytesFromSrec -= numBytes;//decrement our byte counter before continuing the loop
-			//split this number into four bytes
-			uint8_t lowOrderKeyByte = totalBytesToSend%256;
-			int firstDivision = (totalBytesToSend-lowOrderKeyByte)/256;
-			uint8_t secondOrderKeyByte = firstDivision%256;
-			int secondDivision = (firstDivision - secondOrderKeyByte)/256;
-			uint8_t thirdOrderKeyByte = secondDivision%256;
-			int thirdDivision = (secondDivision - thirdOrderKeyByte)/256;
-			uint8_t fourthOrderKeyByte = thirdDivision%256;
-			//take the sum of those bytes and 9744
-			uint16_t encryptingKeyWord = 9744 + lowOrderKeyByte + secondOrderKeyByte + thirdOrderKeyByte + fourthOrderKeyByte;
-			//invert that sum
-			encryptingKeyWord = ~encryptingKeyWord;
+			//Next, we must encrypt the sub-packet which will be used for reflashing.
 
-			//over the length of the sub-packet, collect two words (reverse order) and encrypt them
+
+			//over the length of the sub-packet, collect two words (reverse, or little endian, order) and encrypt them
+			//gather up the correct encrypting byte set
 			uint8_t numBytesMainPacket = 17;//count up the number of bytes in the packet as we prepare them
 			uint8_t mainPacket[256];
 			uint32_t decodeTable[16] = {0x7,0xF,0x17,0x2F,0x5D,0xBA,0x174,0x2E8,0x5D0,0xBA0,0x1740,0x2E80,0x5D00,0xBA00,0x17401,0x2E801};
@@ -277,7 +419,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 
 
 
-			for(uint32_t z = 0; z < (numBytes+11+6+1); z+=2)
+			for(uint32_t z = 0; z < (numBytes+index+6+extraByteNumber); z+=2)
 			{
 				//collect the two sub-packet bytes into one word
 				uint16_t flashWord = subPacket[z] + 256*subPacket[z+1];
@@ -357,6 +499,10 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 			outputPacket <<(int) mainSumByte << '\n';
 		}
 	}
+
+	//now that we're finished with making the encrypted packets
+	//add in the 'done with reflash mode' packet
+	outputPacket << "1" << '\n' << "115" << '\n' << "116" << '\n';
 
 	//outputPacket << "finished" << '\n';
 	//subPacketBytes.close();
@@ -616,6 +762,11 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 	uint32_t decodeTable[16] = {0x7,0xF,0x17,0x2F,0x5D,0xBA,0x174,0x2E8,0x5D0,0xBA0,0x1740,0x2E80,0x5D00,0xBA00,0x17401,0x2E801};
 	uint32_t decodeMod = 380951;
 	uint32_t decodeMultiple = 3182;
+	int byteIndex = -1;
+	uint16_t wordSum = 0;
+	uint16_t wordSumFromDecode = 1;
+	bool firstPacket = true;
+
 	if(encodeByteSet == 1)
 	{
 		//switch to the byte set in the DEV ECU
@@ -635,7 +786,7 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 	if (myfile.is_open())
 	{
 		string line = "";
-		int bytesToRead = 0;
+		uint32_t decodedWordSumIndex = 0;
 		int bytePlace = 0;
 		uint8_t mainPacketSum = 0;
 		uint8_t bytesInPacket = 0;
@@ -651,6 +802,16 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 			{
 				mainPacketSum += getByteFromLine(line);
 			}
+
+			//keep track of our position within the packet
+			if(bytePlace > 1 && bytePlace < bytesInPacket - 1)
+			{
+				//these bytes are counted in the position index
+				byteIndex += 1;
+				//cout << "byte index: " << (int) byteIndex << ", index to check" << (int) decodedWordSumIndex - 5 << '\n';
+			}
+
+			//interpret the bytes in the packet
 			if(bytePlace == 0)
 			{
 				bytesInPacket = getByteFromLine(line);
@@ -660,7 +821,7 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 			else if(bytePlace == 1)
 			{
 				packetIndicatorByte = getByteFromLine(line);//112, 113 or 115
-				if(packetIndicatorByte != 112)
+				if(packetIndicatorByte != 112 && packetIndicatorByte != 115)
 				{
 					cout << "unknown packet indicator" << '\n';
 				}
@@ -669,13 +830,13 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 			else if(bytePlace > 1 && bytePlace < 6)
 			{
 				uint8_t byte = getByteFromLine(line);
-				bytesToRead = bytesToRead*256;
-				bytesToRead += byte;
+				decodedWordSumIndex = decodedWordSumIndex*256;
+				decodedWordSumIndex += byte;
 				word80D3A += byte;
 				if(bytePlace == 5)//invert the bits
 				{
 					word80D3A = ~word80D3A;
-					decodedByteFile << "word 80d3a: " << (int) word80D3A << ", bytes to read: " << (int) bytesToRead << '\n';
+					decodedByteFile << "word 80d3a: " << (int) word80D3A << ", index of decoded word sum: " << (int) (decodedWordSumIndex - 5) << '\n';
 				}
 			}
 			else if(bytePlace > 17)
@@ -740,10 +901,21 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 					uint8_t decodedByteLow = decodedWord%256;
 					uint8_t decodedByteHigh = (decodedWord - decodedByteLow)/256;
 					//decodedByteFile << ", decoded bytes: " << (int) decodedByteHigh << ' ' << (int) decodedByteLow << '\n';
-					deconvolutedBytes[numDeconvolutedBytes] = decodedByteLow;
-					deconvolutedBytes[numDeconvolutedBytes + 1] = decodedByteHigh;
+					deconvolutedBytes[numDeconvolutedBytes] = decodedByteLow;//remember that we're little endian
+					deconvolutedBytes[numDeconvolutedBytes + 1] = decodedByteHigh;//so this is the low order byte in the decoded packet
 					tempByte = 0;
 					numDeconvolutedBytes += 2;
+
+					//then, check our decoded packet sum
+					if(byteIndex == decodedWordSumIndex-5)
+					{
+						wordSumFromDecode = 256*decodedByteLow + decodedByteHigh;
+						cout << "Sum of decoded words: " << wordSum << ", same- as encoded: " << wordSumFromDecode << '\n';
+					}
+					else
+					{
+						wordSum = wordSum + decodedByteLow + decodedByteHigh;
+					}
 				}
 			}
 			bytePlace += 1;
@@ -753,55 +925,65 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 			//packet to read in the next packet
 			if(bytePlace == bytesInPacket)
 			{
-				//print the sum to check manually
-				cout << "main packet checksum calc for manual check: " << (int) mainPacketSum << '\n';
-
-				//the 4th through 10th byte are byte flags for
-				//sector erase functions, so we'll simply print these
-				decodedByteFile << "Sector erase flags from subPacket: ";
-				for(int i = 3; i < 11; i++)
+				if(packetIndicatorByte == 112)
 				{
-					decodedByteFile << (int) deconvolutedBytes[i] << ' ';
-				}
-				decodedByteFile << '\n';
+					//print the sum to check manually
+					cout << "main packet checksum calc for manual check: " << (int) mainPacketSum << '\n';
 
-				//byte index 11 is '85', 12 is '#bytes, excluding sumbyte'
-				decodedByteFile << "SubPacket ID flag: " << (int) deconvolutedBytes[11] << '\n';
-				decodedByteFile << "Number of data bytes in SubPacket: " << (int) deconvolutedBytes[12] << '\n';
-				uint8_t subPacketByteNumber = deconvolutedBytes[12];//number of bytes in sub packet, excluding sum byte
-				//bytes 13 through 15 are address bytes
-				string addr1 = decToHex(deconvolutedBytes[13]);
-				string addr2 = decToHex(deconvolutedBytes[14]);
-				string addr3 = decToHex(deconvolutedBytes[15]);
-				decodedByteFile << "SubPacket Address: 0x" << addr1 << addr2 << addr3 << '\n';
-				uint8_t sum = deconvolutedBytes[11] + deconvolutedBytes[12]  + deconvolutedBytes[13]  + deconvolutedBytes[14]  + deconvolutedBytes[15];
-				for(uint8_t i = 5+11; i < subPacketByteNumber+11; i++)
-				{
-					sum += deconvolutedBytes[i];
-					string data = decToHex(deconvolutedBytes[i]);
-					decodedByteFile << data;
-					if((i-(5+10))%16 == 0)
+					uint16_t subpacketIndex = 0;
+					if(firstPacket)
 					{
+						//the 4th through 10th byte are byte flags for
+						//sector erase functions, so we'll simply print these
+						decodedByteFile << "Sector erase flags from subPacket: ";
+						for(int i = 3; i < 11; i++)
+						{
+							decodedByteFile << (int) deconvolutedBytes[i] << ' ';
+						}
 						decodedByteFile << '\n';
+						firstPacket = false;
+						subpacketIndex += 11;
 					}
+
+					//byte index 11 is '85', 12 is '#bytes, excluding sumbyte'
+					decodedByteFile << "SubPacket ID flag: " << (int) deconvolutedBytes[subpacketIndex] << '\n';
+					decodedByteFile << "Number of data bytes in SubPacket: " << (int) deconvolutedBytes[subpacketIndex+1] << '\n';
+					uint8_t subPacketByteNumber = deconvolutedBytes[subpacketIndex+1];//number of bytes in sub packet, excluding sum byte
+					//bytes 13 through 15 are address bytes
+					string addr1 = decToHex(deconvolutedBytes[subpacketIndex+2]);
+					string addr2 = decToHex(deconvolutedBytes[subpacketIndex+3]);
+					string addr3 = decToHex(deconvolutedBytes[subpacketIndex+4]);
+					decodedByteFile << "SubPacket Address: 0x" << addr1 << addr2 << addr3 << '\n';
+					uint8_t sum = deconvolutedBytes[subpacketIndex] + deconvolutedBytes[subpacketIndex+1]  + deconvolutedBytes[subpacketIndex+2]  + deconvolutedBytes[subpacketIndex+3]  + deconvolutedBytes[subpacketIndex+4];
+					for(uint8_t i = 5+subpacketIndex; i < subPacketByteNumber+subpacketIndex; i++)
+					{
+						sum += deconvolutedBytes[i];
+						string data = decToHex(deconvolutedBytes[i]);
+						decodedByteFile << data;
+						if((i-(5+10))%16 == 0)
+						{
+							decodedByteFile << '\n';
+						}
+					}
+					decodedByteFile << '\n';
+					if(deconvolutedBytes[subPacketByteNumber+subpacketIndex] != sum)
+					{
+						cout << "subPacketChecksum error: sum =" << (int) sum << ", packet byte =" << (int) deconvolutedBytes[subPacketByteNumber+11] << '\n';
+					}
+
+					//reset global variables
+					subpacketIndex = 0;
+					bytePlace = 0;
+					bytesInPacket = 0;
+					mainPacketSum = 0;
+					numDeconvolutedBytes = 0;
+					tempByte = 0;
+					word80D3A = 9744;
 				}
-				decodedByteFile << '\n';
-				if(deconvolutedBytes[subPacketByteNumber+11] != sum)
+				else if(packetIndicatorByte == 115)
 				{
-					cout << "subPacketChecksum error: sum =" << (int) sum << ", packet byte =" << (int) deconvolutedBytes[subPacketByteNumber+11] << '\n';
+					decodedByteFile << "Exit reflash mode" << '\n';
 				}
-				if(bytesToRead <= bytePlace)
-				{
-					break;
-				}
-				//reset global variables
-				bytesToRead = 0;
-				bytePlace = 0;
-				bytesInPacket = 0;
-				mainPacketSum = 0;
-				numDeconvolutedBytes = 0;
-				tempByte = 0;
-				word80D3A = 9744;
 			}
 			decodedByteFile.close();
 		}
@@ -840,6 +1022,7 @@ HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &suc
 	GetCommState(serialPortHandle, &dcb);//read in the current com config settings in order to save them
 	GetCommTimeouts(serialPortHandle,&timeouts);//read in the current com timeout settings to save them
 
+
 	//close the serial port which we need to access with another
 	//API
 	CloseHandle(serialPortHandle);
@@ -874,16 +1057,22 @@ HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &suc
 
 	//in order to pull the l-line low, we'll send a bunch of '0's -> this works because the
 	//VAG com cable has the k and l lines attached to each other.
-	uint8_t fakeBytes[10] = {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0};//array of bits to send
+	uint8_t fakeBytes[10] = {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x1};//array of bits to send
 	uint8_t fakeByte[1];//a byte to send (only the 0th bit matters, though)
 	DWORD Written = 0;
+	cout << "pull k and l lines low" << '\n';
 	for(int i = 0; i < 10; i++)//loop through and send the '0's manually bit-by-bit
 	{
-		Sleep(100);//delay to prolong the amount of time we pull the l-line low
+		//no extra delay to prolong the amount of time we pull the l-line low
 		fakeByte[0] = fakeBytes[i];//update the bit to send from the array
 		ftStatus = FT_Write(ftdiHandle,fakeByte,1,&Written);//send one bit at a time
 	}
+	LARGE_INTEGER startLoopTime,loopTime;
+	LARGE_INTEGER systemFreq;        // ticks per second
+	QueryPerformanceFrequency(&systemFreq);// get ticks per second
+	QueryPerformanceCounter(&startLoopTime);// start timer
 
+	cout << "switch to serial comms.." << '\n';
 
 	ftStatus = FT_SetBitMode(ftdiHandle, 0xFF, FT_BITMODE_RESET);//reset all FTDI pins or else the device stays in bit bang mode
 	FT_Close(ftdiHandle);//close the FTDI device
@@ -893,19 +1082,34 @@ HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &suc
 	SetCommState(serialPortHandle, &dcb);//restore the COM port config
 	SetCommTimeouts(serialPortHandle,&timeouts);//restore the COM port timeouts
 
-	//invert third byte of serial response and send it back
-	uint8_t toSend[3] = {1,113,114};//{1,129,129} -> if we want to switch to 29.787 kBaud
-	Sleep(30);//delay
-	writeToSerialPort(serialPortHandle, toSend, 3);//send
+	QueryPerformanceCounter(&loopTime);
+	double runTime = (loopTime.QuadPart - startLoopTime.QuadPart)*1000 / systemFreq.QuadPart;// compute the elapsed time in milliseconds
+	double elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
+	std::cout << "switch time: " << elapsedRunTime << '\n';
 
-	uint8_t recvdBytes[3] = {0,0,0};//a buffer which can be used to store read in bytes
-	readFromSerialPort(serialPortHandle, recvdBytes,1,500);//read in 1 bytes in up to 500 ms
-
-	//the read-in byte should be 0x8D (or 0x7E at new baud rate)
-	if(recvdBytes[0] != 0x8D)
+	uint8_t toSend[3] = {1,113,114};//{1,129,129} -> if we want to switch to 28.416 kBaud
+	uint8_t recvdBytes[4] = {0,0,0,0};//a buffer which can be used to store read in bytes
+	success = false;
+	for(int i = 0; i < 100; i++)
 	{
-		cout << "init recv'd: " << (int) recvdBytes[0] << '\n';
-		success = false;
+		QueryPerformanceCounter(&loopTime);
+		writeToSerialPort(serialPortHandle, toSend, 3);//send
+		readFromSerialPort(serialPortHandle, recvdBytes,3,1000);//read in bytes in up to 1000 ms
+		if(recvdBytes[0] == 0x8D || recvdBytes[1] == 0x8D || recvdBytes[2] == 0x8D || recvdBytes[3] == 0x8D)
+		{
+			readFromSerialPort(serialPortHandle, recvdBytes,2,1000);
+			//the read-in byte should be 0x8D (or 0x7E at new baud rate)
+			runTime = (loopTime.QuadPart - startLoopTime.QuadPart)*1000 / systemFreq.QuadPart;// compute the elapsed time in milliseconds
+			elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
+			std::cout << "loop time: " << elapsedRunTime << '\n';
+			success = true;
+			break;
+		}
+	}
+
+	if(success == false)
+	{
+		cout << "Timing between pushing 'reflash' and turning on ECU power was incorrect." << '\n' << "Try again." << '\n';
 	}
 
 	return serialPortHandle;
@@ -937,7 +1141,7 @@ string srecReader(string filename, long address, long &lastFilePosition)
 			{
 				//collect the position before reading in the line
 				//this position is the beginning of the next line
-				lastFilePosition += lineSize;
+				lastFilePosition += lineSize + 2;//2 extra chars for the /r/n keeps us line aligned
 				//if no new line is read in, we are at the end of the file
 				if(!getline(myfile,line))
 				{
@@ -990,7 +1194,7 @@ string srecReader(string filename, long address, long &lastFilePosition)
 					string byteCountHexString = line.substr(2,2);
 					string byteCountDecString = hexString_to_decimal(byteCountHexString);
 					int bytesInLine = stringDec_to_int(byteCountDecString);
-					bytesInLine -= dataStartPoint/2-1;
+					bytesInLine -= (dataStartPoint/2-1);
 
 					if(lineAddress + bytesInLine < address)
 					{
@@ -1017,6 +1221,7 @@ string srecReader(string filename, long address, long &lastFilePosition)
 			if(getNextLine == false)
 			{
 				int dataPlace = address - lineAddress;
+				//cout << line.size() << ' ' << dataStartPoint << ' ' << dataPlace << '\n';
 				string hexData = line.substr(dataStartPoint+dataPlace*2,2);
 				value = hexString_to_decimal(hexData);
 				finished = true;
