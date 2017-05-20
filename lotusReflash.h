@@ -28,3 +28,15 @@ HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &suc
 string srecReader(string filename, long address, long &lastFilePosition);
 
 uint8_t readCodedMessageIntoBuffer(long &lastPosition, uint8_t* byteBuffer);
+
+void calculateCheckBytes(uint8_t *packet, uint16_t packetLength);
+
+uint16_t calculateCRCduringReflash(uint16_t currentCRC, uint8_t *packet, uint16_t packetLength);
+
+HANDLE initializeStageIReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &success);
+
+uint16_t buildStageIbootloaderPacket(uint8_t *packetBuffer, uint16_t bufferLength, uint8_t numBytesToSend, uint8_t numPacketsSent, string filename, long address, long &lastFilePosition);
+
+uint16_t stageIbootloaderRomFlashPacketBuilder(uint32_t &addressToFlash, long &bytesLeftToSend, uint16_t CRC, uint32_t &packetsSent, string filename, long &filePos);
+
+uint16_t readPacketLineToBuffer(uint8_t *buffer, uint16_t bufferLength, long &lastFilePosition);
