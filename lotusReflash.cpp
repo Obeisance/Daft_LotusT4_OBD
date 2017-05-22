@@ -21,11 +21,11 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	//If we add in the flag bytes, ID bytes, number bytes, sum bytes and blank bytes
 	//we have a number for the maximum number of data bytes which can be sent in
 	//a given frame:
-	//main packet:
+	//main packet: (first send)
 	//1 number byte
 	//1 ID byte
-	//4 'total bytes coming' bytes
-	//12 unknown function bytes
+	//4 'total bytes coming' bytes (only first packet)
+	//12 unknown function bytes (only first packet)
 	//1 sum byte
 	// = 19 bytes
 
@@ -43,6 +43,487 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	//255 - (19+27) = 209 bytes for data -> 2/3 -> 139 bytes -> round down to 138 to keep even
 	//however the timing for the bytes dictates that only 116 bytes can get through per message
 	//116 - (19) = 97 bytes for the sub packet -> decoded  this leaves 2/3*97 = 64 bytes
+	uint8_t maxBytesInMessage = 116;//this limitation is set by the interrupt timer
+
+	//read in the file which lists the reflash ranges and try to anticipate the number of messages and bytes we
+	//will need to send
+
+	uint16_t numAddressesToSend = 0;
+	uint16_t numBytesToSend = 0;
+	uint16_t indexOfLastEncodedByte = 0;
+	uint16_t numPacketsToSend = 0;
+
+	//erase previously saved file
+	ofstream decodedPacket("decoded packet.txt",ios::trunc);
+	decodedPacket.close();
+
+	//cout << "opening file" << '\n';
+
+	ifstream addressRanges(reflashRanges.c_str());
+	if(addressRanges.is_open())
+	{
+		string addressLine = "";
+		bool getNextLine = true;
+		bool notFinishedFirstCheck = true;
+		bool firstPacket = true;
+		bool lastPacket = false;
+		uint32_t numBytes = 0;
+		uint8_t address[3] = {0,0,0};
+		long filePosition = 0;
+
+		while(notFinishedFirstCheck)
+		{
+
+			if(getNextLine)
+			{
+				if(!getline(addressRanges, addressLine))
+				{
+					notFinishedFirstCheck = false;
+					break;
+				}
+				//interpret the line to read a certain number of bytes from a given address
+				numBytes = interpretAddressRange(addressLine, address);
+				//cout << addressLine << '\n';
+				if(address[2]%2 != 0)
+				{
+					//we're not on an even address, so we need to make a change
+					if(address[2] - 1 > address[2])
+					{
+						if(address[1] - 1 > address[1])
+						{
+							address[0] -= 1;
+						}
+						address[1] -= 1;
+					}
+					address[2] -= 1;
+					numBytes += 1;
+				}
+				//lets check to see if we're on the last line
+				filePosition += addressLine.length() + 2;//+2 for the /r/n
+				if(!getline(addressRanges, addressLine))
+				{
+					lastPacket = true;
+				}
+				addressRanges.seekg(filePosition);//reset the file read-in position
+			}
+
+			uint8_t packetLength = 3;//#, ID and sum bytes
+			if(firstPacket)
+			{
+				packetLength += 16;//unused bytes and 'index of last encoded byte + 5'
+			}
+
+			uint8_t numBytesAvailableForEncodedMessage = maxBytesInMessage - packetLength;
+			uint8_t maxEncodedMessageLength = numBytesAvailableForEncodedMessage*2/3;
+			//in order to keep an even number as 'maxEncodedMessageLength'
+			if(maxEncodedMessageLength%2 != 0)
+			{
+				maxEncodedMessageLength -= 1;
+			}
+			uint8_t subPacketLength = 6;//ID byte, # byte, 3 addr bytes, and sum byte
+
+			if(firstPacket)
+			{
+				subPacketLength += 12;//3 blank bytes, 8 sector erase flags, and an extra byte to keep an even number
+			}
+			if(lastPacket)
+			{
+				subPacketLength += 2;//final encoded word sum
+			}
+			uint8_t maxNumDataBytes = maxEncodedMessageLength - subPacketLength;
+
+			if(numBytes < maxNumDataBytes)
+			{
+				if(numBytes%2 != 0)
+				{
+					//we cannot reflash an odd number of bytes (unless you want to save the checksum as part of the rom)
+					numBytes += 1;
+				}
+				numAddressesToSend += 1;
+				numBytesToSend += packetLength + 3/2*(subPacketLength + numBytes);
+				indexOfLastEncodedByte += packetLength - 3 + 3*(subPacketLength + numBytes)/2;
+				numPacketsToSend += 1;
+				getNextLine = true;
+				firstPacket = false;
+			}
+			else
+			{
+				//there are too many bytes at this address to put send in one packet
+				//so act to send one packet, and let the function loop back to try to send
+				//the rest
+				if(lastPacket)
+				{
+					//the subsequent packet may be the last packet, but not this one
+					subPacketLength += 2;
+				}
+				firstPacket = false;//subsequent packets will not be the first packet
+				numAddressesToSend += 1;
+				numBytesToSend += packetLength + 3/2*(subPacketLength + maxNumDataBytes);
+				indexOfLastEncodedByte += packetLength - 3 + 3*(subPacketLength + maxNumDataBytes)/2;
+				numPacketsToSend += 1;
+				numBytes -= maxNumDataBytes;
+				getNextLine = false;
+			}
+		}
+	}
+	addressRanges.close();
+	//the first four data bytes of the first packet are the index of the word sum of the encoded bytes + 5
+	//this is also used to create a word used for encryption of the packets
+	int indexOfWordSum = indexOfLastEncodedByte + 5;
+
+	//cout << "time to build packets. index of word sum + 5: " << (int) indexOfWordSum << '\n';
+	ofstream outputPacket("encodedFlashBytes.txt", ios::trunc);
+
+	//split this number into four bytes
+	uint8_t lowOrderKeyByte = indexOfWordSum%256;
+	int firstDivision = (indexOfWordSum-lowOrderKeyByte)/256;
+	uint8_t secondOrderKeyByte = firstDivision%256;
+	int secondDivision = (firstDivision - secondOrderKeyByte)/256;
+	uint8_t thirdOrderKeyByte = secondDivision%256;
+	int thirdDivision = (secondDivision - thirdOrderKeyByte)/256;
+	uint8_t fourthOrderKeyByte = thirdDivision%256;
+	//take the sum of those bytes and 9744
+	uint16_t encryptingKeyWord = 9744 + lowOrderKeyByte + secondOrderKeyByte + thirdOrderKeyByte + fourthOrderKeyByte;
+	//invert that sum
+	encryptingKeyWord = ~encryptingKeyWord;
+
+	//then bring in the encoding byte set
+	uint32_t decodeTable[16] = {0x7,0xF,0x17,0x2F,0x5D,0xBA,0x174,0x2E8,0x5D0,0xBA0,0x1740,0x2E80,0x5D00,0xBA00,0x17401,0x2E801};
+	uint32_t decodeMod = 380951;
+	uint32_t decodeMultiple = 3182;
+	if(encodeByteSet == 1)
+	{
+		//switch to the byte set in the DEV ECU
+		decodeMod = 119619;
+		decodeMultiple = 20096;
+		uint32_t decodeTableDevBytes[16] = {0x1,0x3,0x6,0xC,0x19,0x30,0x64,0xC8,0x18C,0x3EB,0x708,0xEA4,0x1CB6,0x3B6B,0x74D0,0xE9A1};
+		for(int i = 0; i < 16; i++)
+		{
+			decodeTable[i] = decodeTableDevBytes[i];
+		}
+	}
+	/*
+	 * compare remainder of [3182*(remainder of (long word at 0x80D30) / 380951)]/380951
+					to the 16 long words starting at 0xA8BA
+
+					0xA8BA = 00000007 0000000F 00000017 0000002F 0000005D
+						 	 000000BA 00000174 000002E8 000005D0 00000BA0
+					         00001740 00002E80 00005D00 0000BA00 00017401
+						 	 0002E801
+
+					starting at the 16th of these and stepping down, if the long word is smaller than the remainder,
+					subtract the long word from the remainder and set the bit place in a counter
+					word to 1 -> this should result in a counter word being populated only if
+					the remainder can be made up of some sum of the 16 long word values near 0xA8BA
+					if failure, D0 = 0 - word at (0x80D3A).L, if success, D0 = counter word - word at (0x80D3A).L
+					the D0 value is stored on 0x80D34 and on ($0,0x80B28,(word at 0x80D3C)) (but byte order inverted here,
+					also, $80d3c_word is incremented at each byte passed through it (i.e. 2x per word stored), but kept below 512),
+					$80D40_word is also incremented 2x for each word stored. This process populates the flashing byte packet
+					at $80B28 (this is a decryption routine)
+
+
+					there are other versions of the encrypting routine key bytes, though->
+					00004E80 -> instead of 3182, use 20096 as the decodeMultiplier
+					0001D343 -> instead of 380591, use 119619 as the decodeMod
+					and for the threshold bytes use:
+					00000001 00000003 00000006 0000000C
+					00000019 00000030 00000064 000000C8
+					0000018C 000003EB 00000708 00000EA4
+					00001CB6 00003B6B 000074D0 0000E9A1
+	 */
+
+	//now that we've counted up the index of the last encoded byte, create all of the packets
+	addressRanges.open(reflashRanges.c_str());//reset the file read-in position
+	//loop again
+	if(addressRanges.is_open())
+	{
+		string addressLine = "";
+		bool getNextLine = true;
+		bool notFinishedBuildPackets = true;
+		bool firstPacket = true;
+		bool lastPacket = false;
+		uint32_t numBytes = 0;
+		uint8_t address[3] = {0,0,0};
+		long filePosition = 0;
+
+		//save the sum of all word values which are being encoded
+		uint16_t decryptedPacketWordSum = 0;
+		//cout << "time to loop through and build packets " << '\n';
+		while(notFinishedBuildPackets)
+		{
+			//cout << "looping..." << '\n';
+			if(getNextLine)
+			{
+				//cout << "attempt to read in line" << '\n';
+				if(!getline(addressRanges, addressLine))
+				{
+					//cout << "ending loop process" << '\n';
+					notFinishedBuildPackets = false;
+					break;
+				}
+				//cout << addressLine << '\n';
+				//interpret the line to read a certain number of bytes from a given address
+				numBytes = interpretAddressRange(addressLine, address);
+				if(address[2]%2 != 0)
+				{
+					//we're not on an even address, so we need to make a change
+					if(address[2] - 1 > address[2])
+					{
+						if(address[1] - 1 > address[1])
+						{
+							address[0] -= 1;
+						}
+						address[1] -= 1;
+					}
+					address[2] -= 1;
+					numBytes += 1;
+				}
+				//lets check to see if we're on the last line
+				filePosition += addressLine.length() + 2;//+2 for the /r/n
+				if(!getline(addressRanges, addressLine))
+				{
+					lastPacket = true;
+				}
+				addressRanges.seekg(filePosition);//reset the file read-in position
+			}
+
+
+			uint8_t packetLength = 3;//#, ID and sum bytes
+			if(firstPacket)
+			{
+				packetLength += 16;//unused bytes and 'index of last encoded byte + 5'
+			}
+
+			uint8_t numBytesAvailableForEncodedMessage = maxBytesInMessage - packetLength;
+			uint8_t maxEncodedMessageLength = numBytesAvailableForEncodedMessage*2/3;
+			//in order to keep an even number as 'maxEncodedMessageLength'
+			if(maxEncodedMessageLength%2 != 0)
+			{
+				maxEncodedMessageLength -= 1;
+			}
+			uint8_t subPacketLength = 6;//ID byte, # byte, 3 addr bytes, and sum byte
+
+			uint8_t subPacketBuffer[maxEncodedMessageLength];
+			uint8_t mainPacketOffset = 0;
+			uint8_t subPacketOffset = 0;
+			uint8_t subPacketSum = 85 + address[0] + address[1] + address[2];
+			if(firstPacket)
+			{
+				subPacketLength += 12;//3 blank bytes, 8 sector erase flags, and an extra byte to keep an even number
+				mainPacketOffset = 16;
+				subPacketOffset = 11;
+				subPacketBuffer[0] = 0;//blank
+				subPacketBuffer[1] = 0;//blank
+				subPacketBuffer[2] = 0;//blank
+				subPacketBuffer[3] = 0;//0x8000 sector clear flag -> stage II bootloader
+				subPacketBuffer[4] = 0;//0x10000 sector clear flag -> main code
+				subPacketBuffer[5] = 0;//0x20000 sector clear flag -> main code
+				subPacketBuffer[6] = 0;//0x30000 sector clear flag -> some of main code, mostly ??
+				subPacketBuffer[7] = 0;//0x40000 sector clear flag
+				subPacketBuffer[8] = 0;//0x50000 sector clear flag
+				subPacketBuffer[9] = 0;//0x60000 sector clear flag
+				subPacketBuffer[10] = 0;//0x70000 sector clear flag -> calibration tables
+				subPacketBuffer[11] = 85;//ID
+
+				subPacketBuffer[13] = address[0];
+				subPacketBuffer[14] = address[1];
+				subPacketBuffer[15] = address[2];
+			}
+			else
+			{
+				subPacketBuffer[0] = 85;
+
+				subPacketBuffer[2] = address[0];
+				subPacketBuffer[3] = address[1];
+				subPacketBuffer[4] = address[2];
+			}
+
+			if(lastPacket)
+			{
+				subPacketLength += 2;//final encoded word sum
+			}
+			uint8_t maxNumDataBytes = maxEncodedMessageLength - subPacketLength;//since the inputs are even, the output is even too
+
+
+			uint8_t numDataBytesIncluded = 0;
+			long addressComb = (address[0] << 16) + (address[1] << 8) + address[2];
+			//cout << "address: " << (int) address[0] << ' ' << (int) address[1] << ' ' <<  (int) address[2] << " comb addr:" << addressComb << '\n';
+			if(numBytes < maxNumDataBytes)
+			{
+				if(numBytes%2 != 0)
+				{
+					//we cannot reflash an odd number of bytes (unless you want to save the checksum as part of the rom)
+					numBytes += 1;
+				}
+				numDataBytesIncluded = numBytes;
+
+				getNextLine = true;
+				//firstPacket = false;
+			}
+			else
+			{
+				//there are too many bytes at this address to put send in one packet
+				//so act to send one packet, and let the function loop back to try to send
+				//the rest
+				if(lastPacket)
+				{
+					//the subsequent packet may be the last packet, but not this one
+					subPacketLength -= 2;
+				}
+				numDataBytesIncluded = maxNumDataBytes;
+
+				//firstPacket = false;//subsequent packets will not be the first packet
+
+				numBytes -= maxNumDataBytes;
+				long newAddr = addressComb + maxNumDataBytes;
+				address[0] = (newAddr >> 16) & 255;
+				address[1] = (newAddr >> 8) & 255;
+				address[2] = (newAddr) & 255;
+				getNextLine = false;
+			}
+
+			subPacketBuffer[subPacketOffset + 1] = numDataBytesIncluded +5;
+			subPacketSum += subPacketBuffer[subPacketOffset + 1];
+			//cout << "num data bytes in this packet: " << (int) numDataBytesIncluded << '\n';
+
+			long lastFilePos = 0;
+			for(uint8_t i = 0; i < numDataBytesIncluded; i++)
+			{
+				string retreivedByte = srecReader(inputString,addressComb+i,lastFilePos);
+				uint8_t data = stringDec_to_int(retreivedByte);
+				subPacketBuffer[subPacketOffset + 5 + i] = data;
+				subPacketSum += data;
+			}
+			uint8_t numBytesInDecodedPacket = subPacketOffset + 5 + numDataBytesIncluded;
+			subPacketBuffer[numBytesInDecodedPacket] = subPacketSum;
+			numBytesInDecodedPacket += 1;
+			if(firstPacket)
+			{
+				//include an extra byte to keep the decoded packet having a multiple of 2 bytes
+				subPacketBuffer[numBytesInDecodedPacket] = 0;
+				numBytesInDecodedPacket += 1;
+			}
+
+			ofstream decodedPacket("decoded packet.txt",ios::app);
+			for(uint8_t i = 0; i < (numBytesInDecodedPacket); i++)
+			{
+				decryptedPacketWordSum += subPacketBuffer[i];
+				decodedPacket << (int) subPacketBuffer[i] << ' ';
+				//cout << (int) subPacketBuffer[i] << ' ';
+			}
+
+			if(lastPacket && getNextLine)
+			{
+				//include, little endian, the bytes of the word sum
+				subPacketBuffer[numBytesInDecodedPacket] = decryptedPacketWordSum & 255;
+				decodedPacket << (int) subPacketBuffer[numBytesInDecodedPacket] << ' ';
+				//cout << (int) subPacketBuffer[numBytesInDecodedPacket] << ' ';
+				numBytesInDecodedPacket += 1;
+				subPacketBuffer[numBytesInDecodedPacket] = (decryptedPacketWordSum >> 8) & 255;
+				decodedPacket << (int) subPacketBuffer[numBytesInDecodedPacket] << ' ';
+				//cout << (int) subPacketBuffer[numBytesInDecodedPacket] << ' ';
+				numBytesInDecodedPacket += 1;
+			}
+			decodedPacket << '\n';
+			decodedPacket.close();
+			//cout << '\n';
+
+			//now that we have our subpacket, encrypt it and build the main packet
+			uint8_t mainPacketLength = numBytesInDecodedPacket*3/2 + packetLength;
+			uint8_t mainPacketBuffer[mainPacketLength];
+			mainPacketBuffer[0] = mainPacketLength - 2;
+			mainPacketBuffer[1] = 112;
+			if(firstPacket)
+			{
+				firstPacket = false;//subsequent packets are not the first packet
+				mainPacketBuffer[2] = fourthOrderKeyByte;
+				mainPacketBuffer[3] = thirdOrderKeyByte;
+				mainPacketBuffer[4] = secondOrderKeyByte;
+				mainPacketBuffer[5] = lowOrderKeyByte;
+				for(uint8_t i = 0; i < 12; i++)
+				{
+					mainPacketBuffer[6+i] = 0;
+				}
+			}
+
+			//encrypt the sub-packet bytes and header (for the first packet) and word sum (for the last packet)
+			uint8_t encodedByteIndex = 0;
+			for(uint32_t z = 0; z < numBytesInDecodedPacket; z+=2)
+			{
+				//collect the two sub-packet bytes into one word
+				uint16_t flashWord = subPacketBuffer[z] + 256*subPacketBuffer[z+1];
+				uint16_t counterWord = flashWord + encryptingKeyWord;
+				//encoding << "pre-coded bytes: " << (int) subPacketBuffer[z] << ' ' << (int) subPacketBuffer[z+1] << ", add in key: " << (int) counterWord << '\n';
+				//now, use the decode table to encrypt the counterWord
+				uint32_t codedLong = 0;
+				for(int y = 0; y < 16; y++)
+				{
+					//step through the bits in the counterWord and add the corresponding
+					//decode table value to the codedLong value
+					uint16_t bitOfInterest = 1;
+					bitOfInterest <<= y;//leftshift to get the single binary flag
+					if((counterWord & bitOfInterest) != 0)
+					{
+						codedLong += decodeTable[y];
+					}
+				}
+				//encoding << "coded word: " << (int) codedLong << '\n';
+
+				//next, we want to recover the initial value from an operation
+				//that returned the remainder from division by 380951
+				//the max sum from the decode table is 380929, which is less than the total
+				//so we can retain the original value through this operation.
+
+				//next we want to recover the initial value from an operation
+				//that multiplied by 3182
+				uint64_t check = 0;
+				for(uint32_t x = 0; x < 16777216; x++)
+				{
+					check = (decodeMultiple*x)%decodeMod;
+					if(check == codedLong)
+					{
+						check = x;
+						break;
+					}
+				}
+
+				//encoding << "pre-mod and divide long: " << (int) check << ", ";
+				//then, we have found our encoded word, stored on check
+				//lets move this to the main packet
+				uint8_t modLow = check%256;
+				uint32_t divLow = (check - modLow)/256;
+				uint8_t modMid = divLow%256;
+				uint32_t divMid = (divLow - modMid)/256;
+				uint8_t modHigh = divMid%256;//hopefully this takes care of all of the bits in the check word
+				mainPacketBuffer[mainPacketOffset+2+encodedByteIndex] = modLow;
+				encodedByteIndex += 1;
+				mainPacketBuffer[mainPacketOffset+2+encodedByteIndex] = modMid;
+				encodedByteIndex += 1;
+				mainPacketBuffer[mainPacketOffset+2+encodedByteIndex] = modHigh;
+				encodedByteIndex += 1;
+				//encoding << "splits into bytes: " << (int) modLow << ' ' << (int) modMid << ' ' << (int) modHigh << '\n';
+			}
+			//encoding << '\n';
+
+			uint8_t mainPacketSum = 0;
+			//write the packet to the encoded packet file while building the sum
+			for(uint8_t i = 0; i < mainPacketLength - 1; i++)
+			{
+				mainPacketSum += mainPacketBuffer[i];
+				outputPacket << (int) mainPacketBuffer[i] << ' ';
+			}
+			//cout << (int) mainPacketSum << '\n';
+			mainPacketBuffer[mainPacketLength - 1] = mainPacketSum;
+			outputPacket << (int) mainPacketBuffer[mainPacketLength - 1] << ' ';
+			outputPacket << '\n';
+		}
+	}
+	//now that we're finished with making the encrypted packets
+	//add in the 'done with reflash mode' packet
+	outputPacket << "1" << ' ' << "115" << ' ' << "116" << ' ';
+	outputPacket.close();
+	addressRanges.close();
+	/*
 	uint8_t maxBytesInMessage = 64;//this limitation is set by the interrupt timer
 	uint32_t maxBytesAllowedToSend = 511;//the decoded byte save point in the ECU only allows for 511 bytes to be indexed
 	uint8_t maxMessagesAllowedToSend = 1;//somehow, when more than one message is sent, the ECU reports an error state
@@ -163,6 +644,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 					//we want to send more bytes than can fit in this message
 					totalNumAddressesFromSrec += 1;//so we'll have to extend into another message
 				}*/
+	/*
 				totalNumAddressesFromSrec += 1;//add one message for the main requested bytes
 			}
 		}
@@ -419,7 +901,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				0000018C 000003EB 00000708 00000EA4
 				00001CB6 00003B6B 000074D0 0000E9A1
 			 */
-
+			/*
 
 
 			for(uint32_t z = 0; z < (numBytes+index+6+extraByteNumber); z+=2)
@@ -512,6 +994,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	addressRanges.close();
 	outputPacket.close();
 	//encoding.close();
+	*/
 }
 
 
@@ -765,7 +1248,6 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 	uint32_t decodeTable[16] = {0x7,0xF,0x17,0x2F,0x5D,0xBA,0x174,0x2E8,0x5D0,0xBA0,0x1740,0x2E80,0x5D00,0xBA00,0x17401,0x2E801};
 	uint32_t decodeMod = 380951;
 	uint32_t decodeMultiple = 3182;
-	int byteIndex = -1;
 	uint16_t wordSum = 0;
 	uint16_t wordSumFromDecode = 1;
 	bool firstPacket = true;
@@ -782,25 +1264,173 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 		}
 	}
 
-	//open a file and begin reading in the data bytes to send
-	ifstream myfile("encodedFlashBytes.txt");//line by line are decimal values denoting bytes
 	ofstream decodedByteFile("testDecodedFlashPacket.txt", ios::trunc);
 	decodedByteFile.close();
-	if (myfile.is_open())
+	uint32_t decodedWordSumIndex = 0;
+	uint32_t indexCounter = 0;
+	uint16_t word80D3A = 9744;//used to decode the data
+
+	//variable to store packets as we read them in
+	uint8_t packetBuffer[300];
+	uint8_t bufferLength = 0;
+	long filePosition = 0;
+
+	bool notFinished = true;
+	while(notFinished)
 	{
-		string line = "";
-		uint32_t decodedWordSumIndex = 0;
-		int bytePlace = 0;
-		uint8_t mainPacketSum = 0;
-		uint8_t bytesInPacket = 0;
-		uint8_t packetIndicatorByte = 0;
-		uint8_t deconvolutedBytes[256] = {0};
-		uint8_t numDeconvolutedBytes = 0;
-		uint32_t tempByte = 0;
-		uint16_t word80D3A = 9744;
-		while(getline(myfile, line))
+		ofstream decodedByteFile("testDecodedFlashPacket.txt", ios::app);
+
+
+		bufferLength = readPacketLineToBuffer(packetBuffer, 300, filePosition);
+		if(packetBuffer[1] == 115)
 		{
-			ofstream decodedByteFile("testDecodedFlashPacket.txt", ios::app);
+			notFinished = false;
+			break;
+		}
+
+
+		uint16_t bufferReadOffset = 0;
+		if(firstPacket)
+		{
+			indexCounter += 15;
+			bufferReadOffset = 16;//accounting for empty and decoded wordsum index bytes
+			decodedWordSumIndex = (packetBuffer[2] << 24) + (packetBuffer[3] << 16) + (packetBuffer[4] << 8) + (packetBuffer[5]) - 5;
+			word80D3A += packetBuffer[2] + packetBuffer[3] + packetBuffer[4] + packetBuffer[5];//add to 9744 the sum of these four bytes
+			word80D3A = ~word80D3A;//then invert bitwise
+		}
+
+		//check the byte sum:
+		uint8_t mainPacketSum = 0;
+		for(uint8_t i = 0; i < (packetBuffer[0] + 1); i++)
+		{
+			mainPacketSum += packetBuffer[i];
+		}
+		if(mainPacketSum != packetBuffer[(packetBuffer[0] + 1)])
+		{
+			cout << "Main packet checksum error: calc'd checksum: " << (int) mainPacketSum << " checksum byte: " << (int) packetBuffer[(packetBuffer[0] + 1)] << '\n';
+		}
+
+		//now, decode bytes
+		uint8_t encodedByteIndex = 0;
+		uint32_t encodedData = 0;
+		uint8_t decodedPacket[300];
+		uint8_t decodedPacketIndex = 0;
+		for(uint8_t i = (bufferReadOffset + 2); i < (packetBuffer[0] + 1); i++)
+		{
+			//combine each three bytes into a 24 bit number for decoding
+			if(encodedByteIndex%3 == 2)
+			{
+				//add the byte into our combined word
+				encodedData += (packetBuffer[i] << 8*(encodedByteIndex%3));
+
+				//time to decode
+				uint16_t decodedWord = 0;
+				uint16_t decodingBit = 32768;//bit 15 set
+				uint32_t remainder = encodedData%decodeMod;
+				uint32_t product = decodeMultiple*remainder;
+				uint32_t comparison = product%decodeMod;
+				//decodedByteFile << ", comparison: " << (int) comparison << '\n';
+
+				for(int i = 15; i > -1; i--)
+				{
+					//decodedByteFile << ", decodeTable: " << (int) decodeTable[i];
+					if(comparison >= decodeTable[i])
+					{
+						//decodedByteFile << ", bit set: " << (int) decodingBit << ' ';
+						decodedWord += decodingBit;
+						comparison -= decodeTable[i];
+					}
+					else
+					{
+						//decodedByteFile << ", no bit set: " <<(int) decodingBit << ' ';
+					}
+					decodingBit = decodingBit / 2;
+					//decodedByteFile << '\n';
+				}
+				decodedWord = decodedWord - word80D3A;
+				//decodedByteFile << ", decoded word: " << (int) decodedWord << '\n';
+
+				//split this into two bytes and store in the array
+				uint8_t decodedByteLow = decodedWord%256;
+				uint8_t decodedByteHigh = (decodedWord - decodedByteLow)/256;
+				//decodedByteFile << ", decoded bytes: " << (int) decodedByteHigh << ' ' << (int) decodedByteLow << '\n';
+
+				//store in the buffer
+				decodedPacket[decodedPacketIndex] = decodedByteLow;//remember that we're little endian
+				decodedPacket[decodedPacketIndex + 1] = decodedByteHigh;//so this is the low order byte in the decoded packet
+				decodedPacketIndex += 2;
+
+				//reset the encoded data to read in the next data
+				encodedData = 0;
+			}
+			else
+			{
+				//add the byte into our combined word
+				encodedData += (packetBuffer[i] << 8*(encodedByteIndex%3));
+			}
+			encodedByteIndex += 1;
+
+			//check the index of the byte we're on
+			indexCounter += 1;
+			if(indexCounter == decodedWordSumIndex)
+			{
+				wordSumFromDecode = (decodedPacket[decodedPacketIndex - 1] << 8) + decodedPacket[decodedPacketIndex - 2];
+				//check that the decoded word matches our accounting of the sum of encoded bytes
+				if(wordSum != wordSumFromDecode)
+				{
+					cout << "Encoded word sum mismatch: calc'd word sum: " << (int) wordSum << " word sum from encoded data: " << (int) wordSumFromDecode << '\n';
+				}
+			}
+			else
+			{
+				wordSum += decodedPacket[decodedPacketIndex - 1] + decodedPacket[decodedPacketIndex - 2];
+			}
+		}
+
+		//now process the decoded packet
+		uint8_t subPacketOffset = 0;
+		if(firstPacket)
+		{
+			subPacketOffset += 11;
+			decodedByteFile << "Sector erase flags: " << '\n' << "0x8000: " << (int) decodedPacket[3] << '\n' << "0x10000: " << (int) decodedPacket[4] << '\n' << "0x20000: " << (int) decodedPacket[5] << '\n' << "0x30000: " << (int) decodedPacket[6] << '\n' << "0x40000: " << (int) decodedPacket[7] << '\n' << "0x50000: " << (int) decodedPacket[8] << '\n' << "0x60000: " << (int) decodedPacket[9] << '\n' << "0x70000: " << (int) decodedPacket[10] << '\n' << '\n';;
+			firstPacket = false;
+		}
+
+		string addr1 = decToHex(decodedPacket[subPacketOffset+2]);
+		string addr2 = decToHex(decodedPacket[subPacketOffset+3]);
+		string addr3 = decToHex(decodedPacket[subPacketOffset+4]);
+		decodedByteFile << "Target address for reflash: 0x" << addr1 << addr2 << addr3 << '\n';
+
+		//Lets check the checksum
+		uint8_t subPacketSum = 0;
+		for(uint8_t i = (subPacketOffset); i < (decodedPacket[subPacketOffset + 1] + subPacketOffset); i++)
+		{
+			subPacketSum += decodedPacket[i];
+		}
+		if(subPacketSum != decodedPacket[(decodedPacket[subPacketOffset + 1] + subPacketOffset)])
+		{
+			//checksum mismatch
+			cout << "Decoded packet checksum error: calc'd checksum: " << (int) subPacketSum << " checksum from decoded packet: " << (int) decodedPacket[(decodedPacket[subPacketOffset + 1] + subPacketOffset)] << '\n';
+		}
+
+		//write the decoded data to a file for observation
+		uint8_t dataCount = 0;
+		for(uint8_t i = (subPacketOffset + 5); i < (decodedPacket[subPacketOffset + 1] + subPacketOffset); i++)
+		{
+			string data = decToHex(decodedPacket[i]);
+			decodedByteFile << data;
+			dataCount += 1;
+			if(dataCount == 16)
+			{
+				decodedByteFile << '\n';
+				dataCount = 0;
+			}
+		}
+		decodedByteFile << '\n';
+
+		decodedByteFile.close();
+
+		/*
 			if(bytePlace < 16 || (bytePlace+1) < bytesInPacket)
 			{
 				mainPacketSum += getByteFromLine(line);
@@ -874,6 +1504,7 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 							decodeTable[i] = decodeTableDevBytes[i];
 						}
 					}*/
+		/*
 					uint16_t decodedWord = 0;
 					uint16_t decodingBit = 32768;
 					uint32_t remainder = tempByte%decodeMod;
@@ -989,10 +1620,8 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 				}
 			}
 			decodedByteFile.close();
-		}
+		 */
 	}
-
-	myfile.close();
 }
 
 

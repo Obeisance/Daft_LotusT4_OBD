@@ -85,8 +85,19 @@ int numLogParams = 0;
 int logMode[50] = {0};
 int logPID[50] = {0};
 uint8_t logDataSend[50][7] = {0};
+long filePosition = 0;
+
+//for the reflashing routines
 long lastPositionForReflashing = 0;
 uint8_t reflashingTimerProcMode = 0;
+bool stageIbootloader = false;
+uint16_t CRC = 0;
+uint32_t numpacketsSent = 0;
+long bytesToSend = 0;
+uint32_t addressToFlash = 0;
+bool getNextMessage = true;
+uint8_t packetBuffer[300];
+uint16_t bufferLength = 0;
 
 //for data plotting
 int plotXOrigin = 0;
@@ -352,7 +363,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.8",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.9",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -1790,11 +1801,12 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "Dev Bytes");
     	SendMessage(encodeByteTypeSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
     	SendMessage(encodeByteTypeSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
+    	HWND stageI = CreateWindow("BUTTON", "Use Stage I bootloader",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,170,8,170,18,hwnd,(HMENU) 6,NULL,NULL);
 
     	HWND encodeMessageButton = CreateWindow("BUTTON", "Encode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10,140,170,25,hwnd,(HMENU) 3,NULL,NULL);
     	HWND decodeMessageButton = CreateWindow("BUTTON", "Test Decode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10+10+10+170,140,210,25,hwnd,(HMENU) 4,NULL,NULL);
 
-    	HWND Instructions = CreateWindow("STATIC", "1) Write the name of the s-record file which contains rom with the bytes we'll send to the ECU as well as the name of the file which contains hex address ranges line-by-line \n 2) Choose the reflash encryption byte set \n 3) Encode the packet-> check the text file logs \n 4) Press 'Reflash ROM' and turn car to key-on",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,170,600,100,hwnd,NULL,NULL,NULL);
+    	HWND Instructions = CreateWindow("STATIC", "1) Write the name of the s-record file which contains rom with the bytes we'll send to the ECU as well as the name of the file which contains hex address ranges line-by-line \n 2) If using the Stage I bootloader, set the check box \n 3) If using the Stage II bootloader, choose the reflash encryption byte set \n 4) Encode the packet-> check the text file logs \n 5) Press 'Reflash ROM' and turn car to key-on",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,170,600,100,hwnd,NULL,NULL,NULL);
 
     	HWND reflash = CreateWindow("BUTTON", "Reflash ROM",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10,280,100,25,hwnd,(HMENU) 5,NULL,NULL);
     	break;
@@ -1811,6 +1823,9 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	HWND fileRangeTitleWindowHandle = FindWindowEx(parentWindowHandle,inputWindowHandle,NULL,NULL);//find the handle for the address range file name title
     	HWND fileRangeWindowHandle = FindWindowEx(parentWindowHandle,fileRangeTitleWindowHandle,NULL,NULL);//find the handle for the address range file name title
     	HWND encodeBytesWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the window where we select encoding bytes
+    	HWND stageIbootloaderCheckboxWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the checkbox that selects the stage I bootloader
+
+
 
 
     	switch(LOWORD (wParam))
@@ -1852,8 +1867,37 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		//finally, encode a message to send to the ECU
     		//this takes some time, so the program may act like it hangs for a bit...
     		cout << "Creating reflash packet... please wait" << '\n';
-    		createReflashPacket(srecFile, addressRangeFile, keyByteSet);
-    		cout << "Finished creating reflashing packet" << '\n';
+    		if(stageIbootloader)
+    		{
+    			//prepare stage I bootloader packet
+    			reflashingTimerProcMode = 4;
+    			CRC = 291;
+    			filePosition = 0;
+    			numpacketsSent = 0;
+    			ifstream addressRanges(addressRangeFile.c_str());
+    			string line = "";
+    			uint8_t address[3] = {0,0,0};
+    			if(addressRanges.is_open())
+    			{
+    				getline(addressRanges, line);
+    				bytesToSend = interpretAddressRange(line, address);
+    			}
+    			addressToFlash = (address[0] << 16) + (address[1] << 8) + (address[2]);
+    			ofstream outputPacket("encodedFlashBytes.txt", ios::trunc);
+    			outputPacket.close();
+    			CRC = stageIbootloaderRomFlashPacketBuilder(addressToFlash, bytesToSend, CRC, numpacketsSent, srecFile, filePosition);
+    			if(bytesToSend > 0)
+    			{
+    				SetTimer(hwnd, logPollTimer, 10, (TIMERPROC) NULL);//10 ms delay (or use 100ms)
+    			}
+    		}
+    		else
+    		{
+    			//prepare stage II bootloader packet- this takes a long time and the program will look like it 'locks up'
+    			createReflashPacket(srecFile, addressRangeFile, keyByteSet);
+    			cout << "Finished creating reflashing packet" << '\n';
+    		}
+    		//cout << "Finished creating reflashing packet" << '\n';
 
     		//try to return the filled in parameters to what they were before the operation
     		SendMessage(encodeBytesWindowHandle, CB_SETCURSEL, (WPARAM)keyByteSet, (LPARAM)0);//set the cursor to the keyByte-th item on the list (WPARAM)
@@ -1868,45 +1912,108 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	}
     	case 4:
     	{
-    		//we want to test decode an encoded file
-    		//figure out which key byte set we need...
-    		int keyByteSet = SendMessage(encodeBytesWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
-    		//decode the file
-    		cout << "Decoding the encoded file... please wait" << '\n';
-    		testReflashPacket(keyByteSet);
-    		cout << "Finished decoding the packet: please check the text file 'testDecodedFlashPacket.txt' and compare to your s-record" << '\n';
+    		if(stageIbootloader)
+    		{
+    			cout << "Nothing to decode for Stage I bootloader" << '\n';
+    		}
+    		else
+    		{
+    			//we want to test decode an encoded file
+    			//figure out which key byte set we need...
+    			int keyByteSet = SendMessage(encodeBytesWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+    			//decode the file
+    			cout << "Decoding the encoded file... please wait" << '\n';
+    			testReflashPacket(keyByteSet);
+    			cout << "Finished decoding the packet: please check the text file 'testDecodedFlashPacket.txt' and compare to your s-record" << '\n';
+    		}
     		break;
     	}
     	case 5:
     	{
-    		//we want to flash the ECU
-
-    		//open a COM port
-    		//update the stored com port value
-    		int comIndex = SendMessage(comportSelectWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
-    		SendMessage(comportSelectWindowHandle, (UINT) CB_GETLBTEXT, (WPARAM) comIndex, (LPARAM) ListItem);//global var ListItem will now contain the COM port name
-
-    		char baud[5] = {'2','9','7','6','9'};
-    		comPortHandle = setupComPort(baud, ListItem);//open the com port
-
-    		//run the 'pull l-line low' and send [1,113,114], read 0x8D routine
-    		bool success = true;
-    		comPortHandle = initializeReflashMode(comPortHandle, ListItem, success);
-
-    		//success = false;//set for testing
-
-    		//begin the timed routines by setting a timer
-    		if(success == true)
+    		if(stageIbootloader)
     		{
-    			cout << "reflash mode begin; time to send bytes.." << '\n';
-    			lastPositionForReflashing = 0;
-    			reflashingTimerProcMode = 0;
-    			SetTimer(hwnd, logPollTimer, 100, (TIMERPROC) NULL);
+    			cout << "Stage I bootloader: " << '\n';
+
+    			//we want to use the stage I bootloader to send messages
+
+    			//open a COM port
+    			//update the stored com port value
+    			int comIndex = SendMessage(comportSelectWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+    			SendMessage(comportSelectWindowHandle, (UINT) CB_GETLBTEXT, (WPARAM) comIndex, (LPARAM) ListItem);//global var ListItem will now contain the COM port name
+
+    			char baud[5] = {'0','9','6','1','7'};
+    			comPortHandle = setupComPort(baud, ListItem);//open the com port
+
+
+    			//run the 'pull l-line low' and send '83, 89, 78 while reading a byte between each' routine
+    			bool success = true;
+    			comPortHandle = initializeStageIReflashMode(comPortHandle, ListItem, success);
+
+
+    			//begin the timed routines by setting a timer
+    			if(success == true)
+    			{
+    				cout << "reflash mode begin; time to send bytes.." << '\n';
+    				//send the first packet
+    				uint8_t sendBuffer[12] = {2,48,48,48,56,48,200,3,163,188,0,51};
+    				writeToSerialPort(comPortHandle, sendBuffer, 12);
+    				uint8_t readBackSendBuffer[12];
+    				readFromSerialPort(comPortHandle, readBackSendBuffer, 12, 300);//read back the bytes we sent
+
+    				lastPositionForReflashing = 0;
+    				//switch to the mode where we read back bytes sent by the ECU
+    				reflashingTimerProcMode = 3;
+
+    				SetTimer(hwnd, logPollTimer, 10, (TIMERPROC) NULL);//10 ms timer
+    			}
+    			else
+    			{
+    				CloseHandle(comPortHandle);
+    			}
+
     		}
     		else
     		{
-    			CloseHandle(comPortHandle);
+    			cout << "stage II" << '\n';
+
+    			//we want to flash the ECU with the stage II bootloader - this is typically used to unlock the stage I bootloader
+
+    			//open a COM port
+    			//update the stored com port value
+    			int comIndex = SendMessage(comportSelectWindowHandle, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+    			SendMessage(comportSelectWindowHandle, (UINT) CB_GETLBTEXT, (WPARAM) comIndex, (LPARAM) ListItem);//global var ListItem will now contain the COM port name
+
+    			char baud[5] = {'2','9','7','6','9'};
+    			comPortHandle = setupComPort(baud, ListItem);//open the com port
+
+    			//run the 'pull l-line low' and send [1,113,114], read 0x8D routine
+    			bool success = true;
+    			comPortHandle = initializeReflashMode(comPortHandle, ListItem, success);
+
+    			//success = false;//set for testing
+
+    			//begin the timed routines by setting a timer
+    			if(success == true)
+    			{
+    				cout << "reflash mode begin; time to send bytes.." << '\n';
+    				lastPositionForReflashing = 0;
+    				reflashingTimerProcMode = 0;
+    				getNextMessage = true;
+    				SetTimer(hwnd, logPollTimer, 10, (TIMERPROC) NULL);
+    			}
+    			else
+    			{
+    				CloseHandle(comPortHandle);
+    			}
+
     		}
+    		break;
+    	}
+    	case 6:
+    	{
+    		//user pressed the checkbox for 'state I bootloader'
+    		stageIbootloader = !stageIbootloader;
+
     		break;
     	}
     	default:
@@ -1922,9 +2029,54 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	case WM_TIMER:
 		{
     		KillTimer(hwnd, logPollTimer);
+
+    		//first, load some of the window handles so that we can collect information from them
+    		//these are found in order so if any changes are made then the labels will be incorrect
+    		HWND parentWindowHandle = FindWindowEx(NULL,NULL,"ReflashModeClassName",NULL);//find the handle for the reflash mode window
+    		HWND returntoobdWindowHandle = FindWindowEx(parentWindowHandle,NULL,NULL,NULL);//find the handle for the return to obd mode button
+    		HWND comportSelectWindowHandle = FindWindowEx(parentWindowHandle,returntoobdWindowHandle,NULL,NULL);//find the handle for the comport select drop down
+    		HWND inputFileNameWindowHandle = FindWindowEx(parentWindowHandle,comportSelectWindowHandle,NULL,NULL);//find the handle for the input file name title
+    		HWND inputWindowHandle = FindWindowEx(parentWindowHandle,inputFileNameWindowHandle,NULL,NULL);//find the handle for the input file name
+
     		//cout << "hello!" << '\n';
     		if(reflashingTimerProcMode == 0)
     		{
+    			//stage II bootloader: send-packet to ECU
+    			//or
+    			//stage I bootloader: main ECU byte send sequence
+
+    			//load a packet
+    			if(getNextMessage)
+    			{
+    				bufferLength = readPacketLineToBuffer(packetBuffer, 300, lastPositionForReflashing);
+    			}
+
+    			//send the packet
+    			writeToSerialPort(comPortHandle, packetBuffer, bufferLength);
+    			uint8_t readBackSendBuffer[bufferLength];
+    			readFromSerialPort(comPortHandle, readBackSendBuffer, bufferLength, 300);//read back the packet we just sent
+
+    			//for debugging, print the packets as we send them- this is redundant with the 'read from serial port' function
+    			/*
+    			cout << "[ ";
+    			for(uint16_t i = 0; i < bufferLength; i++)
+    			{
+    				cout << (int) packetBuffer[i] << ' ';
+    			}
+    			cout << "]" << '\n';
+    			*/
+
+    			//then, move on to expect the ECU response
+    			if(stageIbootloader)
+    			{
+    				reflashingTimerProcMode = 3;//next, read the ECU response in the stage I bootloader
+    			}
+    			else
+    			{
+    				reflashingTimerProcMode = 1;//next, read the ECU response in the stage II bootloader
+    			}
+
+    			/*
     			uint8_t byteBuffer[256];
     			uint8_t responseBuffer[256];
     			bool finished = false;
@@ -1932,7 +2084,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			QueryPerformanceFrequency(&systemFreq);// get ticks per second
     			QueryPerformanceCounter(&startreflashTime);// start timer
 				*/
-
+    			/*
     			while(finished == false)
     			{
     				//refresh the bytes we will send next time
@@ -1943,6 +2095,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				double elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
     				std::cout << "time after reading in message: " << elapsedRunTime << '\n';*/
 
+    			/*
     				if(numBytesToSend == 0 || byteBuffer[1] == 115)
     				{
     					finished = true;
@@ -1956,6 +2109,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			}
     			cout << '\n';*/
 
+    			/*
     				//send the bytes too
     				writeToSerialPort(comPortHandle, byteBuffer, numBytesToSend);//send
     				readFromSerialPort(comPortHandle, responseBuffer,numBytesToSend+1,1000);//read in bytes
@@ -1965,6 +2119,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
     				std::cout << "time after sending message: " << elapsedRunTime << '\n';*/
 
+    			/*
     				if(responseBuffer[numBytesToSend] != (uint8_t) ~byteBuffer[numBytesToSend-1])
     				{
     					//the packet reader responds with a bit inverted checksum byte
@@ -2006,6 +2161,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
     				std::cout << "time after ECU ack: " << elapsedRunTime << '\n';*/
 
+    			/*
     				//prepare to send more bytes if things are okay
     				if(responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
     				{
@@ -2030,37 +2186,125 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
 
     			}
     			//reflashingTimerProcMode += 1;
+    			 *
+    			 */
     		}
     		if(reflashingTimerProcMode == 1)
     		{
-    			/*
+    			//stage II response from ECU - the timing for this process is very tight, so we
+    			//may not have the liberty to read this in and reply after a 10ms delay
+
     			//read response from ECU and reply
     			//we expect 0x02, 0x72, 0xFF, 0x73 -> we're done
-    			//or 0x02, 0x72, 0x00, 0x74 -> expect another packet
+    			//or 0x02, 0x72, 0x00, 0x74 -> all is well, expect another packet, or finish
     			uint8_t responseBytes[4] = {0,0,0,0};
     			readFromSerialPort(comPortHandle, responseBytes,4,1000);//read in bytes
 
-    			//finally, we send back 0xFD
-    			uint8_t toSend[1] = {0xFD};
+    			//finally, we send back the inverted sum byte
+    			uint8_t toSend[1] = {~responseBytes[3]};
     			writeToSerialPort(comPortHandle, toSend, 1);//send
     			uint8_t dumpBytes[1];
-    			readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent bytes
+    			readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
 
     			//prepare to send more bytes if things are okay
-    			if(responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
+    			if(packetBuffer[1] != 115 && responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
     			{
-    				reflashingTimerProcMode -= 1;
+    				reflashingTimerProcMode = 0;
     			}
     			else
     			{
     				cout << "reflash response from ECU indicates we're finished: " << (int) responseBytes[0] << ' ' << (int) responseBytes[1] << ' ' << (int) responseBytes[2] << ' ' << (int) responseBytes[3] << '\n';
     				reflashingTimerProcMode = 2;
     			}
-    			*/
+
     		}
+    		if(reflashingTimerProcMode == 3)
+    		{
+    			//stage I bootloader
+    			//receive the response of the ECU
+    			uint8_t receiveBuffer[12];
+    			int numRead = readFromSerialPort(comPortHandle, receiveBuffer, 12, 300);
+
+    			if(receiveBuffer[6] != 6 && receiveBuffer[6] != 21)
+    			{
+    				//send acknowledge packet
+    				uint8_t sendBuffer[12] = {2,48,48,48,56,48,6,3,90,5,223,255};// or neg ack: 2,48,48,48,56,48,21,3,221,13,124,48
+    				writeToSerialPort(comPortHandle, sendBuffer, 12);
+    				uint8_t readBackSendBuffer[12];
+    				readFromSerialPort(comPortHandle, readBackSendBuffer, 12, 300);
+    			}
+
+    			//then act based on what message the ECU sent
+    			if(receiveBuffer[6] == 202 || receiveBuffer[6] == 204 || receiveBuffer[6] == 208)
+    			{
+    				//signal to end
+    				reflashingTimerProcMode = 2;
+    			}
+    			else if(receiveBuffer[6] == 203)
+    			{
+    				//we can go ahead and send reflashing data
+    				reflashingTimerProcMode = 0;
+    				getNextMessage = true;
+    			}
+    			else if(receiveBuffer[6] == 21)
+    			{
+    				//neg ack means re-send the last message to the ECU
+    				getNextMessage = false;
+    			}
+    			else if(receiveBuffer[6] == 6)
+    			{
+    				//message ack - carry on - the ECU will send another message next
+    				getNextMessage = true;
+    			}
+
+    		}
+
+    		if(reflashingTimerProcMode == 4)
+    		{
+    			//build the packets for the stage I bootloader
+
+    			//extract the file names
+    			char windowText[100];
+    			//first, get the s-record file name
+    			int length = GetWindowText(inputWindowHandle,windowText,100);
+    			string srecFile = "";
+    			for(int i = 0; i < length; i++)
+    			{
+    				srecFile.push_back(windowText[i]);
+    			}
+    			//build stage I bootloader packet
+    			CRC = stageIbootloaderRomFlashPacketBuilder(addressToFlash, bytesToSend, CRC, numpacketsSent, srecFile, filePosition);
+    			if(bytesToSend <= 0)
+    			{
+    				//prepare the CRC message too
+    				uint8_t CRCToSendString[5] = {48,48,48,48,48};
+    				uint32_t factor = 10000;
+    				uint16_t CRCsplit = CRC;
+    				for(uint8_t i = 0; i < 5; i++)
+    				{
+    					uint8_t split = CRCsplit/factor;
+    					CRCToSendString[i] = split + 48;
+    					CRCsplit -= split*factor;
+    					factor = factor/10;
+    				}
+    				uint8_t CRCmessage[17] = {2,48,48,49,51,48,207,CRCToSendString[0],CRCToSendString[1],CRCToSendString[2],CRCToSendString[3],CRCToSendString[4],3,0,0,0,0};
+    				calculateCheckBytes(CRCmessage, 17);
+
+    				ofstream outputPacket("encodedFlashBytes.txt", ios::app);
+    				for(uint16_t i = 0; i < 17; i++)
+    				{
+    					outputPacket << (int) CRCmessage[i] << ' ';
+    				}
+    				outputPacket.close();
+    				reflashingTimerProcMode = 2;
+    				cout << "Finished building reflash packet set - check file." << '\n';
+    			}
+    		}
+
+
     		if(reflashingTimerProcMode != 2)
     		{
-    			SetTimer(hwnd, logPollTimer, 100, (TIMERPROC) NULL);
+    			SetTimer(hwnd, logPollTimer, 10, (TIMERPROC) NULL);//10 ms delay (or use 100ms)
     		}
     		else
     		{
