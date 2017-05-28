@@ -12,7 +12,7 @@ using namespace std;
 
 
 
-void createReflashPacket(string inputString, string reflashRanges, int encodeByteSet)
+void createReflashPacket(string inputString, string reflashRanges, int encodeByteSet, bool clearMemorySectors)
 {
 	//first, we must assemble the sub-packet which will be used for the reflashing.
 
@@ -52,6 +52,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	uint16_t numBytesToSend = 0;
 	uint16_t indexOfLastEncodedByte = 0;
 	uint16_t numPacketsToSend = 0;
+	uint8_t bitFlagMemorySectorErase = 0;
 
 	//erase previously saved file
 	ofstream decodedPacket("decoded packet.txt",ios::trunc);
@@ -107,10 +108,59 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				addressRanges.seekg(filePosition);//reset the file read-in position
 			}
 
+			//set the flags to clear relevant flash memory
+			if(clearMemorySectors)
+			{
+				uint32_t addressForFlashing = (address[0] << 16) + (address[1] << 8) + (address[2]);
+				uint32_t lastAddressInRange = addressForFlashing + numBytes - 1;
+				if((addressForFlashing >= 0x8000 && addressForFlashing < 0x10000) || (lastAddressInRange >= 0x8000 && lastAddressInRange < 0x10000))
+				{
+					//0x8000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 1;
+				}
+				if((addressForFlashing >= 0x10000 && addressForFlashing < 0x20000) || (lastAddressInRange >= 0x10000 && lastAddressInRange < 0x20000))
+				{
+					//0x10000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 2;
+				}
+				if((addressForFlashing >= 0x20000 && addressForFlashing < 0x30000) || (lastAddressInRange >= 0x20000 && lastAddressInRange < 0x30000))
+				{
+					//0x20000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 4;
+				}
+				if((addressForFlashing >= 0x30000 && addressForFlashing < 0x40000) || (lastAddressInRange >= 0x30000 && lastAddressInRange < 0x40000))
+				{
+					//0x30000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 8;
+				}
+				if((addressForFlashing >= 0x40000 && addressForFlashing < 0x50000) || (lastAddressInRange >= 0x40000 && lastAddressInRange < 0x50000))
+				{
+					//0x40000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 16;
+				}
+				if((addressForFlashing >= 0x50000 && addressForFlashing < 0x60000) || (lastAddressInRange >= 0x50000 && lastAddressInRange < 0x60000))
+				{
+					//0x50000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 32;
+				}
+				if((addressForFlashing >= 0x60000 && addressForFlashing < 0x70000) || (lastAddressInRange >= 0x60000 && lastAddressInRange < 0x70000))
+				{
+					//0x60000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 64;
+				}
+				if((addressForFlashing >= 0x70000 && addressForFlashing < 0x80000) || (lastAddressInRange >= 0x70000 && lastAddressInRange < 0x80000))
+				{
+					//0x70000
+					bitFlagMemorySectorErase = bitFlagMemorySectorErase | 128;
+				}
+			}
+
 			uint8_t packetLength = 3;//#, ID and sum bytes
+			uint8_t extraByte = 0;
 			if(firstPacket)
 			{
 				packetLength += 16;//unused bytes and 'index of last encoded byte + 5'
+				extraByte = 1;
 			}
 
 			uint8_t numBytesAvailableForEncodedMessage = maxBytesInMessage - packetLength;
@@ -141,7 +191,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				}
 				numAddressesToSend += 1;
 				numBytesToSend += packetLength + 3/2*(subPacketLength + numBytes);
-				indexOfLastEncodedByte += packetLength - 3 + 3*(subPacketLength + numBytes)/2;
+				indexOfLastEncodedByte += packetLength - 3 + 3*(subPacketLength + numBytes)/2 - extraByte;
 				numPacketsToSend += 1;
 				getNextLine = true;
 				firstPacket = false;
@@ -154,12 +204,12 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				if(lastPacket)
 				{
 					//the subsequent packet may be the last packet, but not this one
-					subPacketLength += 2;
+					subPacketLength -= 2;
 				}
 				firstPacket = false;//subsequent packets will not be the first packet
 				numAddressesToSend += 1;
 				numBytesToSend += packetLength + 3/2*(subPacketLength + maxNumDataBytes);
-				indexOfLastEncodedByte += packetLength - 3 + 3*(subPacketLength + maxNumDataBytes)/2;
+				indexOfLastEncodedByte += packetLength - 3 + 3*(subPacketLength + maxNumDataBytes)/2 - extraByte;
 				numPacketsToSend += 1;
 				numBytes -= maxNumDataBytes;
 				getNextLine = false;
@@ -315,14 +365,14 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 				subPacketBuffer[0] = 0;//blank
 				subPacketBuffer[1] = 0;//blank
 				subPacketBuffer[2] = 0;//blank
-				subPacketBuffer[3] = 0;//0x8000 sector clear flag -> stage II bootloader
-				subPacketBuffer[4] = 0;//0x10000 sector clear flag -> main code
-				subPacketBuffer[5] = 0;//0x20000 sector clear flag -> main code
-				subPacketBuffer[6] = 0;//0x30000 sector clear flag -> some of main code, mostly ??
-				subPacketBuffer[7] = 0;//0x40000 sector clear flag
-				subPacketBuffer[8] = 0;//0x50000 sector clear flag
-				subPacketBuffer[9] = 0;//0x60000 sector clear flag
-				subPacketBuffer[10] = 0;//0x70000 sector clear flag -> calibration tables
+				subPacketBuffer[3] = (bitFlagMemorySectorErase) & 1;//0x8000 sector clear flag -> stage II bootloader
+				subPacketBuffer[4] = (bitFlagMemorySectorErase >> 1) & 1;//0x10000 sector clear flag -> main code
+				subPacketBuffer[5] = (bitFlagMemorySectorErase >> 2) & 1;//0x20000 sector clear flag -> main code
+				subPacketBuffer[6] = (bitFlagMemorySectorErase >> 3) & 1;//0x30000 sector clear flag -> some of main code, mostly ??
+				subPacketBuffer[7] = (bitFlagMemorySectorErase >> 4) & 1;//0x40000 sector clear flag
+				subPacketBuffer[8] = (bitFlagMemorySectorErase >> 5) & 1;//0x50000 sector clear flag
+				subPacketBuffer[9] = (bitFlagMemorySectorErase >> 6) & 1;//0x60000 sector clear flag
+				subPacketBuffer[10] = (bitFlagMemorySectorErase >> 7) & 1;//0x70000 sector clear flag -> calibration tables
 				subPacketBuffer[11] = 85;//ID
 
 				subPacketBuffer[13] = address[0];
@@ -1368,10 +1418,8 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 				//add the byte into our combined word
 				encodedData += (packetBuffer[i] << 8*(encodedByteIndex%3));
 			}
-			encodedByteIndex += 1;
 
 			//check the index of the byte we're on
-			indexCounter += 1;
 			if(indexCounter == decodedWordSumIndex)
 			{
 				wordSumFromDecode = (decodedPacket[decodedPacketIndex - 1] << 8) + decodedPacket[decodedPacketIndex - 2];
@@ -1381,10 +1429,13 @@ read in a packet up to 256 bytes (over 1000 interrupt timer counts), store on 0x
 					cout << "Encoded word sum mismatch: calc'd word sum: " << (int) wordSum << " word sum from encoded data: " << (int) wordSumFromDecode << '\n';
 				}
 			}
-			else
+			else if(encodedByteIndex%3 == 2)
 			{
 				wordSum += decodedPacket[decodedPacketIndex - 1] + decodedPacket[decodedPacketIndex - 2];
+				//cout << (int) indexCounter << ' ' << (int) decodedWordSumIndex << ' ' << (int) wordSum << '\n';
 			}
+			encodedByteIndex += 1;
+			indexCounter += 1;
 		}
 
 		//now process the decoded packet

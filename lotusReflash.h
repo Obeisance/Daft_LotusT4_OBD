@@ -9,7 +9,7 @@
 using namespace std;
 
 
-void createReflashPacket(string inputString, string reflashRanges, int encodeByteSet);
+void createReflashPacket(string inputString, string reflashRanges, int encodeByteSet, bool clearMemorySectors);
 
 string decToHex(uint8_t decimal);
 

@@ -91,6 +91,7 @@ long filePosition = 0;
 long lastPositionForReflashing = 0;
 uint8_t reflashingTimerProcMode = 0;
 bool stageIbootloader = false;
+bool clearMemorySector = false;
 uint16_t CRC = 0;
 uint32_t numpacketsSent = 0;
 long bytesToSend = 0;
@@ -363,7 +364,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v0.9",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.0",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -1783,7 +1784,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
 
     	//initiate com port button
     	//create the combo box dropdown list
-    	HWND comPortSelect = CreateWindow("COMBOBOX", TEXT(""), WS_VISIBLE | WS_CHILD| WS_BORDER | CBS_DROPDOWNLIST,480,5,100,200,hwnd,(HMENU) 2,NULL,NULL);
+    	HWND comPortSelect = CreateWindow("COMBOBOX", TEXT(""), WS_VISIBLE | WS_CHILD| WS_BORDER | CBS_DROPDOWNLIST,520,5,100,200,hwnd,(HMENU) 2,NULL,NULL);
     	checkForAndPopulateComPortList(comPortSelect);//populate the com port dropdown list
     	SendMessage(comPortSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
     	SendMessage(comPortSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
@@ -1801,7 +1802,8 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "Dev Bytes");
     	SendMessage(encodeByteTypeSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
     	SendMessage(encodeByteTypeSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
-    	HWND stageI = CreateWindow("BUTTON", "Use Stage I bootloader",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,170,8,170,18,hwnd,(HMENU) 6,NULL,NULL);
+    	HWND stageI = CreateWindow("BUTTON", "Use Stage I bootloader",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,170,3,170,18,hwnd,(HMENU) 6,NULL,NULL);
+    	HWND clearMemorySector = CreateWindow("BUTTON", "Clear relevant memory sectors when reflashing",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,170,22,330,18,hwnd,(HMENU) 7,NULL,NULL);
 
     	HWND encodeMessageButton = CreateWindow("BUTTON", "Encode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10,140,170,25,hwnd,(HMENU) 3,NULL,NULL);
     	HWND decodeMessageButton = CreateWindow("BUTTON", "Test Decode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10+10+10+170,140,210,25,hwnd,(HMENU) 4,NULL,NULL);
@@ -1824,6 +1826,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	HWND fileRangeWindowHandle = FindWindowEx(parentWindowHandle,fileRangeTitleWindowHandle,NULL,NULL);//find the handle for the address range file name title
     	HWND encodeBytesWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the window where we select encoding bytes
     	HWND stageIbootloaderCheckboxWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the checkbox that selects the stage I bootloader
+    	HWND clearFlashMemorySectorCheckboxWindowHandle = FindWindowEx(parentWindowHandle,stageIbootloaderCheckboxWindowHandle,NULL,NULL);//find the handle for the checkbox that selects 'clear flash memory sector'
 
 
 
@@ -1894,7 +1897,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		else
     		{
     			//prepare stage II bootloader packet- this takes a long time and the program will look like it 'locks up'
-    			createReflashPacket(srecFile, addressRangeFile, keyByteSet);
+    			createReflashPacket(srecFile, addressRangeFile, keyByteSet, clearMemorySector);
     			cout << "Finished creating reflashing packet" << '\n';
     		}
     		//cout << "Finished creating reflashing packet" << '\n';
@@ -1998,6 +2001,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				cout << "reflash mode begin; time to send bytes.." << '\n';
     				lastPositionForReflashing = 0;
     				reflashingTimerProcMode = 0;
+    				attemptsAtInit = 0;
     				getNextMessage = true;
     				SetTimer(hwnd, logPollTimer, 10, (TIMERPROC) NULL);
     			}
@@ -2011,9 +2015,16 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	}
     	case 6:
     	{
-    		//user pressed the checkbox for 'state I bootloader'
+    		//user pressed the checkbox for 'stage I bootloader'
     		stageIbootloader = !stageIbootloader;
 
+    		break;
+    	}
+    	case 7:
+    	{
+    		//user pressed the checkbox for 'clear memory addresses during reflash'
+    		clearMemorySector = !clearMemorySector;
+    		//cout << "flag: clear memory sectors where we are reflashing" << '\n';
     		break;
     	}
     	default:
@@ -2055,6 +2066,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			writeToSerialPort(comPortHandle, packetBuffer, bufferLength);
     			uint8_t readBackSendBuffer[bufferLength];
     			readFromSerialPort(comPortHandle, readBackSendBuffer, bufferLength, 300);//read back the packet we just sent
+    			readFromSerialPort(comPortHandle, readBackSendBuffer, 1, 300);//read back the ECU's inverted check byte response
 
     			//for debugging, print the packets as we send them- this is redundant with the 'read from serial port' function
     			/*
@@ -2198,18 +2210,30 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			//we expect 0x02, 0x72, 0xFF, 0x73 -> we're done
     			//or 0x02, 0x72, 0x00, 0x74 -> all is well, expect another packet, or finish
     			uint8_t responseBytes[4] = {0,0,0,0};
-    			readFromSerialPort(comPortHandle, responseBytes,4,1000);//read in bytes
+    			int recvd = readFromSerialPort(comPortHandle, responseBytes,4,100);//read in bytes
 
     			//finally, we send back the inverted sum byte
-    			uint8_t toSend[1] = {~responseBytes[3]};
-    			writeToSerialPort(comPortHandle, toSend, 1);//send
-    			uint8_t dumpBytes[1];
-    			readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
+    			if(recvd > 0)
+    			{
+    				uint8_t toSend[1] = {~responseBytes[3]};
+    				writeToSerialPort(comPortHandle, toSend, 1);//send
+    				uint8_t dumpBytes[1];
+    				readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
+    			}
 
     			//prepare to send more bytes if things are okay
-    			if(packetBuffer[1] != 115 && responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
+    			if(recvd == 0 && attemptsAtInit < 0)
     			{
+    				//resend message- bypass for now
+    				getNextMessage = false;
     				reflashingTimerProcMode = 0;
+    				attemptsAtInit += 1;
+    			}
+    			else if(packetBuffer[1] != 115 && responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
+    			{
+    				getNextMessage = true;
+    				reflashingTimerProcMode = 0;
+    				attemptsAtInit = 0;
     			}
     			else
     			{
