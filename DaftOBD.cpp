@@ -365,7 +365,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.1",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.2",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -1909,16 +1909,16 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				bytesToSend = interpretAddressRange(line, address);
     			}
     			uint8_t sendBuffer[8] = {6,116,0,0,0,0,0,0x11C};//116 message is to read address data
-    			ofstream temp("temp.txt", ios::trunc);
+    			ofstream temp("encodedFlashBytes.txt", ios::trunc);
     			if(keyByteSet == 1)
     			{
     				//K4 encoded first message
-    				temp << "59 112 0 0 0 62 0 0 0 0 0 0 0 0 0 0 0 0 135 21 0 135 21 0 135 21 0 135 21 0 135 21 0 191 12 0 140 170 0 135 21 0 110 39 1 86 44 1 135 21 0 48 223 0 45 30 1 59 112 1 78 " << '\n';
+    				temp << "59 112 0 0 0 62 0 0 0 0 0 0 0 0 0 0 0 0 135 21 0 135 21 0 135 21 0 135 21 0 135 21 0 191 12 0 140 170 0 218 48 1 110 39 1 86 44 1 200 160 0 91 70 0 182 34 0 52 9 1 57 " << '\n';
     			}
     			else
     			{
     				//T4 encoded first message
-    				temp << "59 112 0 0 0 62 0 0 0 0 0 0 0 0 0 0 0 0 26 139 1 26 139 1 26 139 1 26 139 1 26 139 1 206 51 1 206 108 3 26 139 1 63 73 3 169 181 1 26 139 1 40 34 2 92 255 2 84 247 0 144 " << '\n';
+    				temp << "59 112 0 0 0 62 0 0 0 0 0 0 0 0 0 0 0 0 26 139 1 26 139 1 26 139 1 26 139 1 26 139 1 206 51 1 206 108 3 140 203 2 63 73 3 169 181 1 55 10 5 162 119 5 60 134 2 6 23 4 242 " << '\n';
     			}
     			for(long i = 0; i < bytesToSend; i+=16)
     			{
@@ -1974,13 +1974,15 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	}
     	case 4:
     	{
+    		//test decode bootloader packets
     		if(stageIbootloader)
     		{
-    			cout << "Nothing to decode for Stage I bootloader" << '\n';
+    			cout << "Nothing to decode for Stage I bootloader - these are not encrypted" << '\n';
     		}
     		else if(readMemory)
     		{
-    			//we want to decode the read memory packets
+    			//we want to decode the read memory packets - there's not much to do here
+    			cout << "Nothing to decode for Stage II bootloader read messages - these are not encrypted" << '\n';
     		}
     		else
     		{
@@ -2022,7 +2024,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			{
     				cout << "reflash mode begin; time to send bytes.." << '\n';
     				//send the first packet
-    				uint8_t sendBuffer[12] = {2,48,48,48,56,48,200,3,163,188,0,51};
+    				uint8_t sendBuffer[12] = {2,48,48,48,56,48,200,3,26,57,101,12};
     				writeToSerialPort(comPortHandle, sendBuffer, 12);
     				uint8_t readBackSendBuffer[12];
     				readFromSerialPort(comPortHandle, readBackSendBuffer, 12, 300);//read back the bytes we sent
@@ -2142,7 +2144,6 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			writeToSerialPort(comPortHandle, packetBuffer, bufferLength);
     			uint8_t readBackSendBuffer[bufferLength];
     			readFromSerialPort(comPortHandle, readBackSendBuffer, bufferLength, 300);//read back the packet we just sent
-    			readFromSerialPort(comPortHandle, readBackSendBuffer, 1, 300);//read back the ECU's inverted check byte response
 
     			//for debugging, print the packets as we send them- this is redundant with the 'read from serial port' function
     			/*
@@ -2161,121 +2162,10 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			}
     			else
     			{
+    				readFromSerialPort(comPortHandle, readBackSendBuffer, 1, 300);//read back the ECU's inverted check byte response
     				reflashingTimerProcMode = 1;//next, read the ECU response in the stage II bootloader
     			}
 
-    			/*
-    			uint8_t byteBuffer[256];
-    			uint8_t responseBuffer[256];
-    			bool finished = false;
-    			/*LARGE_INTEGER startreflashTime, stepTime, systemFreq;
-    			QueryPerformanceFrequency(&systemFreq);// get ticks per second
-    			QueryPerformanceCounter(&startreflashTime);// start timer
-				*/
-    			/*
-    			while(finished == false)
-    			{
-    				//refresh the bytes we will send next time
-    				int numBytesToSend = readCodedMessageIntoBuffer(lastPositionForReflashing, byteBuffer);
-
-    				/*QueryPerformanceCounter(&stepTime);
-    				double runTime = (stepTime.QuadPart - startreflashTime.QuadPart)*1000 / systemFreq.QuadPart;// compute the elapsed time in milliseconds
-    				double elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
-    				std::cout << "time after reading in message: " << elapsedRunTime << '\n';*/
-
-    			/*
-    				if(numBytesToSend == 0 || byteBuffer[1] == 115)
-    				{
-    					finished = true;
-    					reflashingTimerProcMode = 2;//signal to end
-    				}
-
-    				/*cout << "Send " << (int) numBytesToSend << " bytes" << '\n';
-    			for(int i = 0; i < numBytesToSend; i++)
-    			{
-    				cout << (int) byteBuffer[i] << ' ';
-    			}
-    			cout << '\n';*/
-
-    			/*
-    				//send the bytes too
-    				writeToSerialPort(comPortHandle, byteBuffer, numBytesToSend);//send
-    				readFromSerialPort(comPortHandle, responseBuffer,numBytesToSend+1,1000);//read in bytes
-
-    				/*QueryPerformanceCounter(&stepTime);
-    				runTime = (stepTime.QuadPart - startreflashTime.QuadPart)*1000 / systemFreq.QuadPart;// compute the elapsed time in milliseconds
-    				elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
-    				std::cout << "time after sending message: " << elapsedRunTime << '\n';*/
-
-    			/*
-    				if(responseBuffer[numBytesToSend] != (uint8_t) ~byteBuffer[numBytesToSend-1])
-    				{
-    					//the packet reader responds with a bit inverted checksum byte
-    					//if this is not what we read back, then some communication error has happened
-    					cout << "ECU ack. checksum byte: " << (uint8_t) ~responseBuffer[numBytesToSend] << ", but should be: " << (int) byteBuffer[numBytesToSend - 1] << '\n';
-    				}
-
-
-    				//read response from ECU and reply
-    				//we expect 0x02, 0x72, 0xFF, 0x73 -> we're done, there was an error
-    				//or 0x02, 0x72, 0x00, 0x74 -> expect another packet, or we've reached the end
-    				uint8_t responseBytes[4] = {0,0,0,0};
-    				readFromSerialPort(comPortHandle, responseBytes,4,1000);//read in bytes
-
-    				//finally, we send back the bit inverted sum byte from the previously read message
-    				uint8_t invertSum = ~responseBytes[3];
-    				uint8_t toSend[1] = {invertSum};
-    				writeToSerialPort(comPortHandle, toSend, 1);//send
-    				uint8_t dumpBytes[1];
-    				readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
-
-    				/*
-    				//lets do that again 2x... ??
-    				readFromSerialPort(comPortHandle, responseBytes,4,1000);//read in bytes
-    				invertSum = ~responseBytes[3];
-    				toSend[1] = {invertSum};
-    				writeToSerialPort(comPortHandle, toSend, 1);//send
-    				readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent bytes
-
-    				readFromSerialPort(comPortHandle, responseBytes,4,1000);//read in bytes
-    				invertSum = ~responseBytes[3];
-    				toSend[1] = {invertSum};
-    				writeToSerialPort(comPortHandle, toSend, 1);//send
-    				readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent bytes
-					*/
-
-    				/*QueryPerformanceCounter(&stepTime);
-    				runTime = (stepTime.QuadPart - startreflashTime.QuadPart)*1000 / systemFreq.QuadPart;// compute the elapsed time in milliseconds
-    				elapsedRunTime = runTime/1000;//this is an attempt to get post-decimal points
-    				std::cout << "time after ECU ack: " << elapsedRunTime << '\n';*/
-
-    			/*
-    				//prepare to send more bytes if things are okay
-    				if(responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
-    				{
-    					//ECU reports proper sequence is occurring
-    					//keep reading in bytes
-
-    					//reflashingTimerProcMode -= 1;
-    				}
-    				else if(responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0xFF && responseBytes[3] == 0x73)
-    				{
-    					//ECU reports erroneous condition
-    					cout << "reflash response from ECU indicates there was an error: " << (int) responseBytes[0] << ' ' << (int) responseBytes[1] << ' ' << (int) responseBytes[2] << ' ' << (int) responseBytes[3] << '\n';
-    					finished = true;
-    					reflashingTimerProcMode = 2;
-    				}
-    				else
-    				{
-    					cout << "invalid response from ECU" << '\n';
-    					finished = true;
-    					reflashingTimerProcMode = 2;
-    				}
-
-    			}
-    			//reflashingTimerProcMode += 1;
-    			 *
-    			 */
     		}
     		if(reflashingTimerProcMode == 1)
     		{
@@ -2290,7 +2180,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			{
     				//read the response to a read ROM request
     				uint8_t responseBytes[20] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    				int recvd = readFromSerialPort(comPortHandle, responseBytes,19,100);//read in bytes
+    				int recvd = readFromSerialPort(comPortHandle, responseBytes,19,1000);//read in bytes
 
     				//finally, we send back the inverted sum byte
     				if(recvd > 0)
@@ -2310,13 +2200,14 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     					HEXdata.append(byte);
     				}
     				buildSREC(addressToWrite, HEXdata);
-
+    				getNextMessage = true;
+    				reflashingTimerProcMode = 0;
     			}
     			else
     			{
     				//read the response to the reflash ROM request
     				uint8_t responseBytes[4] = {0,0,0,0};
-    				int recvd = readFromSerialPort(comPortHandle, responseBytes,4,100);//read in bytes
+    				int recvd = readFromSerialPort(comPortHandle, responseBytes,4,10000);//read in bytes
 
     				//finally, we send back the inverted sum byte
     				if(recvd > 0)
@@ -2330,7 +2221,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				//prepare to send more bytes if things are okay
     				if(recvd == 0 && attemptsAtInit < 0)
     				{
-    					//resend message- bypass for now
+    					//resend message- bypass for now (by looking for attemptsAtInit below 0)
     					getNextMessage = false;
     					reflashingTimerProcMode = 0;
     					attemptsAtInit += 1;
@@ -2353,39 +2244,67 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		{
     			//stage I bootloader
     			//receive the response of the ECU
-    			uint8_t receiveBuffer[12];
-    			int numRead = readFromSerialPort(comPortHandle, receiveBuffer, 12, 300);
+    			uint8_t receiveBuffer[30];
+    			int numRead = readFromSerialPort(comPortHandle, receiveBuffer, 5, 1000);//read in the byte count set
+    			if(numRead == 5)
+    			{
+    				uint32_t bytesLeft = ((receiveBuffer[1]-48)*1000) + ((receiveBuffer[2]-48)*100) + ((receiveBuffer[3]-48)*10) + (receiveBuffer[4]-48) - 1;
+    				uint8_t readTheRest[bytesLeft];
+    				numRead = readFromSerialPort(comPortHandle, readTheRest, bytesLeft, 10000);//read in the byte count set
+    				for(uint32_t i = 0; i < numRead; i++)
+    				{
+    					receiveBuffer[5 + i] = readTheRest[i];
+    				}
 
-    			if(receiveBuffer[6] != 6 && receiveBuffer[6] != 21)
-    			{
-    				//send acknowledge packet
-    				uint8_t sendBuffer[12] = {2,48,48,48,56,48,6,3,90,5,223,255};// or neg ack: 2,48,48,48,56,48,21,3,221,13,124,48
-    				writeToSerialPort(comPortHandle, sendBuffer, 12);
-    				uint8_t readBackSendBuffer[12];
-    				readFromSerialPort(comPortHandle, readBackSendBuffer, 12, 300);
-    			}
+    				if(receiveBuffer[6] != 6 && receiveBuffer[6] != 21)
+    				{
+    					//send acknowledge packet
+    					uint8_t sendBuffer[12] = {2,48,48,48,56,48,6,3,227,245,208,192};// or neg ack: 2,48,48,48,56,48,21,3,100,109,204,15
+    					writeToSerialPort(comPortHandle, sendBuffer, 12);
+    					uint8_t readBackSendBuffer[12];
+    					readFromSerialPort(comPortHandle, readBackSendBuffer, 12, 3000);
+    				}
 
-    			//then act based on what message the ECU sent
-    			if(receiveBuffer[6] == 202 || receiveBuffer[6] == 204 || receiveBuffer[6] == 208)
-    			{
-    				//signal to end
-    				reflashingTimerProcMode = 2;
+    				//then act based on what message the ECU sent
+    				if(receiveBuffer[6] == 202 || receiveBuffer[6] == 204 || receiveBuffer[6] == 208)
+    				{
+    					//signal to end
+    					reflashingTimerProcMode = 2;
+    				}
+    				else if(receiveBuffer[6] == 203)
+    				{
+    					//we can go ahead and send reflashing data
+    					reflashingTimerProcMode = 0;
+    					//then check for the ID of the message that the ECU is expecting:
+    					uint32_t IDexpected = ((receiveBuffer[7] - 48)*100000) + ((receiveBuffer[8] - 48)*10000) + ((receiveBuffer[9] - 48)*1000) + ((receiveBuffer[10] - 48)*100) + ((receiveBuffer[11] - 48)*10) + ((receiveBuffer[12] - 48));
+    					uint32_t IDreadyToSend = ((packetBuffer[7] - 48)*100000) + ((packetBuffer[8] - 48)*10000) + ((packetBuffer[9] - 48)*1000) + ((packetBuffer[10] - 48)*100) + ((packetBuffer[11] - 48)*10) + ((packetBuffer[12] - 48));
+    					if(IDexpected != IDreadyToSend)
+    					{
+    						//if the ECU shows different data, then we need a new packet
+    						getNextMessage = true;
+    					}
+    					else
+    					{
+    						//if the ECU shows the same data, then we re-send
+    						getNextMessage = false;
+    					}
+    				}
+    				else if(receiveBuffer[6] == 21)
+    				{
+    					//neg ack means re-send the last message to the ECU
+    					getNextMessage = false;
+    				}
+    				else if(receiveBuffer[6] == 6)
+    				{
+    					//message ack - carry on - the ECU will send another message next
+    					getNextMessage = true;
+    				}
     			}
-    			else if(receiveBuffer[6] == 203)
+    			else
     			{
-    				//we can go ahead and send reflashing data
-    				reflashingTimerProcMode = 0;
-    				getNextMessage = true;
-    			}
-    			else if(receiveBuffer[6] == 21)
-    			{
-    				//neg ack means re-send the last message to the ECU
+    				//if we have a timeout, try resending
     				getNextMessage = false;
-    			}
-    			else if(receiveBuffer[6] == 6)
-    			{
-    				//message ack - carry on - the ECU will send another message next
-    				getNextMessage = true;
+    				reflashingTimerProcMode = 0;
     			}
 
     		}

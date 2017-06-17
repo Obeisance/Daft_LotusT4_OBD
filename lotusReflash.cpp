@@ -1978,7 +1978,7 @@ void calculateCheckBytes(uint8_t *packet, uint16_t packetLength)
 	{
 		//loop through all packet bytes
 		uint8_t packetByte = packet[i];//load the packet byte
-		uint8_t keyShift = polynomial >> 8;//shift the polynomial 8 bits right
+		uint32_t keyShift = polynomial >> 8;//shift the polynomial 8 bits right
 		uint32_t packetByteLong = packetByte + 170;//note the shift to long words
 		packetByteLong = packetByteLong ^ polynomial;//exclusive OR
 		packetByteLong = packetByteLong & 255;//byte mask as index for lookup long word
@@ -2290,6 +2290,7 @@ uint16_t buildStageIbootloaderPacket(uint8_t *packetBuffer, uint16_t bufferLengt
 		packetLength = 18+numBytesToSend;
 		packetBuffer[0] = 2;
 		uint16_t tempNumSplit = numBytesToSend + 8 + 6;
+		//calculate the ascii number to put in the beginning of the packet
 		char numToSendString[4] = {48,48,48,48};
 		uint32_t factor = 1000;
 		for(uint8_t i = 0; i < 4; i++)
@@ -2303,9 +2304,10 @@ uint16_t buildStageIbootloaderPacket(uint8_t *packetBuffer, uint16_t bufferLengt
 		packetBuffer[2] = numToSendString[1];
 		packetBuffer[3] = numToSendString[2];
 		packetBuffer[4] = numToSendString[3];
-		packetBuffer[5] = 48;
+		packetBuffer[5] = 48;//the ECU increments this counter, but I don't think that it checks the user sent value
 		packetBuffer[6] = 206;
 
+		//calculate the packets-sent number to send to the ECU
 		tempNumSplit = numPacketsSent;
 		char numPacketsString[6] = {48,48,48,48,48,48};
 		factor = 100000;
@@ -2366,9 +2368,9 @@ uint16_t stageIbootloaderRomFlashPacketBuilder(uint32_t &addressToFlash, long &b
 	if(bytesLeftToSend > 0)
 	{
 		uint8_t bytesToSend = 0;
-		if(bytesLeftToSend > 255)
+		if(bytesLeftToSend > 254)
 		{
-			bytesToSend = 255;
+			bytesToSend = 254;//make sure to send an even number! we can reprogram the flash memory chip in 'word' increments
 		}
 		else
 		{
