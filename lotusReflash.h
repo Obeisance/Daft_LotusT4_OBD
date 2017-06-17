@@ -40,3 +40,7 @@ uint16_t buildStageIbootloaderPacket(uint8_t *packetBuffer, uint16_t bufferLengt
 uint16_t stageIbootloaderRomFlashPacketBuilder(uint32_t &addressToFlash, long &bytesLeftToSend, uint16_t CRC, uint32_t &packetsSent, string filename, long &filePos);
 
 uint16_t readPacketLineToBuffer(uint8_t *buffer, uint16_t bufferLength, long &lastFilePosition);
+
+void buildSREC(uint32_t address, string HEXdata);
+
+string decimal_to_hexString(uint32_t number);

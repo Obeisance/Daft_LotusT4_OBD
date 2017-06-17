@@ -243,7 +243,7 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 	uint32_t decodeMultiple = 3182;
 	if(encodeByteSet == 1)
 	{
-		//switch to the byte set in the DEV ECU
+		//switch to the byte set in the DEV (K4-like) ECU
 		decodeMod = 119619;
 		decodeMultiple = 20096;
 		uint32_t decodeTableDevBytes[16] = {0x1,0x3,0x6,0xC,0x19,0x30,0x64,0xC8,0x18C,0x3EB,0x708,0xEA4,0x1CB6,0x3B6B,0x74D0,0xE9A1};
@@ -2443,4 +2443,95 @@ uint16_t readPacketLineToBuffer(uint8_t *buffer, uint16_t bufferLength, long &la
 	}
 
 	return packetLength;
+}
+
+void buildSREC(uint32_t address, string HEXdata)
+{
+	ofstream newSREC("ROM read.txt",ios::app);
+	if(HEXdata.length() == 32)
+	{
+		//we have enough data, so proceed
+		//convert the address to a hex string
+		string addressString = decimal_to_hexString(address);
+		if(addressString.length() < 8)
+		{
+			string zeros = "";
+			for(uint8_t i = 0; i < (8 - addressString.length()); i++)
+			{
+				zeros.push_back('0');
+			}
+			zeros.append(addressString);
+			addressString = zeros;
+		}
+		string allDataForSum = "";
+		allDataForSum.append(addressString);
+		for(uint8_t i = 0; i < HEXdata.length();i++)
+		{
+			if(HEXdata[i] >= 97 && HEXdata[i] <= 102)
+			{
+				allDataForSum.push_back(HEXdata[i] - 32);
+			}
+			else
+			{
+				allDataForSum.push_back(HEXdata[i]);
+			}
+		}
+
+		//then loop through the data to get a sum
+		uint8_t sum = 21;
+		for(uint8_t i = 0; i < allDataForSum.length(); i+=2)
+		{
+			char zero = allDataForSum[i];
+			char one = allDataForSum[i+1];
+			if(zero >= 48 && zero <= 57)
+			{
+				sum += (zero-48) << 4;
+			}
+			else if(zero >= 65 && zero <= 70)
+			{
+				sum += (zero-55) << 4;
+			}
+			if(one >= 48 && one <= 57)
+			{
+				sum += (one-48);
+			}
+			else if(one >= 65 && one <= 70)
+			{
+				sum += (one-55);
+			}
+		}
+
+		sum = ~sum;//invert the bits of the sum
+		string sumString = decimal_to_hexString(sum);
+		string line = "S315";
+		line.append(allDataForSum);
+		line.append(sumString);
+		newSREC << line << '\n';
+	}
+	newSREC.close();
+}
+
+string decimal_to_hexString(uint32_t number)
+{
+	//input a base10 number in a string, output a string with the equivalent hex number
+	string hexNumber = "";
+    char stringByte [12];//temporarily stores the output number
+
+	//convert to hex
+	hexNumber = itoa(number,stringByte,16);
+	for(int i = 0; i < hexNumber.length(); i++)
+	{
+		if(hexNumber[i] == 'a' || hexNumber[i] == 'b' || hexNumber[i] == 'c' || hexNumber[i] == 'd' || hexNumber[i] == 'e' || hexNumber[i] == 'f')
+		{
+			hexNumber[i] -= 32;//switch to upper case
+		}
+	}
+	if(hexNumber.length() == 1)
+	{
+		string tempString = "0";
+		tempString.append(hexNumber);
+		hexNumber = tempString;
+	}
+
+	return hexNumber;
 }

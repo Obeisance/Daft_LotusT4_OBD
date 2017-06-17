@@ -92,6 +92,7 @@ long lastPositionForReflashing = 0;
 uint8_t reflashingTimerProcMode = 0;
 bool stageIbootloader = false;
 bool clearMemorySector = false;
+bool readMemory = false;
 uint16_t CRC = 0;
 uint32_t numpacketsSent = 0;
 long bytesToSend = 0;
@@ -364,7 +365,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.0",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.1",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -1792,25 +1793,26 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	HWND inputFileName = CreateWindow("STATIC", "Input file name of s-record which contains bytes for reflashing:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,40,450,19,hwnd,NULL,NULL,NULL);
     	HWND input = CreateWindow("EDIT", "",WS_VISIBLE | WS_CHILD,5,65,600,20,hwnd,NULL,NULL,NULL);
 
-    	HWND inputReflashRange = CreateWindow("STATIC", "Input file name which contains address ranges for reflashing:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,90,450,19,hwnd,NULL,NULL,NULL);
+    	HWND inputReflashRange = CreateWindow("STATIC", "Input file name which contains address ranges for reflashing/reading:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,90,470,19,hwnd,NULL,NULL,NULL);
     	HWND reflashRange = CreateWindow("EDIT", "",WS_VISIBLE | WS_CHILD,5,115,600,20,hwnd,NULL,NULL,NULL);
 
     	//initiate encoding bytes button
     	//create the combo box dropdown list
-    	HWND encodeByteTypeSelect = CreateWindow("COMBOBOX", TEXT("Dev Bytes"), WS_VISIBLE | WS_CHILD| WS_BORDER | CBS_DROPDOWNLIST,10,140,150,200,hwnd,(HMENU) 2,NULL,NULL);
-    	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "Standard Bytes");
-    	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "Dev Bytes");
+    	HWND encodeByteTypeSelect = CreateWindow("COMBOBOX", TEXT("------"), WS_VISIBLE | WS_CHILD| WS_BORDER | CBS_DROPDOWNLIST,10,140,150,200,hwnd,(HMENU) 2,NULL,NULL);
+    	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "T4, C121E0001F K0303");
+    	SendMessage(encodeByteTypeSelect,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) "K4, C117M0039F K0205");
     	SendMessage(encodeByteTypeSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
     	SendMessage(encodeByteTypeSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
     	HWND stageI = CreateWindow("BUTTON", "Use Stage I bootloader",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,170,3,170,18,hwnd,(HMENU) 6,NULL,NULL);
     	HWND clearMemorySector = CreateWindow("BUTTON", "Clear relevant memory sectors when reflashing",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,170,22,330,18,hwnd,(HMENU) 7,NULL,NULL);
+    	HWND readMemory = CreateWindow("BUTTON", "Read memory",WS_VISIBLE | WS_CHILD|BS_AUTOCHECKBOX,350,3,120,18,hwnd,(HMENU) 8,NULL,NULL);
 
-    	HWND encodeMessageButton = CreateWindow("BUTTON", "Encode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10,140,170,25,hwnd,(HMENU) 3,NULL,NULL);
-    	HWND decodeMessageButton = CreateWindow("BUTTON", "Test Decode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10+10+10+170,140,210,25,hwnd,(HMENU) 4,NULL,NULL);
+    	HWND encodeMessageButton = CreateWindow("BUTTON", "Encode Reflash/Read Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10,140,220,25,hwnd,(HMENU) 3,NULL,NULL);
+    	HWND decodeMessageButton = CreateWindow("BUTTON", "Test Decode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10+10+10+220,140,210,25,hwnd,(HMENU) 4,NULL,NULL);
 
     	HWND Instructions = CreateWindow("STATIC", "1) Write the name of the s-record file which contains rom with the bytes we'll send to the ECU as well as the name of the file which contains hex address ranges line-by-line \n 2) If using the Stage I bootloader, set the check box \n 3) If using the Stage II bootloader, choose the reflash encryption byte set \n 4) Encode the packet-> check the text file logs \n 5) Press 'Reflash ROM' and turn car to key-on",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,170,600,100,hwnd,NULL,NULL,NULL);
 
-    	HWND reflash = CreateWindow("BUTTON", "Reflash ROM",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10,280,100,25,hwnd,(HMENU) 5,NULL,NULL);
+    	HWND reflash = CreateWindow("BUTTON", "Reflash/Read ROM",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10,280,130,25,hwnd,(HMENU) 5,NULL,NULL);
     	break;
     }
     case WM_COMMAND:
@@ -1827,6 +1829,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	HWND encodeBytesWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the window where we select encoding bytes
     	HWND stageIbootloaderCheckboxWindowHandle = FindWindowEx(parentWindowHandle,fileRangeWindowHandle,NULL,NULL);//find the handle for the checkbox that selects the stage I bootloader
     	HWND clearFlashMemorySectorCheckboxWindowHandle = FindWindowEx(parentWindowHandle,stageIbootloaderCheckboxWindowHandle,NULL,NULL);//find the handle for the checkbox that selects 'clear flash memory sector'
+    	HWND readMemoryCheckboxWindowHandle = FindWindowEx(parentWindowHandle,clearFlashMemorySectorCheckboxWindowHandle,NULL,NULL);//find the handle for the checkbox that selects 'read memory'
 
 
 
@@ -1894,6 +1897,62 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				SetTimer(hwnd, logPollTimer, 10, (TIMERPROC) NULL);//10 ms delay (or use 100ms)
     			}
     		}
+    		else if(readMemory)
+    		{
+    			//collect the address range to flash, only read in one line from the file
+    			ifstream addressRanges(addressRangeFile.c_str());
+    			string line = "";
+    			uint8_t address[3] = {0,0,0};
+    			if(addressRanges.is_open())
+    			{
+    				getline(addressRanges, line);
+    				bytesToSend = interpretAddressRange(line, address);
+    			}
+    			uint8_t sendBuffer[8] = {6,116,0,0,0,0,0,0x11C};//116 message is to read address data
+    			ofstream temp("temp.txt", ios::trunc);
+    			if(keyByteSet == 1)
+    			{
+    				//K4 encoded first message
+    				temp << "59 112 0 0 0 62 0 0 0 0 0 0 0 0 0 0 0 0 135 21 0 135 21 0 135 21 0 135 21 0 135 21 0 191 12 0 140 170 0 135 21 0 110 39 1 86 44 1 135 21 0 48 223 0 45 30 1 59 112 1 78 " << '\n';
+    			}
+    			else
+    			{
+    				//T4 encoded first message
+    				temp << "59 112 0 0 0 62 0 0 0 0 0 0 0 0 0 0 0 0 26 139 1 26 139 1 26 139 1 26 139 1 26 139 1 206 51 1 206 108 3 26 139 1 63 73 3 169 181 1 26 139 1 40 34 2 92 255 2 84 247 0 144 " << '\n';
+    			}
+    			for(long i = 0; i < bytesToSend; i+=16)
+    			{
+    				uint8_t byteSum = 0;
+    				sendBuffer[3] = address[0];
+    				sendBuffer[4] = address[1];
+    				sendBuffer[5] = address[2];
+    				sendBuffer[6] = 16;//for my convenience, always read 16 bytes
+    				//calculate the checksum
+    				//then upload the packet to the temporary document and increment the total byte sum
+    				for(uint8_t j = 0; j < 7; j++)
+    				{
+    					temp << (int) sendBuffer[j] << ' ';
+    					byteSum += sendBuffer[j];
+    				}
+    				sendBuffer[7] = byteSum;
+    				temp << (int) sendBuffer[7] << ' ' << '\n';
+    				//then increment the address
+    				uint8_t prevAddrByte3 = address[2];
+    				uint8_t prevAddrByte2 = address[1];
+    				address[2] += 16;
+    				if(address[2] < prevAddrByte3)
+    				{
+    					address[1] += 1;
+    					if(address[1] < prevAddrByte2)
+    					{
+    						address[0] += 1;
+    					}
+    				}
+    			}
+    			temp << "1 115 116 ";
+    			temp.close();
+    			cout << "Finished creating read packets" << '\n';
+    		}
     		else
     		{
     			//prepare stage II bootloader packet- this takes a long time and the program will look like it 'locks up'
@@ -1919,6 +1978,10 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		{
     			cout << "Nothing to decode for Stage I bootloader" << '\n';
     		}
+    		else if(readMemory)
+    		{
+    			//we want to decode the read memory packets
+    		}
     		else
     		{
     			//we want to test decode an encoded file
@@ -1933,6 +1996,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	}
     	case 5:
     	{
+    		//we want to send messages---
     		if(stageIbootloader)
     		{
     			cout << "Stage I bootloader: " << '\n';
@@ -1979,6 +2043,12 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		{
     			cout << "stage II" << '\n';
 
+    			if(readMemory)
+    			{
+    				//clear the read file to get ready for a new data set
+    				ofstream newSREC("ROM read.txt",ios::trunc);
+    				newSREC.close();
+    			}
     			//we want to flash the ECU with the stage II bootloader - this is typically used to unlock the stage I bootloader
 
     			//open a COM port
@@ -2025,6 +2095,12 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		//user pressed the checkbox for 'clear memory addresses during reflash'
     		clearMemorySector = !clearMemorySector;
     		//cout << "flag: clear memory sectors where we are reflashing" << '\n';
+    		break;
+    	}
+    	case 8:
+    	{
+    		//user pressed the checkbox for 'read memory'
+    		readMemory = !readMemory;
     		break;
     	}
     	default:
@@ -2209,36 +2285,67 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			//read response from ECU and reply
     			//we expect 0x02, 0x72, 0xFF, 0x73 -> we're done
     			//or 0x02, 0x72, 0x00, 0x74 -> all is well, expect another packet, or finish
-    			uint8_t responseBytes[4] = {0,0,0,0};
-    			int recvd = readFromSerialPort(comPortHandle, responseBytes,4,100);//read in bytes
+    			//or a 112 message in response to a request to read data
+    			if(readMemory && packetBuffer[1] == 116)
+    			{
+    				//read the response to a read ROM request
+    				uint8_t responseBytes[20] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    				int recvd = readFromSerialPort(comPortHandle, responseBytes,19,100);//read in bytes
 
-    			//finally, we send back the inverted sum byte
-    			if(recvd > 0)
-    			{
-    				uint8_t toSend[1] = {~responseBytes[3]};
-    				writeToSerialPort(comPortHandle, toSend, 1);//send
-    				uint8_t dumpBytes[1];
-    				readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
-    			}
+    				//finally, we send back the inverted sum byte
+    				if(recvd > 0)
+    				{
+    					uint8_t toSend[1] = {~responseBytes[18]};
+    					writeToSerialPort(comPortHandle, toSend, 1);//send
+    					uint8_t dumpBytes[1];
+    					readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
+    				}
 
-    			//prepare to send more bytes if things are okay
-    			if(recvd == 0 && attemptsAtInit < 0)
-    			{
-    				//resend message- bypass for now
-    				getNextMessage = false;
-    				reflashingTimerProcMode = 0;
-    				attemptsAtInit += 1;
-    			}
-    			else if(packetBuffer[1] != 115 && responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
-    			{
-    				getNextMessage = true;
-    				reflashingTimerProcMode = 0;
-    				attemptsAtInit = 0;
+    				//then write the data to an S-record file
+    				uint32_t addressToWrite = (packetBuffer[2] << 24) + (packetBuffer[3] << 16) + (packetBuffer[4] << 8) + packetBuffer[5];
+    				string HEXdata = "";
+    				for(uint8_t i = 0; i < 16; i++)
+    				{
+    					string byte = decimal_to_hexString(responseBytes[i + 2]);
+    					HEXdata.append(byte);
+    				}
+    				buildSREC(addressToWrite, HEXdata);
+
     			}
     			else
     			{
-    				cout << "reflash response from ECU indicates we're finished: " << (int) responseBytes[0] << ' ' << (int) responseBytes[1] << ' ' << (int) responseBytes[2] << ' ' << (int) responseBytes[3] << '\n';
-    				reflashingTimerProcMode = 2;
+    				//read the response to the reflash ROM request
+    				uint8_t responseBytes[4] = {0,0,0,0};
+    				int recvd = readFromSerialPort(comPortHandle, responseBytes,4,100);//read in bytes
+
+    				//finally, we send back the inverted sum byte
+    				if(recvd > 0)
+    				{
+    					uint8_t toSend[1] = {~responseBytes[3]};
+    					writeToSerialPort(comPortHandle, toSend, 1);//send
+    					uint8_t dumpBytes[1];
+    					readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
+    				}
+
+    				//prepare to send more bytes if things are okay
+    				if(recvd == 0 && attemptsAtInit < 0)
+    				{
+    					//resend message- bypass for now
+    					getNextMessage = false;
+    					reflashingTimerProcMode = 0;
+    					attemptsAtInit += 1;
+    				}
+    				else if(packetBuffer[1] != 115 && responseBytes[0] == 0x2 && responseBytes[1] == 0x72 && responseBytes[2] == 0x0 && responseBytes[3] == 0x74)
+    				{
+    					getNextMessage = true;
+    					reflashingTimerProcMode = 0;
+    					attemptsAtInit = 0;
+    				}
+    				else
+    				{
+    					cout << "reflash response from ECU indicates we're finished: " << (int) responseBytes[0] << ' ' << (int) responseBytes[1] << ' ' << (int) responseBytes[2] << ' ' << (int) responseBytes[3] << '\n';
+    					reflashingTimerProcMode = 2;
+    				}
     			}
 
     		}
