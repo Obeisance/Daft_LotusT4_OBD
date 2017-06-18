@@ -365,7 +365,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.2",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.3",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -1880,14 +1880,15 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			CRC = 291;
     			filePosition = 0;
     			numpacketsSent = 0;
-    			ifstream addressRanges(addressRangeFile.c_str());
-    			string line = "";
+    			//ifstream addressRanges(addressRangeFile.c_str());
+    			string line = "0x8000-0xFFFE";
     			uint8_t address[3] = {0,0,0};
-    			if(addressRanges.is_open())
+    			//if(addressRanges.is_open())
     			{
-    				getline(addressRanges, line);
+    				//getline(addressRanges, line);
     				bytesToSend = interpretAddressRange(line, address);
     			}
+    			//addressRanges.close();
     			addressToFlash = (address[0] << 16) + (address[1] << 8) + (address[2]);
     			ofstream outputPacket("encodedFlashBytes.txt", ios::trunc);
     			outputPacket.close();
@@ -1908,6 +1909,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				getline(addressRanges, line);
     				bytesToSend = interpretAddressRange(line, address);
     			}
+    			addressRanges.close();
     			uint8_t sendBuffer[8] = {6,116,0,0,0,0,0,0x11C};//116 message is to read address data
     			ofstream temp("encodedFlashBytes.txt", ios::trunc);
     			if(keyByteSet == 1)
@@ -2143,7 +2145,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			//send the packet
     			writeToSerialPort(comPortHandle, packetBuffer, bufferLength);
     			uint8_t readBackSendBuffer[bufferLength];
-    			readFromSerialPort(comPortHandle, readBackSendBuffer, bufferLength, 300);//read back the packet we just sent
+    			readFromSerialPort(comPortHandle, readBackSendBuffer, bufferLength, 1000);//read back the packet we just sent
 
     			//for debugging, print the packets as we send them- this is redundant with the 'read from serial port' function
     			/*
@@ -2162,7 +2164,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     			}
     			else
     			{
-    				readFromSerialPort(comPortHandle, readBackSendBuffer, 1, 300);//read back the ECU's inverted check byte response
+    				readFromSerialPort(comPortHandle, readBackSendBuffer, 1, 1000);//read back the ECU's inverted check byte response
     				reflashingTimerProcMode = 1;//next, read the ECU response in the stage II bootloader
     			}
 
@@ -2188,19 +2190,36 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     					uint8_t toSend[1] = {~responseBytes[18]};
     					writeToSerialPort(comPortHandle, toSend, 1);//send
     					uint8_t dumpBytes[1];
-    					readFromSerialPort(comPortHandle, dumpBytes,1,50);//read in the byte we sent
+    					readFromSerialPort(comPortHandle, dumpBytes,1,300);//read in the byte we sent
     				}
 
-    				//then write the data to an S-record file
-    				uint32_t addressToWrite = (packetBuffer[2] << 24) + (packetBuffer[3] << 16) + (packetBuffer[4] << 8) + packetBuffer[5];
-    				string HEXdata = "";
-    				for(uint8_t i = 0; i < 16; i++)
+    				//check the packet sum:
+    				uint8_t checkSum = 0;
+    				for(uint8_t i = 0; i < responseBytes[0]+1; i++)
     				{
-    					string byte = decimal_to_hexString(responseBytes[i + 2]);
-    					HEXdata.append(byte);
+    					checkSum += responseBytes[i];
     				}
-    				buildSREC(addressToWrite, HEXdata);
-    				getNextMessage = true;
+    				if(checkSum == responseBytes[recvd-1])
+    				{
+    					//then write the data to an S-record file
+    					uint32_t addressToWrite = (packetBuffer[2] << 24) + (packetBuffer[3] << 16) + (packetBuffer[4] << 8) + packetBuffer[5];
+    					string HEXdata = "";
+    					for(uint8_t i = 0; i < 16; i++)
+    					{
+    						string byte = decimal_to_hexString(responseBytes[i + 2]);
+    						HEXdata.append(byte);
+    					}
+    					buildSREC(addressToWrite, HEXdata);
+    					getNextMessage = true;
+    					//reflashingTimerProcMode = 0;
+    				}
+    				else
+    				{
+    					//checksum failed, resend packet request
+    					getNextMessage = false;
+    					//cout << (int) checkSum << '\n';
+    					//reflashingTimerProcMode = 2;
+    				}
     				reflashingTimerProcMode = 0;
     			}
     			else
