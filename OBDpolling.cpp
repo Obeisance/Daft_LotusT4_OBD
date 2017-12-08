@@ -8179,16 +8179,17 @@ std::string decodeDTC(uint8_t firstByte, uint8_t secondByte)
 	int fourthDecimal = ((secondByte >> 3) & 0x1)*8 + ((secondByte >> 2) & 0x1)*4 + ((secondByte >> 1) & 0x1)*2 + ((secondByte >> 0) & 0x1);
 
 	//itoa does not work with c++11
-	//char stringByte [14];
-	/*std::string convertedDecimal = itoa(firstDecimal,stringByte,10);
+	char stringByte [14];
+	std::string convertedDecimal = itoa(firstDecimal,stringByte,16);
 	DTC.append(convertedDecimal);
-	convertedDecimal = itoa(secondDecimal,stringByte,10);
+	convertedDecimal = itoa(secondDecimal,stringByte,16);
 	DTC.append(convertedDecimal);
-	convertedDecimal = itoa(thirdDecimal,stringByte,10);
+	convertedDecimal = itoa(thirdDecimal,stringByte,16);
 	DTC.append(convertedDecimal);
-	convertedDecimal = itoa(fourthDecimal,stringByte,10);
-	DTC.append(convertedDecimal);*/
+	convertedDecimal = itoa(fourthDecimal,stringByte,16);
+	DTC.append(convertedDecimal);
 
+	/*
 	//I only anticipate characters from 0-9
 	char temp;
 	temp = (char) (firstDecimal + 48);
@@ -8198,7 +8199,8 @@ std::string decodeDTC(uint8_t firstByte, uint8_t secondByte)
 	temp = (char) (thirdDecimal + 48);
 	DTC.push_back(temp);
 	temp = (char) (fourthDecimal + 48);
-	DTC.push_back(temp);
+	DTC.push_back(temp);*/
+
 	return DTC;
 }
 

@@ -27,6 +27,8 @@ HANDLE initializeReflashMode(HANDLE serialPortHandle, TCHAR* ListItem, bool &suc
 
 string srecReader(string filename, long address, long &lastFilePosition);
 
+string binaryReader(string filename, long address);
+
 uint8_t readCodedMessageIntoBuffer(long &lastPosition, uint8_t* byteBuffer);
 
 void calculateCheckBytes(uint8_t *packet, uint16_t packetLength);

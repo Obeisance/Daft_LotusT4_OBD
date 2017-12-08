@@ -437,9 +437,22 @@ void createReflashPacket(string inputString, string reflashRanges, int encodeByt
 			//cout << "num data bytes in this packet: " << (int) numDataBytesIncluded << '\n';
 
 			long lastFilePos = 0;
+
+			size_t fileExtensionFoundLC = inputString.find(".bin");//in case we're reading in a binary file
+			size_t fileExtensionFoundUC = inputString.find(".BIN");
+			string retreivedByte = "";
+			//cout << (int) fileExtensionFoundUC << " " << (int) fileExtensionFoundLC << '\n';
 			for(uint8_t i = 0; i < numDataBytesIncluded; i++)
 			{
-				string retreivedByte = srecReader(inputString,addressComb+i,lastFilePos);
+				if((int) fileExtensionFoundLC >= 0 || (int) fileExtensionFoundUC >= 0)
+				{
+					//cout << "reading binary" << '\n';
+					retreivedByte = binaryReader(inputString,addressComb+i);
+				}
+				else
+				{
+					retreivedByte = srecReader(inputString,addressComb+i,lastFilePos);
+				}
 				uint8_t data = stringDec_to_int(retreivedByte);
 				subPacketBuffer[subPacketOffset + 5 + i] = data;
 				subPacketSum += data;
@@ -1928,6 +1941,26 @@ string srecReader(string filename, long address, long &lastFilePosition)
 	 */
 }
 
+
+string binaryReader(string filename, long address)
+{
+	ifstream myfile(filename.c_str(),ios::binary);
+	string value = "NAN";
+	char * line = new char[2];
+
+	if(myfile.is_open())
+	{
+		myfile.seekg(address);//seek the address we're trying to read
+		myfile.read(line,1);
+	}
+	char stringByte [2];
+	value = itoa(line[0],stringByte,10);
+
+	myfile.close();
+	return value;
+
+}
+
 uint8_t readCodedMessageIntoBuffer(long &lastPosition, uint8_t* byteBuffer)
 {
 	ifstream myfile("encodedFlashBytes.txt");//line by line are decimal values denoting bytes
@@ -2326,9 +2359,20 @@ uint16_t buildStageIbootloaderPacket(uint8_t *packetBuffer, uint16_t bufferLengt
 		packetBuffer[12] = numPacketsString[5];
 
 		uint32_t dataAddress = address;
+		size_t fileExtensionFoundLC = filename.find(".bin");
+		size_t fileExtensionFoundUC = filename.find(".BIN");
+		string readByte = "";
 		for(uint8_t i = 0; i < numBytesToSend; i++)
 		{
-			string readByte = srecReader(filename, dataAddress, lastFilePosition);
+			if(fileExtensionFoundLC >= 0 || fileExtensionFoundUC >= 0)
+			{
+
+				readByte = binaryReader(filename, dataAddress);
+			}
+			else
+			{
+				readByte = srecReader(filename, dataAddress, lastFilePosition);
+			}
 			uint8_t data = stringDec_to_int(readByte);
 			dataAddress += 1;
 			packetBuffer[i+13] = data;

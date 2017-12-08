@@ -365,7 +365,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 1;
 
 	/*the class is registered, lets create the program*/
-	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.3",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
+	hwnd = CreateWindowEx(0,szClassName,"Daft OBD-II Logger v1.4",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,windowWidth,windowHeight,HWND_DESKTOP,NULL,hThisInstance,NULL);
 			//extended possibilities for variation
 			//classname
 			//title
@@ -1790,7 +1790,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	SendMessage(comPortSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);//set the cursor to the 0th item on the list (WPARAM)
     	SendMessage(comPortSelect, CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)18);//set the height of the dropdown list items
 
-    	HWND inputFileName = CreateWindow("STATIC", "Input file name of s-record which contains bytes for reflashing:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,40,450,19,hwnd,NULL,NULL,NULL);
+    	HWND inputFileName = CreateWindow("STATIC", "Input file name of s-record/binary which contains bytes for reflashing:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,40,470,19,hwnd,NULL,NULL,NULL);
     	HWND input = CreateWindow("EDIT", "",WS_VISIBLE | WS_CHILD,5,65,600,20,hwnd,NULL,NULL,NULL);
 
     	HWND inputReflashRange = CreateWindow("STATIC", "Input file name which contains address ranges for reflashing/reading:",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,90,470,19,hwnd,NULL,NULL,NULL);
@@ -1810,7 +1810,7 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     	HWND encodeMessageButton = CreateWindow("BUTTON", "Encode Reflash/Read Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10,140,220,25,hwnd,(HMENU) 3,NULL,NULL);
     	HWND decodeMessageButton = CreateWindow("BUTTON", "Test Decode Reflash Message",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10+150+10+10+10+220,140,210,25,hwnd,(HMENU) 4,NULL,NULL);
 
-    	HWND Instructions = CreateWindow("STATIC", "1) Write the name of the s-record file which contains rom with the bytes we'll send to the ECU as well as the name of the file which contains hex address ranges line-by-line \n 2) If using the Stage I bootloader, set the check box \n 3) If using the Stage II bootloader, choose the reflash encryption byte set \n 4) Encode the packet-> check the text file logs \n 5) Press 'Reflash ROM' and turn car to key-on",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,170,600,100,hwnd,NULL,NULL,NULL);
+    	HWND Instructions = CreateWindow("STATIC", "1) Write the name of the s-record or binary file which contains rom with the bytes we'll send to the ECU as well as the name of the file which contains hex address ranges line-by-line \n 2) If using the Stage I bootloader, set the check box \n 3) If using the Stage II bootloader, choose the reflash encryption byte set \n 4) Encode the packet-> check the text file logs \n 5) Press 'Reflash ROM' and turn car to key-on",WS_VISIBLE | WS_CHILD|SS_CENTER| WS_BORDER,5,170,600,100,hwnd,NULL,NULL,NULL);
 
     	HWND reflash = CreateWindow("BUTTON", "Reflash/Read ROM",WS_VISIBLE | WS_CHILD| WS_BORDER|BS_PUSHBUTTON,10,280,130,25,hwnd,(HMENU) 5,NULL,NULL);
     	break;
@@ -2052,6 +2052,42 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     				//clear the read file to get ready for a new data set
     				ofstream newSREC("ROM read.txt",ios::trunc);
     				newSREC.close();
+
+    				//binary files are daft, so we will fill the file with null characters
+    				//in order to fill up space where we will not read in data from the ECU
+
+    				//extract the file names for the range of data we'll read in
+    				char windowText[100];
+    				string addressRangeFile = "";
+    				int length = GetWindowText(fileRangeWindowHandle,windowText,100);
+    				for(int i = 0; i < length; i++)
+    				{
+    					addressRangeFile.push_back(windowText[i]);
+    				}
+
+    				//collect the address range to flash, only read in one line from the file
+    				ifstream addressRanges(addressRangeFile.c_str(), ios::in);
+    				string line = "";
+    				uint8_t address[3] = {0,0,0};
+    				if(addressRanges.is_open())
+    				{
+    					getline(addressRanges, line);
+    					bytesToSend = interpretAddressRange(line, address);
+    				}
+    				addressRanges.close();
+    				//now we have a 3 byte array which contains the address we'll begin reading in
+    				uint32_t addressInt = (address[0] << 16) + (address[1] << 8) + address[2];
+
+    				//also clear the binary file to get ready to read in data.
+    				ofstream newBIN("ROM read.bin",ios::trunc);
+    				for(uint32_t i = 0; i < addressInt; i ++)
+    				{
+    					newBIN << 0;//write a null data byte
+    				}
+    				newBIN.close();//close the binary file- there should be just enough
+    				//characters such that the binary will be populated fully, with correct
+    				//address per byte accounting by the time we write actual data to it.
+
     			}
     			//we want to flash the ECU with the stage II bootloader - this is typically used to unlock the stage I bootloader
 
@@ -2204,12 +2240,17 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     					//then write the data to an S-record file
     					uint32_t addressToWrite = (packetBuffer[2] << 24) + (packetBuffer[3] << 16) + (packetBuffer[4] << 8) + packetBuffer[5];
     					string HEXdata = "";
+    					ofstream newBIN("ROM read.bin",ios::app);
     					for(uint8_t i = 0; i < 16; i++)
     					{
     						string byte = decimal_to_hexString(responseBytes[i + 2]);
     						HEXdata.append(byte);
+    						newBIN << responseBytes[i+2];
     					}
-    					buildSREC(addressToWrite, HEXdata);
+    					newBIN.close();
+    					buildSREC(addressToWrite, HEXdata);//write s-record data to the s-record file
+    					//We also want to write data to the binary file, but we'll do that at the end
+    					//so that we can accommodate for data not read in during this read-run
     					getNextMessage = true;
     					//reflashingTimerProcMode = 0;
     				}
@@ -2378,6 +2419,34 @@ LRESULT CALLBACK reflashWindowProcedure(HWND hwnd, UINT message, WPARAM wParam, 
     		else
     		{
     			CloseHandle(comPortHandle);
+
+    			if(readMemory)
+    			{
+    				//now we should finish the binary file by writing null data up until we reach the correct file
+    				//length
+    				//first, figure out how large the binary file is already
+    				ifstream readBinary("ROM read.bin", ios::in);
+    				readBinary.seekg(0, ios::end);//scan to end of file
+    				uint32_t size = readBinary.tellg();//read the position
+    				readBinary.close();
+    				//then open the file and write data to it
+    				ofstream newBIN("ROM read.bin",ios::app);
+    				if(size < 0x40000)
+    				{
+    					for(uint32_t i = size; i < 0x40000; i++)
+    					{
+    						newBIN << 0;
+    					}
+    				}
+    				else
+    				{
+    					for(uint32_t i = size; i < 0x80000; i++)
+    					{
+    						newBIN << 0;
+    					}
+    				}
+    				newBIN.close();
+    			}
     		}
     		break;
 		}
