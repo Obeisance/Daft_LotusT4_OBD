@@ -4,27 +4,38 @@ Using the ISO-9141 OBD-II protocol and a VAG COM cable
 (VAG COM cable, KKL 409.1, having the FT232RL chip by FTDI)
 
 This program was written in order to interface with
-a 2005 lotus elise (with the T4 ECU). The lower OBD
-modes and PIDs may also work with other cars, though.
+a 2005 lotus elise (with the T4 ECU), however a different
+definition file may be used in order to interface with
+a variety of cars.
 
 Within the program there are some simple controls including
-a check list of loggable parameters. The check box
-can be switched between 'do not log', 'log' or 
-'log and plot'. Some parameters cannot be plotted, though.
+a check list of loggable parameters. 
 
 The program is a work in progress.
 
-This program uses the windows API and the FTDI API
-Download the FTDI drivers at:
+This program uses Java 8, I think. It also uses a Java D2XX 
+library for the FTDI cable: "JavaFTD2XX-0.2.6.jar"
+Embarrassinlgy, I cannot figure out where I got this library from.
+
+
+Download the FTDI drivers (for the VAG com cable) at:
 http://www.ftdichip.com/Drivers/D2XX.htm
 
 In order to use the pre-compiled version of Daft OBD
 download the following files and place them in the same folder
 on your computer:
 
-DaftOBD.exe
-libgcc_s_dw2-1.dll
-libstdc++-6.dll
+DaftOBD.jar
 
 also download the FTDI drivers as a setup executable, unzip and
 install them. This should enable the OBD program to work.
+
+When the program first runs, it requires that you select a save location
+for data logs that the program generates. It also requires you
+to select a valid definition file which outlines PIDs which
+are able to be polled. After choosing a definition file, restart the
+program. An example definition file is included: 
+"2005 Elise OBD parameter definition.txt"
+
+When selecting an OBD cable to use, the program is a bit buggy if 
+the cable is not plugged in before the program is started.

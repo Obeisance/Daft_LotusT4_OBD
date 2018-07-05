@@ -1,0 +1,455 @@
+//rules for building a parameter list:
+//all parameters are within angle brackets i.e. "< >... </ >"
+//the first parameter is 'parameter list'
+//valid first level parameters are 'init' and 'pid'
+//	each first level parameter may have the following fields 'name', 'mode', 'init'
+//valid second level parameters are 'send' and 'receive'
+//	each second level parameter may have the following fields 'type', 'baud', 'length' 
+//	second level parameter type may be 'data'
+//	second level baud and length must be integer values
+//valid third level parameters are 'data'
+//	third level parameter may have the following fields 'type', 'size', 'name', 'expression'
+//	valid types are 'sum', 'boolean', 'int', 'double', 'hex', 'lookup', 'ASCII'
+//	valid size is something like 'uint8','int8','char8' etc.
+//	valid expression includes operators '(',')','exp()','^','log()','ln()','*','/','+','-','&','XOR','|','>>','<<'
+//		and a denotion of the variable '#'
+//valid fourth level parameters are 'lookup' which can have fields 'data' and 'conv'
+
+<parameter list>
+ <init name="OBD init">
+  <send type="data" baud="5" length="1">
+   <data>0x33</data>
+  </send>
+  <receive type="data" baud="10400" length="3">
+   <data>0x55</data>
+   <data>0x94</data>
+   <data type="int" size="uint8" name="twiddleThis" variable="twiddle"/>
+  </receive>
+  <send type="data" baud="10400" length="1">
+   <data type="input" size="uint8" name="107" expression="~twiddle" dependent="twiddle"/>
+  </send>
+  <receive type="data" baud="10400" length="1">
+   <data>0xCC</data>
+  </receive>
+ </init>
+ <pid name="01 Monitor status since DTCs cleared" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="10">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x1</data>
+   <data type="boolean" size="uint1" name="DTC on"/>
+   <data type="int" size="uint7" name="Number of active DTCs"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test available"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="boolean" size="uint1" name="test incomplete"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="02 DTC which caused freeze frame" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x2</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x2</data>
+   <data type="lookup" size="uint2" combined="true" name="DTC which caused freeze frame">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC which caused freeze frame"/>
+   <data type="hex" size="uint4" combined="true" name="DTC which caused freeze frame"/>
+   <data type="hex" size="uint4" combined="true" name="DTC which caused freeze frame"/>
+   <data type="hex" size="uint4" combined="true" name="DTC which caused freeze frame"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="03 Fuel system status" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x3</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x3</data>
+   <data type="lookup" name="Fuel system 1 status" size="uint8">
+    <lookup data="1" conv="Open loop due to insufficient engine temperature"/>
+    <lookup data="2" conv="Closed loop, using oxygen sensor feedback to determine fuel mix"/>
+    <lookup data="4" conv="Open loop due to engine load OR fuel cut due to deceleration"/>
+    <lookup data="8" conv="Open loop due to system failure"/>
+    <lookup data="16" conv="Closed loop, using at least one oxygen sensor but there is a fault in the feedback system"/>
+   </data>
+   <data type="lookup" name="Fuel system 2 status" size="uint8">
+    <lookup data="1" conv="Open loop due to insufficient engine temperature"/>
+    <lookup data="2" conv="Closed loop, using oxygen sensor feedback to determine fuel mix"/>
+    <lookup data="4" conv="Open loop due to engine load OR fuel cut due to deceleration"/>
+    <lookup data="8" conv="Open loop due to system failure"/>
+    <lookup data="16" conv="Closed loop, using at least one oxygen sensor but there is a fault in the feedback system"/>
+   </data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="04 Normalized engine load" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x4</data>
+   <data type="int" size="uint8" name="Normalized engine load [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Read CEL" mode="Mode 0x3" init="OBD init">
+  <send type="data" baud="10400" length=5>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x3</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>67</data>
+   <data type="lookup" size="uint2" combined="true" name="DTC0">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC0"/>
+   <data type="hex" size="uint4" combined="true" name="DTC0"/>
+   <data type="hex" size="uint4" combined="true" name="DTC0"/>
+   <data type="hex" size="uint4" combined="true" name="DTC0"/>
+   <data type="lookup" size="uint2" combined="true" name="DTC1">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC1"/>
+   <data type="hex" size="uint4" combined="true" name="DTC1"/>
+   <data type="hex" size="uint4" combined="true" name="DTC1"/>
+   <data type="hex" size="uint4" combined="true" name="DTC1"/>
+   <data type="lookup" size="uint2" combined="true" name="DTC2" variable="DTC2">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC2"/>
+   <data type="hex" size="uint4" combined="true" name="DTC2"/>
+   <data type="hex" size="uint4" combined="true" name="DTC2"/>
+   <data type="hex" size="uint4" combined="true" name="DTC2"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="DTC2" dependent="DTC2" condition="!P0000" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>67</data>
+   <data type="lookup" size="uint2" combined="true" name="DTC3">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC3"/>
+   <data type="hex" size="uint4" combined="true" name="DTC3"/>
+   <data type="hex" size="uint4" combined="true" name="DTC3"/>
+   <data type="hex" size="uint4" combined="true" name="DTC3"/>
+   <data type="lookup" size="uint2" combined="true" name="DTC4">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC4"/>
+   <data type="hex" size="uint4" combined="true" name="DTC4"/>
+   <data type="hex" size="uint4" combined="true" name="DTC4"/>
+   <data type="hex" size="uint4" combined="true" name="DTC4"/>
+   <data type="lookup" size="uint2" combined="true" name="DTC5" variable="DTC5">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC5"/>
+   <data type="hex" size="uint4" combined="true" name="DTC5"/>
+   <data type="hex" size="uint4" combined="true" name="DTC5"/>
+   <data type="hex" size="uint4" combined="true" name="DTC5"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="DTC5" dependent="DTC5" condition="!P0000" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>67</data>
+   <data type="lookup" size="uint2" combined="true" name="DTC6">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC6"/>
+   <data type="hex" size="uint4" combined="true" name="DTC6"/>
+   <data type="hex" size="uint4" combined="true" name="DTC6"/>
+   <data type="hex" size="uint4" combined="true" name="DTC6"/>
+   <data type="lookup" size="uint2" combined="true" name="DTC7">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC7"/>
+   <data type="hex" size="uint4" combined="true" name="DTC7"/>
+   <data type="hex" size="uint4" combined="true" name="DTC7"/>
+   <data type="hex" size="uint4" combined="true" name="DTC7"/>
+   <data type="lookup" size="uint2" combined="true" name="DTC8">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC8"/>
+   <data type="hex" size="uint4" combined="true" name="DTC8"/>
+   <data type="hex" size="uint4" combined="true" name="DTC8"/>
+   <data type="hex" size="uint4" combined="true" name="DTC8"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Reset CEL" mode="Mode 0x4" init="OBD init">
+  <send type="data" baud="10400" length=5>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=5>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>68</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Read VIN" mode="Mode 0x9" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x9</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=7>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x1</data>
+   <data type="int" size="uint8" name="Number of messages used to transmit VIN" variable="numForVin"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x9</data>
+   <data>0x2</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x2</data>
+   <data>0x1</data>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForVin" dependent="numForVin" condition=">1" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x2</data>
+   <data>0x2</data>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForVin" dependent="numForVin" condition=">2" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x2</data>
+   <data>0x3</data>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForVin" dependent="numForVin" condition=">3" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x2</data>
+   <data>0x4</data>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForVin" dependent="numForVin" condition=">4" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x2</data>
+   <data>0x5</data>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="VIN" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Evaporative Purge PWM Duty Cycle" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x27</data>
+   <data type="input" size="uint8" name="0"; expression="#*2.55"/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x27</data>
+   <data type="double" size="uint8" name="Commanded Evap Purge PWM [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Reprogram VIN: SCCPC111 - 5H - - - - - -" mode="Mode 0x3B" init="OBD init">
+  <send type="data" baud="10400" length=11>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x3B</data>
+   <data>0x1</data>
+   <data type="input" size="char8" name="0"/>
+   <data type="input" size="char8" name="A"/>
+   <data type="input" size="char8" name="3"/>
+   <data type="input" size="char8" name="0"/>
+   <data type="input" size="char8" name="0"/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="6">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>123</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=11>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x3B</data>
+   <data>0x2</data>
+   <data type="input" size="char8" name="0"/>
+   <data type="input" size="char8" name="0"/>
+   <data>0x55</data>
+   <data>0xAA</data>
+   <data>0x55</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="6">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>123</data>
+   <data>0x2</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+</parameter list>
