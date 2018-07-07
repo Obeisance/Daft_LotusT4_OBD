@@ -32,7 +32,7 @@
    <data>0xCC</data>
   </receive>
  </init>
- <pid name="01 Monitor status since DTCs cleared" mode="Mode 0x1" init="OBD init">
+ <pid name="01 Monitor status since DTCs cleared" mode="Mode 0x1" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=6>
    <data>104</data>
    <data>106</data>
@@ -76,7 +76,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="02 DTC which caused freeze frame" mode="Mode 0x1" init="OBD init">
+ <pid name="02 DTC which caused freeze frame" mode="Mode 0x1" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=6>
    <data>104</data>
    <data>106</data>
@@ -155,7 +155,678 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="Read CEL" mode="Mode 0x3" init="OBD init">
+ <pid name="05 Coolant temperature" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x5</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x5</data>
+   <data type="int" size="uint8" name="Coolant temperature [Deg C]" expression="# - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="06 Short term fuel trim" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x6</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x6</data>
+   <data type="double" size="uint8" name="Short term fuel trim [%]" expression="#/1.28 - 100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="07 Long term fuel trim" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x7</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x7</data>
+   <data type="double" size="uint8" name="Long term fuel trim [%]" expression="#/1.28 - 100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0C Engine speed" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0xC</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0xC</data>
+   <data type="double" size="uint16" name="Engine speed [rev/min]" expression="#/4"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0D Vehicle speed" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0xD</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0xD</data>
+   <data type="int" size="uint8" name="Vehicle speed [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0E Timing advance" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0xE</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0xE</data>
+   <data type="double" size="uint8" name="Ignition advance [degrees before top dead center]" expression="#/2 - 64"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0F Intake air temperature" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0xF</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0xF</data>
+   <data type="int" size="uint8" name="Intake air temperature [deg C]" expression="# - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="10 Mass airflow rate" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x10</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x10</data>
+   <data type="double" size="uint16" name="Mass airflow rate [g/sec]" expression="#/100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="11 Throttle position" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x11</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x11</data>
+   <data type="double" size="uint8" name="Absolute Throttle position [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="13 Oxygen sensors present" mode="Mode 0x1" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x13</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x13</data>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 2 sensor 4"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 2 sensor 3"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 2 sensor 2"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 2 sensor 1"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 1 sensor 4"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 1 sensor 3"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 1 sensor 2"/>
+   <data type="boolean" size="uint1" name="Oxygen sensor bank 1 sensor 1"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="14 Upstream oxygen sensor" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x14</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x14</data>
+   <data type="double" size="uint8" name="Upstream oxygen sensor voltage [V]" expression="#/200"/>
+   <data type="double" size="uint8" name="Short term fuel trim [%]" expression="#/1.28 - 100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="15 Downstream oxygen sensor" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x15</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x15</data>
+   <data type="double" size="uint8" name="Downstream oxygen sensor voltage [V]" expression="#/200"/>
+   <data>0xFF</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="1C OBD standards this vehicle conforms to" mode="Mode 0x1" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x1C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x1C</data>
+   <data type="lookup" size="uint8" name="OBD standards this vehicle conforms to">
+    <lookup data="1" conv="OBD-II (CARB)"/>
+    <lookup data="2" conv="OBD (EPA)"/>
+    <lookup data="3" conv="OBD (EPA) and OBD-II (CARB)"/>
+    <lookup data="4" conv="OBD-I"/>
+    <lookup data="5" conv="Not OBD compliant"/>
+    <lookup data="6" conv="EOBD (Europe)"/>
+    <lookup data="7" conv="EOBD (Europe) and OBD-II (CARB)"/>
+    <lookup data="8" conv="EOBD (Europe) and OBD (EPA)"/>
+    <lookup data="9" conv="EOBD (Europe), OBD (EPA) and OBD II (CARB)"/>
+    <lookup data="10" conv="JOBD (Japan)"/>
+    <lookup data="11" conv="JOBD (Japan) and OBD II (CARB)"/>
+    <lookup data="12" conv="JOBD (Japan) and EOBD (Europe)"/>
+    <lookup data="13" conv="JOBD (Japan), EOBD (Europe), and OBD II (CARB)"/>
+    <lookup data="17" conv="Engine Manufacturer Diagnostics (EMD)"/>
+    <lookup data="18" conv="Engine Manufacturer Diagnostics Enhanced (EMD+)"/>
+    <lookup data="19" conv="Heavy Duty On-Board Diagnostics (Child/Partial) (HD OBD-C)"/>
+    <lookup data="20" conv="Heavy Duty On-Board Diagnostics (HD OBD)"/>
+    <lookup data="21" conv="World Wide Harmonized OBD (WWH OBD)"/>
+    <lookup data="23" conv="Heavy Duty Euro OBD Stage I without NOx control (HD EOBD-I)"/>
+    <lookup data="24" conv="Heavy Duty Euro OBD Stage I with NOx control (HD EOBD-I N)"/>
+    <lookup data="25" conv="Heavy Duty Euro OBD Stage II without NOx control (HD EOBD-II)"/>
+    <lookup data="26" conv="Heavy Duty Euro OBD Stage II with NOx control (HD EOBD-II N)"/>
+    <lookup data="28" conv="Brazil OBD Phase 1 (OBDBr-1)"/>
+    <lookup data="29" conv="Brazil OBD Phase 2 (OBDBr-2)"/>
+    <lookup data="30" conv="Korean OBD (KOBD)"/>
+    <lookup data="31" conv="India OBD I (IOBD I)"/>
+    <lookup data="32" conv="India OBD II (IOBD II)"/>
+    <lookup data="33" conv="Heavy Duty Euro OBD Stage VI (HD EOBD-IV)"/>
+   </data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="1F Runtime since engine start" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x1F</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x1F</data>
+   <data type="int" size="uint16" name="Runtime since engine start [sec]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="21 Distance traveled with MIL on" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x21</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x21</data>
+   <data type="int" size="uint16" name="Distance traveled with MIL on [km]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="2E Commanded evaporative purge" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x2E</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x2E</data>
+   <data type="double" size="uint8" name="Commanded evaporative purge [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="2F Fuel tank level" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x2F</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x2F</data>
+   <data type="double" size="uint8" name="Fuel tank level [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="33 Absolute barometric pressure" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x33</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x2E</data>
+   <data type="int" size="uint8" name="Absolute barometric pressure [kPa]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="42 Control module voltage" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x42</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x42</data>
+   <data type="double" size="uint16" name="Control module voltage [V]" expression="#/1000"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="43 Absolute engine load" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x43</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x43</data>
+   <data type="double" size="uint16" name="Absolute engine load [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="45 Relative throttle position" mode="Mode 0x1" init="OBD init">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x45</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x2E</data>
+   <data type="double" size="uint8" name="Zero corrected throttle position [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="02 DTC which caused freeze frame" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x2</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="9">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x2</data>
+   <data>0x0</data>
+   <data type="lookup" size="uint2" combined="true" name="DTC which caused freeze frame">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="DTC which caused freeze frame"/>
+   <data type="hex" size="uint4" combined="true" name="DTC which caused freeze frame"/>
+   <data type="hex" size="uint4" combined="true" name="DTC which caused freeze frame"/>
+   <data type="hex" size="uint4" combined="true" name="DTC which caused freeze frame"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="03 Freeze frame fuel system status" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x3</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="9">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x3</data>
+   <data>0x0</data>
+   <data type="lookup" name="Freeze frame fuel system 1 status" size="uint8">
+    <lookup data="1" conv="Open loop due to insufficient engine temperature"/>
+    <lookup data="2" conv="Closed loop, using oxygen sensor feedback to determine fuel mix"/>
+    <lookup data="4" conv="Open loop due to engine load OR fuel cut due to deceleration"/>
+    <lookup data="8" conv="Open loop due to system failure"/>
+    <lookup data="16" conv="Closed loop, using at least one oxygen sensor but there is a fault in the feedback system"/>
+   </data>
+   <data type="lookup" name="Freeze frame fuel system 2 status" size="uint8">
+    <lookup data="1" conv="Open loop due to insufficient engine temperature"/>
+    <lookup data="2" conv="Closed loop, using oxygen sensor feedback to determine fuel mix"/>
+    <lookup data="4" conv="Open loop due to engine load OR fuel cut due to deceleration"/>
+    <lookup data="8" conv="Open loop due to system failure"/>
+    <lookup data="16" conv="Closed loop, using at least one oxygen sensor but there is a fault in the feedback system"/>
+   </data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="04 Freeze frame normalized engine load" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x4</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x4</data>
+   <data>0x0</data>
+   <data type="int" size="uint8" name="Freeze frame normalized engine load [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="05 Freeze frame coolant temperature" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x5</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x5</data>
+   <data>0x0</data>
+   <data type="int" size="uint8" name="Freeze frame coolant temperature [Deg C]" expression="# - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="06 Freeze frame short term fuel trim" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x6</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x6</data>
+   <data>0x0</data>
+   <data type="double" size="uint8" name="Short term fuel trim [%]" expression="#/1.28 - 100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="07 Freeze frame long term fuel trim" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x7</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x7</data>
+   <data>0x0</data>
+   <data type="double" size="uint8" name="Freeze frame long term fuel trim [%]" expression="#/1.28 - 100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0C Freeze frame engine speed" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0xC</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="9">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0xC</data>
+   <data>0x0</data>
+   <data type="double" size="uint16" name="Freeze frame engine speed [rev/min]" expression="#/4"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0D Freeze frame vehicle speed" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0xD</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0xD</data>
+   <data>0x0</data>
+   <data type="int" size="uint8" name="Freeze frame vehicle speed [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="10 Freeze frame mass airflow rate" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x10</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="9">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x10</data>
+   <data>0x0</data>
+   <data type="double" size="uint16" name="Freeze frame mass airflow rate [g/sec]" expression="#/100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="11 Freeze frame throttle position" mode="Mode 0x2" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2</data>
+   <data>0x11</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>66</data>
+   <data>0x11</data>
+   <data>0x0</data>
+   <data type="double" size="uint8" name="Freeze frame absolute Throttle position [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Read CEL" mode="Mode 0x3" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=5>
    <data>104</data>
    <data>106</data>
@@ -275,7 +946,8 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="Reset CEL" mode="Mode 0x4" init="OBD init">
+
+ <pid name="Reset CEL" mode="Mode 0x4" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=5>
    <data>104</data>
    <data>106</data>
@@ -292,7 +964,439 @@
   </receive>
  </pid>
 
- <pid name="Read VIN" mode="Mode 0x9" init="OBD init">
+ <pid name="0101 STFT upstream O2 sensor rich voltage target" mode="Mode 0x5" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="STFT upstream O2 sensor rich voltage target" expression="#/200"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0201 STFT upstream O2 sensor lean voltage target" mode="Mode 0x5" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x2</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x2</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="STFT upstream O2 sensor lean voltage target" expression="#/200"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0301 ?? upstream O2 sensor ?? voltage" mode="Mode 0x5" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x3</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x3</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="301 ?? upstream O2 sensor ?? voltage"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0401 ?? upstream O2 sensor ?? voltage" mode="Mode 0x5" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x4</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x4</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="401 ?? upstream O2 sensor ?? voltage"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0501 ?? upstream O2 sensor ?? voltage" mode="Mode 0x5" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x5</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x5</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="501 ?? upstream O2 sensor ?? voltage"/>
+   <data>0x0</data>
+   <data type="double" size="uint8" name="501 ?? upstream O2 sensor ?? voltage"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0601 ?? upstream O2 sensor ?? voltage" mode="Mode 0x5" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x6</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x6</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="601 ?? upstream O2 sensor ?? voltage"/>
+   <data>0x0</data>
+   <data type="double" size="uint8" name="601 ?? upstream O2 sensor ?? voltage"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0701 ?? upstream O2 sensor ?? voltage" mode="Mode 0x5" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x7</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x7</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="701 ?? upstream O2 sensor ?? voltage"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0801 ?? upstream O2 sensor ?? voltage" mode="Mode 0x5" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x8</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x8</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="801 ?? upstream O2 sensor ?? voltage"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="01 ?? test" mode="Mode 0x6" init="OBD init"/>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x6</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>70</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data type="int" size="uint16" name="01 word 1 ??"/>
+   <data type="int" size="uint16" name="01 word 2 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="02 ?? test" mode="Mode 0x6" init="OBD init"/>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x6</data>
+   <data>0x2</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>70</data>
+   <data>0x2</data>
+   <data>0x1</data>
+   <data type="int" size="uint16" name="02 word 1 ??"/>
+   <data>0x0</data>
+   <data type="int" size="uint8" name="02 byte 2 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="03 ?? test" mode="Mode 0x6" init="OBD init"/>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x6</data>
+   <data>0x3</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>70</data>
+   <data>0x3</data>
+   <data>0x1</data>
+   <data type="int" size="uint16" name="03 word 1 ??"/>
+   <data>0x0</data>
+   <data type="int" size="uint8" name="03 byte 2 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="04 ?? test" mode="Mode 0x6" init="OBD init"/>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x6</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>70</data>
+   <data>0x4</data>
+   <data>0x1</data>
+   <data type="int" size="uint16" name="04 word 1 ??"/>
+   <data type="int" size="uint16" name="04 word 2 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="05 ?? test" mode="Mode 0x6" init="OBD init"/>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x6</data>
+   <data>0x5</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>70</data>
+   <data>0x5</data>
+   <data>0x1</data>
+   <data type="int" size="uint16" name="05 word 1 ??"/>
+   <data>0x0</data>
+   <data type="int" size="uint8" name="05 byte 2 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Read pending CEL" mode="Mode 0x7" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=5>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x7</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>71</data>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC0">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC0"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC0"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC0"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC0"/>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC1">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC1"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC1"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC1"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC1"/>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC2" variable="Pending DTC2">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC2"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC2"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC2"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC2"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="Pending DTC2" dependent="Pending DTC2" condition="!P0000" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>71</data>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC3">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC3"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC3"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC3"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC3"/>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC4">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC4"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC4"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC4"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC4"/>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC5" variable="Pending DTC5">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC5"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC5"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC5"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC5"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="Pending DTC5" dependent="Pending DTC5" condition="!P0000" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>71</data>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC6">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC6"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC6"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC6"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC6"/>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC7">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC7"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC7"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC7"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC7"/>
+   <data type="lookup" size="uint2" combined="true" name="Pending DTC8">
+    <lookup data="0" conv="P"/>
+    <lookup data="1" conv="C"/>
+    <lookup data="2" conv="B"/>
+    <lookup data="3" conv="U"/>
+   </data>
+   <data type="hex" size="uint2" combined="true" name="Pending DTC8"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC8"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC8"/>
+   <data type="hex" size="uint4" combined="true" name="Pending DTC8"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="01 ?? control onboard component (if engine is off)" mode="Mode 0x8" init="OBD init"/>
+  <send type="data" baud="10400" length=11>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x8</data>
+   <data>0x1</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>72</data>
+   <data>0x1</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Read VIN" mode="Mode 0x9" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=6>
    <data>104</data>
    <data>106</data>
@@ -384,8 +1488,2055 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
+ <pid name="Read calibration ID" mode="Mode 0x9" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x9</data>
+   <data>0x3</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=7>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x3</data>
+   <data type="int" size="uint8" name="Number of messages used to transmit cal.ID" variable="numForCID"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x9</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x4</data>
+   <data>0x1</data>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForCID" dependent="numForCID" condition=">1" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x4</data>
+   <data>0x2</data>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForCID" dependent="numForVin" condition=">2" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x4</data>
+   <data>0x3</data>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <receive type="repeatif" baud="10400" length=11 expression="numForCID" dependent="numForCID" condition=">3" maxRepeatNum="1">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x4</data>
+   <data>0x4</data>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Read calibration validation number" mode="Mode 0x9" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x9</data>
+   <data>0x5</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=7>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x5</data>
+   <data type="int" size="uint8" name="Number of messages used to transmit cal. valid. num." variable="numForCVN"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x9</data>
+   <data>0x6</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>73</data>
+   <data>0x6</data>
+   <data>0x1</data>
+   <data>0x0</data>
+   <data>0x0</data>
+   <data type="int" size="uint16" name="Calibration validation number"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
 
- <pid name="Evaporative Purge PWM Duty Cycle" mode="Mode 0x2F" init="OBD init">
+ <pid name="201 ?? jump command index ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1</data>
+   <data type="int" size="uint8" name="Jump command index ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="203 ?? counter index ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x3</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x3</data>
+   <data type="int" size="uint32" name="counter index ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="204 ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x4</data>
+   <data type="int" size="uint8" name="204 byte 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="205 fuel injection pulse length" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x5</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x5</data>
+   <data type="int" size="uint16" name="Fuel injection pulse length [microsec]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="206 ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x6</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x6</data>
+   <data type="int" size="uint8" name="206 byte 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="207 Intake camshaft advance target" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x7</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x7</data>
+   <data type="double" size="uint16" name="Intake camshaft advance target [Degree before top dead center]" expression="(220 - #)*0.25"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="208 Intake camshaft advance measured" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x8</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x8</data>
+   <data type="double" size="uint16" name="Intake camshaft advance measured [Degree before top dead center]" expression="(220 - #)*0.25"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="209 Flag for high cam engagement" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x9</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x9</data>
+   <data type="int" size="uint8" name="High cam engagement flag"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="20A Lookup based on MAF/100" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0xA</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0xA</data>
+   <data type="int" size="uint16" name="20A Lookup based on MAF/100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="20B Lookup based on MAF/100" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0xB</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0xB</data>
+   <data type="int" size="uint16" name="20B Lookup based on MAF/100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="20C Calculated gear" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0xC</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0xC</data>
+   <data type="int" size="uint8" name="Calculated gear"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="20D Target engine idle speed" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0xD</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0xD</data>
+   <data type="double" size="uint16" name="Target engine idle speed" expression="#*5 + 600"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="20E-211 ECU/Bootloader part number" mode="Mode 0x22" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0xE</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0xE</data>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0xF</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0xF</data>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x10</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x10</data>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x11</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x11</data>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="ASCII" size="uint8" name="ECU/Bootloader part number" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="212 ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x12</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x12</data>
+   <data type="int" size="uint16" name="212 word 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="213 Commanded air-to-fuel ratio" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x13</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x13</data>
+   <data type="double" size="uint16" name="Commanded A/F ratio" expression="#/100"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="214 ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x14</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x14</data>
+   <data type="int" size="uint8" name="214 byte 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="215 Port C data" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x15</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x15</data>
+   <data type="int" size="uint1" name="PORTC bit7"/>
+   <data type="int" size="uint1" name="PORTC bit6"/>
+   <data type="int" size="uint1" name="PORTC bit5"/>
+   <data type="int" size="uint1" name="PORTC bit4"/>
+   <data type="int" size="uint1" name="PORTC bit3"/>
+   <data type="int" size="uint1" name="PORTC bit2"/>
+   <data type="int" size="uint1" name="PORTC bit1"/>
+   <data type="int" size="uint1" name="PORTC bit0"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="216 Port F data" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x16</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x16</data>
+   <data type="int" size="uint1" name="PORTF bit7"/>
+   <data type="int" size="uint1" name="PORTF bit6"/>
+   <data type="int" size="uint1" name="PORTF bit5"/>
+   <data type="int" size="uint1" name="PORTF bit4"/>
+   <data type="int" size="uint1" name="PORTF bit3"/>
+   <data type="int" size="uint1" name="PORTF bit2"/>
+   <data type="int" size="uint1" name="PORTF bit1"/>
+   <data type="int" size="uint1" name="PORTF bit0"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="218 ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x18</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x18</data>
+   <data type="int" size="uint16" name="218 word 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="219 ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x19</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x19</data>
+   <data type="int" size="uint16" name="219 word 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="21A ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1A</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1A</data>
+   <data type="int" size="uint16" name="21A word 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="21B ??" mode="Mode 0x22" init="OBD init">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1B</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1B</data>
+   <data type="int" size="uint16" name="21B word 1 ??"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="21C-21F Calibration ID" mode="Mode 0x22" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1C</data>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1D</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1D</data>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1E</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1E</data>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x1F</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x1F</data>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="ASCII" size="uint8" name="Calibration identification" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="221-224 Make model and year" mode="Mode 0x22" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x21</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x21</data>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x22</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x22</data>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x23</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x23</data>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x24</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x24</data>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Make model and year" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="225-26D Read saved vehicle performance data" mode="Mode 0x22" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x25</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x25</data>
+   <data type="double" size="uint32" name="Time at 0 to 1.5% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x26</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x26</data>
+   <data type="double" size="uint32" name="Time at 1.5 to 15% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x27</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x27</data>
+   <data type="double" size="uint32" name="Time at 15 to 25% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x28</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x28</data>
+   <data type="double" size="uint32" name="Time at 25 to 35% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x29</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x29</data>
+   <data type="double" size="uint32" name="Time at 35 to 50% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x2A</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x2A</data>
+   <data type="double" size="uint32" name="Time at 50 to 65% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x2B</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x2B</data>
+   <data type="double" size="uint32" name="Time at 65 to 80% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x2C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x2C</data>
+   <data type="double" size="uint32" name="Time at 80 to 100% throttle" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x2D</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x2D</data>
+   <data type="double" size="uint32" name="Time at 500 to 1500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x2E</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x2E</data>
+   <data type="double" size="uint32" name="Time at 1500 to 2500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x2F</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x2F</data>
+   <data type="double" size="uint32" name="Time at 2500 to 3500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x30</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x30</data>
+   <data type="double" size="uint32" name="Time at 3500 to 4500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x31</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x31</data>
+   <data type="double" size="uint32" name="Time at 4500 to 5500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x32</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x32</data>
+   <data type="double" size="uint32" name="Time at 5500 to 6500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x33</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x33</data>
+   <data type="double" size="uint32" name="Time at 6500 to 7000 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x34</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x34</data>
+   <data type="double" size="uint32" name="Time at 7000 to 7500 rpm" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x35</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x35</data>
+   <data type="double" size="uint32" name="Time at 0 to 30 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x36</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x36</data>
+   <data type="double" size="uint32" name="Time at 30 to 60 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x37</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x37</data>
+   <data type="double" size="uint32" name="Time at 60 to 90 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x38</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x38</data>
+   <data type="double" size="uint32" name="Time at 90 to 120 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x39</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x39</data>
+   <data type="double" size="uint32" name="Time at 120 to 150 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x3A</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x3A</data>
+   <data type="double" size="uint32" name="Time at 150 to 180 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x3B</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x3B</data>
+   <data type="double" size="uint32" name="Time at 180 to 210 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x3C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x3C</data>
+   <data type="double" size="uint32" name="Time at 210 to 240 kph" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x46</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x46</data>
+   <data type="double" size="uint32" name="Time at 105 to 110 deg C coolant temperature" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x47</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x47</data>
+   <data type="double" size="uint32" name="Time at 110 to 115 deg C coolant temperature" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x48</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x48</data>
+   <data type="double" size="uint32" name="Time at 115 to 120 deg C coolant temperature" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x49</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x49</data>
+   <data type="double" size="uint32" name="Time above 120 deg C coolant temperature" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x4E</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x4E</data>
+   <data type="int" size="uint16" name="High engine speed 1 [rpm]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x4F</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x4F</data>
+   <data type="int" size="uint16" name="High engine speed 2 [rpm]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x50</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x50</data>
+   <data type="int" size="uint16" name="High engine speed 3 [rpm]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x51</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x51</data>
+   <data type="int" size="uint16" name="High engine speed 4 [rpm]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x52</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x52</data>
+   <data type="int" size="uint16" name="High engine speed 5 [rpm]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x53</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x53</data>
+   <data type="double" size="uint8" name="Coolant temp at high engine speed 1 [deg C]" expression="#*0.625 - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x55</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x55</data>
+   <data type="double" size="uint32" name="Total engine runtime at high engine speed 1 [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x56</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x56</data>
+   <data type="double" size="uint8" name="Coolant temp at high engine speed 2 [deg C]" expression="#*0.625 - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x58</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x58</data>
+   <data type="double" size="uint32" name="Total engine runtime at high engine speed 2 [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x59</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x59</data>
+   <data type="double" size="uint8" name="Coolant temp at high engine speed 3 [deg C]" expression="#*0.625 - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x5B</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x5B</data>
+   <data type="double" size="uint32" name="Total engine runtime at high engine speed 3 [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x5C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x5C</data>
+   <data type="double" size="uint8" name="Coolant temp at high engine speed 4 [deg C]" expression="#*0.625 - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x5E</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x5E</data>
+   <data type="double" size="uint32" name="Total engine runtime at high engine speed 4 [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x5F</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x5F</data>
+   <data type="double" size="uint8" name="Coolant temp at high engine speed 5 [deg C]" expression="#*0.625 - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x62</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x62</data>
+   <data type="double" size="uint32" name="Total engine runtime at high engine speed 5 [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x63</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x63</data>
+   <data type="int" size="uint8" name="Max vehicle speed 1 [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x64</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x64</data>
+   <data type="int" size="uint8" name="Max vehicle speed 2 [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x65</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x65</data>
+   <data type="int" size="uint8" name="Max vehicle speed 3 [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x66</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x66</data>
+   <data type="int" size="uint8" name="Max vehicle speed 4 [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x67</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x67</data>
+   <data type="int" size="uint8" name="Max vehicle speed 5 [km/hr]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x68</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x68</data>
+   <data type="double" size="uint8" name="Fastest 0 to 100 km/hr [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x69</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x69</data>
+   <data type="double" size="uint8" name="Fastest 0 to 160 km/hr [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x6A</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x6A</data>
+   <data type="double" size="uint8" name="Most recent 0 to 100 km/hr [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x6B</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x6B</data>
+   <data type="double" size="uint8" name="Most recent 0 to 160 km/hr [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x6C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x6C</data>
+   <data type="double" size="uint32" name="Total engine runtime [sec]" expression="#/10"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+  <send type="data" baud="10400" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x6D</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x6D</data>
+   <data type="int" size="uint16" name="Number of standing starts"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="101 Fire injector 1" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="102 Fire injector 2" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x2</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x2</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="103 Fire injector 3" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x3</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x2</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="104 Fire injector 4" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x4</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x4</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="121 Variable valve lift PWM duty cycle" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x21</data>
+   <data type="input" size="uint8" name="0"; expression="#*2.55"/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x21</data>
+   <data type="double" size="uint8" name="Commanded variable valve lift PWM [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="122 Variable valve timing advance PWM duty cycle" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x22</data>
+   <data type="input" size="uint8" name="0"; expression="#*2.55"/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x22</data>
+   <data type="double" size="uint8" name="Commanded variable valve timing advance PWM [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="125 Gauge cluster engine speed check" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x25</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x25</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="126 Gauge cluster vehicle speed check" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x26</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x26</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="127 Evaporative Purge PWM Duty Cycle" mode="Mode 0x2F" init="OBD init">
   <send type="data" baud="10400" length=8>
    <data>104</data>
    <data>106</data>
@@ -407,8 +3558,336 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
+ <pid name="12A ?? related to mode 0x22 PIDs 204-206" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x2A</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x2A</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ <pid name="141 Fuel pump ??" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x41</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x41</data>
+   <data type="int" size="uint8" name="Commanded fuel pump state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ <pid name="142 Airbox flap ??" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x42</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x42</data>
+   <data type="int" size="uint8" name="Commanded airbox flap state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="143 PORTC enable O2 htr ??" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x43</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x43</data>
+   <data type="int" size="uint8" name="Commanded PORTC O2 htr state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="144 PORTC enable recirc pump ??" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x44</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x44</data>
+   <data type="int" size="uint8" name="Commanded PORTC recirc pump state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="146 enable fan low spd ??" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x46</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x46</data>
+   <data type="int" size="uint8" name="Commanded fan low spd state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="147 Gauge cluster MIL light check" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x47</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x47</data>
+   <data type="int" size="uint8" name="Commanded gauge cluster MIL light state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="148 Gauge cluster oil light check" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x48</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x48</data>
+   <data type="int" size="uint8" name="Commanded gauge cluster oil light state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="149 ?? related to evap purge" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x49</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x49</data>
+   <data type="int" size="uint8" name="Commanded PWM state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="14A ?? enable fan med spd" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x4A</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x4A</data>
+   <data type="int" size="uint8" name="Commanded fan med spd state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="14B ?? enable fan high spd" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x4B</data>
+   <data type="input" size="uint8" name="0";/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x4B</data>
+   <data type="int" size="uint8" name="Commanded fan high spd state"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="161 Fire ignition coil 1" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x61</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x61</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="162 Fire ignition coil 2" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x62</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x62</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="163 Fire ignition coil 3" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x63</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x63</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="164 Fire ignition coil 4" mode="Mode 0x2F" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x2F</data>
+   <data>0x1</data>
+   <data>0x64</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>111</data>
+   <data>0x1</data>
+   <data>0x64</data>
+   <data>0x0</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
 
- <pid name="Reprogram VIN: SCCPC111 - 5H - - - - - -" mode="Mode 0x3B" init="OBD init">
+ <pid name="Reprogram VIN: SCCPC111 - 5H - - - - - -" mode="Mode 0x3B" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=11>
    <data>104</data>
    <data>106</data>
