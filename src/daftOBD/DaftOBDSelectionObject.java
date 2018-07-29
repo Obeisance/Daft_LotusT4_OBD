@@ -17,6 +17,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 	
 	//We'll want to present this class in a JPanel
 	JPanel DaftPanel = new JPanel();
+	JCheckBox DaftSelectionCheckBox;
 	
 	//parameters that define a selection object
 	public String mode;//OBD mode such as '0x1' or 'Init', or comm mode such as 'Reflash'
@@ -32,6 +33,8 @@ public class DaftOBDSelectionObject implements ActionListener {
 	Serial_Packet[] receivePacketList;//bytes and conversions showing what a response packet looks like
 	boolean[] flowControl = new boolean[0];//'0' = send message, '1' = receive message, '2' = eval. cond. before receive
 	
+	boolean readOnce = false;//a flag that states that the PID should be read only once per polling cycle
+	
 	//constructor	
 	public DaftOBDSelectionObject(String m, String pid, Serial_Packet[] list_of_packets_to_send, Serial_Packet[] list_of_packets_to_read) {	
 		//set the parameters that define the object
@@ -45,7 +48,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 		//Initialize the parameters that allow us to visually present this object to the user
 		//the object consists of a JCheckBox and a possible set of JTextFields
 		//first, add the JCheckBox that allows the parameter to be selected
-		JCheckBox DaftSelectionCheckBox = new JCheckBox(this.parameterID);
+		DaftSelectionCheckBox = new JCheckBox(this.parameterID);
 		DaftSelectionCheckBox.setSelected(this.isSelected);
 		DaftSelectionCheckBox.addActionListener(this);
 		DaftPanel.add(DaftSelectionCheckBox);
@@ -115,6 +118,17 @@ public class DaftOBDSelectionObject implements ActionListener {
 			
 		}
 		return list;
+	}
+	
+	public void setReadOnce(boolean state) {
+		//this function updates the read-once flag based on the input
+		this.readOnce = state;
+	}
+	
+	public void stopPolling() {
+		//this function toggles the checkbox state and isSelected flag
+		this.isSelected = false;
+		DaftSelectionCheckBox.setSelected(this.isSelected);
 	}
 
 	public void actionPerformed(ActionEvent arg0) {

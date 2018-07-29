@@ -3931,4 +3931,40 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
+ <reflash name="T4, C121E0001F K0303 - Read ROM" stageIImod="0x5D017" stageIImult="0xC6E" userSetHexStartAddr="true" stageIIread="true" targetLength="0x80000" targetAddress="0x0" saveButton="true" saveSREC="false">
+  <decode data>0x7</decode data>
+  <decode data>0xF</decode data>
+  <decode data>0x17</decode data>
+  <decode data>0x2F</decode data>
+  <decode data>0x5D</decode data>
+  <decode data>0xBA</decode data>
+  <decode data>0x174</decode data>
+  <decode data>0x2E8</decode data>
+  <decode data>0x5D0</decode data>
+  <decode data>0xBA0</decode data>
+  <decode data>0x1740</decode data>
+  <decode data>0x2E80</decode data>
+  <decode data>0x5D00</decode data>
+  <decode data>0xBA00</decode data>
+  <decode data>0x17401</decode data>
+  <decode data>0x2E801</decode data>
+ </reflash>
+ <reflash name="T4, C121E0001F K0303 - Calibration reflash" stageIImod="0x5D017" stageIImult="0xC6E" targetLength="0x10000" targetAddress="0x70000">
+  <decode data>0x7</decode data>
+  <decode data>0xF</decode data>
+  <decode data>0x17</decode data>
+  <decode data>0x2F</decode data>
+  <decode data>0x5D</decode data>
+  <decode data>0xBA</decode data>
+  <decode data>0x174</decode data>
+  <decode data>0x2E8</decode data>
+  <decode data>0x5D0</decode data>
+  <decode data>0xBA0</decode data>
+  <decode data>0x1740</decode data>
+  <decode data>0x2E80</decode data>
+  <decode data>0x5D00</decode data>
+  <decode data>0xBA00</decode data>
+  <decode data>0x17401</decode data>
+  <decode data>0x2E801</decode data>
+ </reflash>
 </parameter list>

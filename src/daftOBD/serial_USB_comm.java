@@ -74,12 +74,24 @@ public class serial_USB_comm {
 		}
 	}
 	
+	public void changeRx_timeout(int newTO)
+	{
+		//this function updates the Rx timeout
+		try {
+			this.FTDI_cable.setTimeouts(newTO, 500);//set read timeout, 500 ms write timeout
+		} catch (FTD2XXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	
 	public void updateBaudRate(int newBaud) {
 		//if the current baud rate and newBaud match, don't change anything
 		while(!this.ready_for_next_command)
 		{
 			//we're not ready for a new command -> infinite loop
+			//System.out.println("not ready for next command");
 		}
 		
 		if(this.baudRate != newBaud)
@@ -269,6 +281,16 @@ public class serial_USB_comm {
 			//otherwise we can simply send data
 			try {
 				FTDI_cable.write(data);
+				
+				
+				System.out.print("Send: [ ");
+				for(int i = 0; i < data.length; i++)
+				{
+					System.out.print((int) (data[i] & 0xFF) + " ");
+				}
+				System.out.println("]");
+				
+				
 			} catch (FTD2XXException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -358,6 +380,14 @@ public class serial_USB_comm {
 				//we're running normally and can simply read in the data
 				try {
 					readBytes = FTDI_cable.read(numBytesToRead);
+					
+					System.out.print("Read: [ ");
+					for(int i = 0; i < readBytes.length; i++)
+					{
+						System.out.print((int) (readBytes[i] & 0xFF) + " ");
+					}
+					System.out.println("]");
+					
 				} catch (FTD2XXException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -401,6 +431,7 @@ class sendBit implements Runnable {
 			e.printStackTrace();
 		}
 		this.parentPort.updateReadiness(this.bitsLeft - 1 <= 0);
+		return;
 	}	
 }
 
@@ -427,5 +458,6 @@ class readBit implements Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return;
 	}
 }

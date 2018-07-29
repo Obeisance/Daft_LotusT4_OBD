@@ -34,6 +34,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	//our content panels
 	JFrame fileSelectorPanel;
 	JPanel daftTree;
+	JToggleButton start_button;
 	DaftTreeComponent daftTreeRoot;
 	JTextField statusText;
 	//JTree tree;
@@ -209,6 +210,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	    		//schedule an event
 	    		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 	    		scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
+	    		scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
 	    		//collect the time that we are using as the beginning of logging
 	    		logStartTime = System.currentTimeMillis();
 	    		
@@ -293,7 +295,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		
 		//our first component is a button which can be pressed 
 		//to start the logging action
-		JToggleButton start_button = new JToggleButton("Start",running);
+		start_button = new JToggleButton("Start",running);
 		start_button.addActionListener(this);
 		start_button.setActionCommand("start");
 		start_button.setPreferredSize(new Dimension(75, 30));
@@ -332,7 +334,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		
 		//now put this into a scroll pane so that it can be viewed more easily
 		JScrollPane scrollableLoggingParameters = new JScrollPane(loggingParameterBoxes);//ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-		scrollableLoggingParameters.setPreferredSize(new Dimension(150,300));
+		scrollableLoggingParameters.setPreferredSize(new Dimension(900,500));//250,500
 		
 		//finally, add the log parameters to the main JPanel that we're building
 		layoutConstraints.gridx = 0;//position 0,1 (one row down)
@@ -349,7 +351,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		//add a status indicating message
 		JPanel statusBox = new JPanel();
 		JLabel statusLabel = new JLabel("Status:");
-		statusText = new JTextField("Inactive",10);
+		statusText = new JTextField("Inactive",15);
 		statusText.setEditable(false);
 		statusBox.add(statusLabel);
 		statusBox.add(statusText);
@@ -358,14 +360,15 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		layoutConstraints.gridy = 2;
 		layoutConstraints.gridheight = 1;//one row tall, two rows wide
 		layoutConstraints.gridwidth = 2;
-		layoutConstraints.weightx = 0.1;
-		layoutConstraints.weighty = 1.0;
-		layoutConstraints.anchor = GridBagConstraints.FIRST_LINE_START;
+		//layoutConstraints.weightx = 0.1;
+		//layoutConstraints.weighty = 1.0;
+		layoutConstraints.anchor = GridBagConstraints.LAST_LINE_START;
 		layoutConstraints.insets = new Insets(0,10,0,0);
 		layoutConstraints.fill = GridBagConstraints.VERTICAL;
 		log_button_and_parameters.add(statusBox,layoutConstraints);
 		
-		
+		//after we've initialized the 'statusText' object, we can share it
+		daftTreeRoot.updateReflashControlOver(this.statusText, this.ComPort, this.settings_file);//add the controllable parameters to the tree reflash objects
 		return log_button_and_parameters;
 	}
 	
@@ -396,7 +399,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 
 
 				//then also print for diagnostics
-				System.out.print("send: [ ");
+				//System.out.print("send: [ ");
 				logBytes = logBytes.concat(" Send: [ ");//and save to byte log
 				sendIndex ++;
 			}
@@ -416,7 +419,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				if(thisPacket.length > 0)//read success
 				{
 					success = dataToRead[readIndex].compare_pckt_and_update_outputs(readPacket);//compare the read-in data
-					System.out.print("read: [ ");
+					//System.out.print("read: [ ");
 					logBytes = logBytes.concat(" Read: [ ");
 				}
 				readIndex ++;
@@ -426,10 +429,10 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			{
 				for(int k = 0; k < thisPacket.length; k++)
 				{
-					System.out.print((int) (thisPacket[k] & 0xFF) + " ");
+					//System.out.print((int) (thisPacket[k] & 0xFF) + " ");
 					logBytes = logBytes.concat(String.valueOf((int) (thisPacket[k] & 0xFF))).concat(" ");
 				}
-				System.out.println("]");
+				//System.out.println("]");
 				logBytes = logBytes.concat("]");
 				fileHandler.appendln_byteLogFile(settings_file, logBytes);
 			}
@@ -503,11 +506,15 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		{
 			DaftOBDSelectionObject[] scanList = daftTreeRoot.getComponents();
 			DaftOBDSelectionObject[] initList = daftTreeRoot.getInits();
+			boolean[] finished_reading_ThisTime = new boolean[scanList.length];
+			
+			int countActive = 0;
 			
 			for(int i = 0; i < scanList.length; i++)
 			{
 				if(scanList[i].isSelected)
 				{
+					countActive++;
 					boolean initFinished = false;
 					while(!initFinished)
 					{
@@ -567,17 +574,80 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 						//we had a polling failure:
 						statusText.setText("Poll failure");
 						statusText.repaint();
+						
+						finished_reading_ThisTime[i] = false;
+					}
+					else
+					{
+						finished_reading_ThisTime[i] = true;
 					}
 				}
 			}
-
-			//schedule another serial data exchange
-			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-			scheduler.schedule(this, 1, TimeUnit.MILLISECONDS);
+			
+			//loop through the data files and adjust the poll selection: if a parameter should only be read once, de-select it
+			for(int i = 0; i < finished_reading_ThisTime.length; i++)
+			{
+				if(finished_reading_ThisTime[i] && scanList[i].readOnce)
+				{
+					//update the checkbox in case the PID is a single read-case
+					scanList[i].stopPolling();
+				}
+			}
+			
+			if(countActive > 0)
+			{
+				//schedule another serial data exchange
+				ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+				scheduler.schedule(this, 1, TimeUnit.MILLISECONDS);
+				scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			}
+			else
+			{
+				//since we're not running any OBD polling,
+				//check to see if any reflash parameters have been clicked, we'll act on the first one
+				//we find.
+				DaftReflashSelectionObject[] reflash = this.daftTreeRoot.getReflashObjects();
+				//first, loop to see if we have any unselected reflash objects that are active
+				boolean active_non_selected = false;
+				for(int i = 0; i < reflash.length; i++)
+				{
+					if(!reflash[i].isSelected && reflash[i].active)
+					{
+						active_non_selected = true;
+						break;
+					}
+				}
+				
+				//now loop again and send a command if we don't have an unselected but active reflash object
+				if(!active_non_selected)
+				{
+					for(int i = 0; i < reflash.length; i++)
+					{
+						if(reflash[i].isSelected)
+						{
+							reflash[i].begin();//send the command to either begin or end communication with the ECU
+							break;//don't send commands to any other reflash objects
+						}
+						else
+						{
+							if(reflash[i].active)
+							{
+								//we do not want to command any other reflash object if we have one
+								//that is active but not selected
+								break;
+							}
+						}
+					}
+				}
+				
+				//stop polling if there are no more parameters active
+				this.start_button.doClick();
+			}
 			
 			
 			//practice other code
 		}
+		return;
 	}
 	
 }

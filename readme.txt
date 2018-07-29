@@ -15,7 +15,7 @@ The program is a work in progress.
 
 This program uses Java 8, I think. It also uses a Java D2XX 
 library for the FTDI cable: "JavaFTD2XX-0.2.6.jar"
-Embarrassinlgy, I cannot figure out where I got this library from.
+Embarrassingly, I cannot figure out where I got this library from.
 
 
 Download the FTDI drivers (for the VAG com cable) at:

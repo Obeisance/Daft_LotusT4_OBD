@@ -4,10 +4,12 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.File;
 import java.util.Arrays;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 public class DaftTreeComponent implements MouseListener {
@@ -17,6 +19,7 @@ public class DaftTreeComponent implements MouseListener {
 	GridBagLayout DaftTreeLayout;
 	DaftOBDSelectionObject[] DaftObjects;//the PID list
 	DaftOBDSelectionObject[] DaftInits;//the Init list
+	DaftReflashSelectionObject[] DaftReflash;//the reflash object list
 	String[] listOfModes;
 	boolean listOfModeVisible[];
 	
@@ -29,6 +32,7 @@ public class DaftTreeComponent implements MouseListener {
 		this.TreeName = TreeName;
 		this.DaftObjects = new DaftOBDSelectionObject[0];
 		this.DaftInits = new DaftOBDSelectionObject[0];
+		this.DaftReflash = new DaftReflashSelectionObject[0];
 		this.listOfModeVisible = new boolean[0];
 		this.listOfModes = new String[0];
 	}
@@ -59,6 +63,11 @@ public class DaftTreeComponent implements MouseListener {
 			for(int i = 0; i < DaftObjects.length; i++)
 			{
 				listOfModes = addToModeList(listOfModes, DaftObjects[i].mode);
+			}
+			
+			if(this.DaftReflash.length > 0)
+			{
+				listOfModes = addToModeList(listOfModes,"Reflash");
 			}
 		}
 
@@ -107,6 +116,25 @@ public class DaftTreeComponent implements MouseListener {
 						y_index += 1;
 					}
 				}
+				if(currentMode.equals("Reflash"))
+				{
+					//special treatment for Reflash mode since it is not a DaftOBDSelectionObject
+					for(int j = 0; j < this.DaftReflash.length; j++)
+					{
+						if(DaftReflash[j].isVisible)
+						{
+							GridBagConstraints leafConstraint = new GridBagConstraints();
+							leafConstraint.gridx = 2;
+							leafConstraint.gridy = y_index;
+							leafConstraint.gridwidth = 2;
+							leafConstraint.gridheight = 1;
+							leafConstraint.anchor = GridBagConstraints.LINE_START;
+							//System.out.println("Add Reflash leaf");
+							DaftTreePanel.add(DaftReflash[j].getReflashPanel(),leafConstraint);
+							y_index += 1;
+						}
+					}
+				}
 			}
 		}
 		
@@ -135,6 +163,12 @@ public class DaftTreeComponent implements MouseListener {
 		
 		//and append all inputs and outputs from this object to the list for this tree
 		append_child_inputs_outputs_to_tree_list(newInitObject);
+	}
+	
+	public void addReflash(DaftReflashSelectionObject newReflashObject) {
+		//this function appends the input reflash object to the list of reflash objects associated with this tree
+		this.DaftReflash = Arrays.copyOf(this.DaftReflash, this.DaftReflash.length + 1);
+		this.DaftReflash[this.DaftReflash.length - 1] = newReflashObject;
 	}
 	
 	public void append_child_inputs_outputs_to_tree_list(DaftOBDSelectionObject newDaftObject)
@@ -261,6 +295,22 @@ public class DaftTreeComponent implements MouseListener {
 		return this.outputList;
 	}
 	
+	public void updateReflashControlOver(JTextField field, serial_USB_comm com, File file)
+	{
+		//this function allows the main panel to update the components that the Reflash
+		//PIDs also want to have access over
+		for(int i = 0; i < this.DaftReflash.length; i++)
+		{
+			this.DaftReflash[i].setComm_and_status(com, field, file);
+		}
+	}
+	
+	public DaftReflashSelectionObject[] getReflashObjects()
+	{
+		//this function returns a list of the reflash objects associated with the tree
+		return this.DaftReflash;
+	}
+	
 	@Override
 	public void mouseClicked(MouseEvent arg0) {
 		Object causedAction = arg0.getSource();
@@ -302,6 +352,15 @@ public class DaftTreeComponent implements MouseListener {
 					if(modeMatch.equals(DaftObjects[i].mode)) {
 						DaftObjects[i].isVisible = !DaftObjects[i].isVisible;
 						//System.out.println(DaftObjects[i].parameterID + " visibility set to " + DaftObjects[i].isVisible);
+					}
+				}
+				
+				//or act on the reflash modes
+				if(modeMatch.equals("Reflash"))
+				{
+					for(int i = 0; i < this.DaftReflash.length; i++)
+					{
+						this.DaftReflash[i].isVisible = !this.DaftReflash[i].isVisible;
 					}
 				}
 			}

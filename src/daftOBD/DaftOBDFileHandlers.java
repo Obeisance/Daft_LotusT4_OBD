@@ -191,6 +191,7 @@ public class DaftOBDFileHandlers {
 		boolean receiveFlag = false;
 		boolean sendFlag = false;
 		boolean onDataList = false;
+		boolean onReflash = false;
 		
 		String mode = null;
 		String name = null;
@@ -199,10 +200,13 @@ public class DaftOBDFileHandlers {
 		Serial_Packet[] sendPacketList = new Serial_Packet[0];
 		Serial_Packet read_packet = new Serial_Packet();
 		Serial_Packet[] readPacketList = new Serial_Packet[0];
-		boolean repeatRead = false;
-		int replicate = 0;
+		boolean repeatRead = false;//a flag indicating that a receive packet line may represent multiple packets
+		int replicate = 0;//if a packet is repeated, this is the max number of times it will occur
+		boolean read_only_once = false;//a flag associated with a PID indicating that it should only be read once
 		
-		boolean[] flowControl = new boolean[0];
+		boolean[] flowControl = new boolean[0];//a vector showing the send/receive order
+		
+		
 		Conversion_Handler convert = new Conversion_Handler();
 		
 		if(definitionFile != null)
@@ -278,6 +282,14 @@ public class DaftOBDFileHandlers {
 								{
 									initName = stringBetween(fileLine, "init=\"","\"");
 								}
+								if(fileLine.contains("read_only_once=\"true\""))
+								{
+									read_only_once = true;
+								}
+								else
+								{
+									read_only_once = false;
+								}
 								
 								sendPacketList = new Serial_Packet[0];//reset the list of send data packets associated with the parameter
 								readPacketList = new Serial_Packet[0];
@@ -297,6 +309,10 @@ public class DaftOBDFileHandlers {
 								DaftOBDSelectionObject DaftTreeLeaf = new DaftOBDSelectionObject(mode, name, sendPacketList, readPacketList);
 								DaftTreeLeaf.flowControl = flowControl;
 								DaftTreeLeaf.initID = initName;
+								if(read_only_once)
+								{
+									DaftTreeLeaf.setReadOnce(read_only_once);
+								}
 								
 								//then add this object to our tree
 								treeDefinitionList.add(DaftTreeLeaf);
@@ -332,6 +348,103 @@ public class DaftOBDFileHandlers {
 								//then add the initialization to the tree of objects (the tree will handle
 								//the special case that this is an init)
 								treeDefinitionList.addInit(initObject);
+							}
+							else if(fileLine.contains("<reflash"))
+							{
+								//we'll read in parameters that define the reflash mode
+								onReflash = true;
+								String reflashName = "";
+								if(fileLine.contains("name="))
+								{
+									reflashName = stringBetween(fileLine,"name=\"","\"");
+								}
+								
+								//that's all we need in order to make the reflash object
+								DaftReflashSelectionObject reflash = new DaftReflashSelectionObject(reflashName);
+								
+								//now check for option settings - this is a bit of a mess
+								if(fileLine.contains("encodeButton=\"true\""))
+								{
+									reflash.setEncodeButtonVisibility(true);//option to show the 'encode message' button
+								}
+								
+								if(fileLine.contains("decodeButton=\"true\""))
+								{
+									reflash.setDecodeButtonVisibility(true);//option to show the 'decode message' button
+								}
+								
+								if(fileLine.contains("saveButton=\"true\""))
+								{
+									reflash.setSaveButtonVisibility(true);//option to show the 'save encoded message' button
+								}
+								
+								long targetAddr = 0x0;
+								if(fileLine.contains("targetAddress=\""))//check to see if the target reflash address has been outlined
+								{
+									String addr = stringBetween(fileLine,"targetAddress=\"","\"");
+									targetAddr = (convert.Hex_or_Dec_string_to_int(addr) & 0xFFFFFFFF);
+								}
+								
+								long targetLen = 0x80000;//true for T4, not K4
+								if(fileLine.contains("targetLength=\""))//check to see if the target reflash length has been outlined
+								{
+									String len = stringBetween(fileLine,"targetLength=\"","\"");
+									targetLen = (convert.Hex_or_Dec_string_to_int(len) & 0xFFFFFFFF);
+								}
+								
+								if(fileLine.contains("stageI=\"true\""))
+								{
+									reflash.setStageIBootloader();//option to use the 'StageI' verision of the bootloader
+								}
+								else if(fileLine.contains("stageIIread=\"true\""))
+								{
+									//if not using the stageI bootloader, we may choose to use the special 
+									//version of the stageII bootloader to read addresses
+									reflash.setSpecialReadBootloader(targetAddr,targetLen);
+									
+									if(fileLine.contains("saveSREC=\"true\""))
+									{
+										reflash.set_saveSREC(true);//change the setting so that we save the s-record during a ROM read - the s-record saving process is very slow due to parsing into strings 
+									}
+								}
+								else
+								{
+									//we're using the stage II bootloader, so set the target address and length for reflashing
+									reflash.setTargetAddress(targetAddr, targetLen);
+								}
+								
+								
+								if(fileLine.contains("inputAddr=\""))
+								{
+									reflash.setInputAddressVisibility(true);//show the JTextFields that allow the user to unput the target address and length for reflashing 
+								}
+								
+								if(fileLine.contains("userSetHexStartAddr=\"true\""))
+								{
+									reflash.setInputHexAddressVisibility(true);//show the JTextField that allows the user to input the address denoting the start address of the input Hex file
+								}
+								
+								if(fileLine.contains("erase_before_reflash=\"false\""))
+								{
+									reflash.setStageII_erase_flag(false);//set the reflash object to not erase flash sectors when using the stageII bootloader
+								}
+								
+								if(fileLine.contains("stageIImod=\"") && fileLine.contains("stageIImult=\""))
+								{
+									//set the 'modulo' and 'mult' parameter for encoding stageII reflash messages
+									String mod_str = stringBetween(fileLine,"stageIImod=\"","\"");
+									String mult_str = stringBetween(fileLine,"stageIImult=\"","\"");
+									int mod = convert.Hex_or_Dec_string_to_int(mod_str);
+									int mult = convert.Hex_or_Dec_string_to_int(mult_str);
+									reflash.setStageII_mod_and_mult(mod, mult);
+								}
+								
+								//and add the object to the tree
+								treeDefinitionList.addReflash(reflash);
+							}
+							else if(fileLine.contains("</reflash>"))
+							{
+								onReflash = false;
 							}
 
 							//if we're on a parameter, we should process the string to find the
@@ -670,6 +783,16 @@ public class DaftOBDFileHandlers {
 									}
 								}
 							}//end onParameter/onInit
+							else if(onReflash)
+							{
+								//the only thing to read in the reflash packet is encoding data
+								if(fileLine.contains("<decode data>"))
+								{
+									String decode_data_str = stringBetween(fileLine,"<decode data>","</decode data>");
+									int decode_data = convert.Hex_or_Dec_string_to_int(decode_data_str);
+									treeDefinitionList.DaftReflash[treeDefinitionList.DaftReflash.length - 1].appendToDecodeBytes(decode_data);
+								}
+							}
 							//System.out.println(fileLine);
 						}
 					}
