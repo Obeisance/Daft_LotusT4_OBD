@@ -3931,7 +3931,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <reflash name="T4, C121E0001F K0303 - Read ROM" stageIImod="0x5D017" stageIImult="0xC6E" userSetHexStartAddr="true" stageIIread="true" targetLength="0x80000" targetAddress="0x0" saveButton="true" saveSREC="false">
+ <reflash name="T4, C121E0001F K0303 - Read ROM" stageIImod="0x5D017" stageIImult="0xC6E" userSetHexStartAddr="true" stageIIread="true" targetLength="0x80000" targetAddress="0x0" saveSREC="false">
   <decode data>0x7</decode data>
   <decode data>0xF</decode data>
   <decode data>0x17</decode data>
