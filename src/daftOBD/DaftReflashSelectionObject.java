@@ -58,7 +58,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 	byte[] hexData = new byte[0];//store the entire hex file as byte data
 	
 	//some of the buttons (encodeButton, decodeButton) are not necessary in case we want to try on-the-fly encoding
-	boolean encode_on_the_fly = false;
 	
 	//packet buffers which we'll fill during the encoding process
 	//when these are fetched, only send one pair of send-rec. at a time
@@ -200,16 +199,19 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 	public void setStageIBootloader()
 	{
 		//this function allows a user to set this object to be related to the stage I bootloader
+		setTargetAddress(0x8000, 0x7FFE);//the stage I bootloader only reflashes data from 0x8000 - 0xFFFF (inclusive)
 		this.stageI = true;
 		this.specialRead = false;//cannot use this function if we're working with the stage I bootloader
-		setTargetAddress(0x8000, 0x8000);//the stage I bootloader only reflashes data from 0x8000 - 0xFFFF (inclusive)
 	}
 	
 	public void setTargetAddress(long addr, long len)
 	{
-		//this function sets the target address and length
-		this.startReflashAddr = addr;
-		this.reflashLen = len;
+		//this function sets the target address and length, but not if we're using the stageI bootloader
+		if(!this.stageI)
+		{
+			this.startReflashAddr = addr;
+			this.reflashLen = len;
+		}
 		
 		//then update the values in the input JTextFields
 		updateTargetAddress_JTextFields();
@@ -382,10 +384,17 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			//change the COM port settings to have shorter timeouts until we get our connection established
 			if(!this.stageI)
 			{
-				this.ComPort.updateBaudRate(29769);//set baud rate for stage II bootloader (we're not changing this via the bootloader option
+				this.ComPort.updateBaudRate(29769);//set baud rate for stage II bootloader (we're not changing this via the bootloader option)
+			}
+			else
+			{
+				this.ComPort.updateBaudRate(9600);//set baud rate for stage I bootloader
 			}
 			this.ComPort.changeRx_timeout(20);//
 
+			//and we want to encode messages before connecting to the bootloader
+			//send the command to encode ECU data if it's not done
+			resetEncodingFlags();
 			
 			//then schedule further action
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -404,9 +413,9 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		}
 	}
 	
-	public double get_bytes_to_reflash_stageII()
+	public double get_bytes_to_reflash()
 	{
-		//this function collects the data necessary for reflashing using the stageII bootloader
+		//this function collects the data necessary for reflashing using the stageI or stageII bootloader
 		//it returns a double that represents the fraction complete. It only takes one step
 		//at a time in order to allow for incremental operation, so it must be called continuously
 		//until it returns 1.00
@@ -442,6 +451,8 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 					//the data we want is wholly contained within the file
 					//so we collect it
 					this.dataToReflash = Arrays.copyOfRange(this.hexData, (int) (this.startReflashAddr - this.hexFileStartAddr), (int) (this.startReflashAddr + this.reflashLen - this.hexFileStartAddr));
+					//System.out.println("First byte at index: 0, is: " + (int) (this.dataToReflash[0] & 0xFF));
+					//System.out.println("Last byte at index: " + (this.dataToReflash.length - 1) + ", is: " + (int) (this.dataToReflash[this.dataToReflash.length - 1] & 0xFF));
 				}
 			}
 			else if(this.fileType == 1)
@@ -642,7 +653,17 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		if(this.numSubpackets == 0)
 		{
 			//reset our counters
-			this.subPacketDataAddress = this.startReflashAddr;
+			long dataLeft = this.dataToReflash.length;
+			//protect the bootloader region of memory
+			if(this.startReflashAddr >= 0x8000)
+			{
+				this.subPacketDataAddress = this.startReflashAddr;
+			}
+			else
+			{
+				this.subPacketDataAddress = 0x8000;
+				dataLeft -= (0x8000 - this.startReflashAddr);
+			}
 			this.numBytesInEachSubPacket = new int[0];
 			this.raw_send_packets = new Serial_Packet[0];
 			this.sumOfallDecodedBytes = 0;
@@ -651,7 +672,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			
 			//if we've already imported the data, we should figure out how many
 			//sub-packets will be needed to send it
-			long dataLeft = this.dataToReflash.length;
 			while(dataLeft > 0)
 			{
 				//System.out.println("Number of sub packets needed: " + this.numSubpackets + " packets, with " + dataLeft + " bytes left to accommodate");
@@ -1271,6 +1291,8 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		if(this.decoding_packet_index == 0)
 		{
 			this.index_of_last_encoded_byte = 0;//reset this counter when we start
+			this.decodeKey = 0;//reset the decoding key too
+			this.sum_of_all_encoded_bytes = 0;//reset the total packet sum too
 			
 			//create a new file and overwrite the last one - this is where we'll save data
 			try {
@@ -1592,6 +1614,366 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		return fractionComplete;
 	}
 	
+	public double build_stageI_packet()
+	{
+		//this function encodes the stageI bootloader recovery reflashing packets
+		//we'll create all 206 and 207 messages, step-by-step
+		double fractionComplete = 0;
+
+		int max_stgI_pckt_len = 254;//9998
+		
+		//check to be sure we have the data necessary to reflash
+		if(this.dataToReflash.length == 0x7FFE)
+		{
+			if(this.numSubpackets == 0)
+			{
+				//figure out how many packets we'll need to make
+				//we can send as many packets as we want, but are limited to even byte amounts
+				//of data and 9999 bytes per packet (less the check bytes)
+				//there are likely real limits to the number of bytes we can send at once, but until
+				//I find them, I'll just try the big number
+				
+				//packet structure = [2,#,#,#,#,#,ID,#,#,#,#,#,#,..data..,3,C1,C2,C3,C4] 
+				//where the first four ascii are the number of bytes in the packet, less the C1-C4 bytes
+				//the fifth ascii is a counter, mod 10
+				//ID is 206 for reflash data or 207 for the CRC word
+				//and the last six ascii are the count of reflash messages sent
+				
+				this.numSubpackets = (int) (this.reflashLen / (max_stgI_pckt_len - 14));//the large ID = 206 packets
+				this.numSubpackets += 1;//the final ID = 206 packet
+				this.numSubpackets += 1;//for the ID = 207 packet with the CRC in it
+				
+				//also, reset our counters
+				this.subPacketDataAddress = this.startReflashAddr;//this will be set to 0x8000
+				this.encoded_send_packets = new Serial_Packet[0];//empty set of packets
+			}
+			else 
+			{
+				//populate packets
+				Serial_Packet thisPacket = new Serial_Packet();
+				
+				thisPacket.appendByte(0x2);
+				//then the length bytes
+				int numDataBytes = 0;
+				int packetLength = 0;
+				int ID = 206;
+				if(this.encoded_send_packets.length < this.numSubpackets - 2)
+				{
+					//9998 bytes per packet is a maximum
+					numDataBytes = max_stgI_pckt_len - 14;
+					packetLength = numDataBytes + 14;
+				}
+				else if(this.encoded_send_packets.length == this.numSubpackets - 2)
+				{
+					//final ID=206 packet
+					numDataBytes = (int) this.reflashLen % (max_stgI_pckt_len - 14);
+					packetLength = numDataBytes + 14;
+				}
+				else
+				{
+					//the last packet, an ID=207 packet
+					numDataBytes = 5;
+					packetLength = numDataBytes + 8;
+					ID = 207;
+				}
+				
+				//now turn that into ascii number of bytes
+				int[] ascii = {48, 49, 50, 51, 52, 53, 54, 55, 56, 57};
+				int hi_index = packetLength/1000;
+				int hi_mid_index = (packetLength - hi_index*1000) / 100;
+				int lo_mid_index = (packetLength - hi_index*1000 - hi_mid_index*100) / 10;
+				int lo_index = (packetLength - hi_index*1000 - hi_mid_index*100 - lo_mid_index*10);
+				
+				thisPacket.appendByte(ascii[hi_index]);
+				thisPacket.appendByte(ascii[hi_mid_index]);
+				thisPacket.appendByte(ascii[lo_mid_index]);
+				thisPacket.appendByte(ascii[lo_index]);
+				
+				
+				//followed by the mod 10 counter
+				thisPacket.appendByte((int) '0');//although the ECU increments this counter, it does not check to see that the value is incremented
+				
+				//the the ID
+				thisPacket.appendByte(ID);
+				
+				//then the 'number of reflash messages sent' or the CRC
+				if(ID != 207)
+				{
+					//6 ascii characters representing the reflash message index
+					int msg_index = this.encoded_send_packets.length;
+					
+					int index = msg_index / 100000;
+					msg_index -= index * 100000;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = msg_index / 10000;
+					msg_index -= index * 10000;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = msg_index / 1000;
+					msg_index -= index * 1000;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = msg_index / 100;
+					msg_index -= index * 100;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = msg_index / 10;
+					msg_index -= index * 10;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = msg_index;
+					thisPacket.appendByte(ascii[index]);
+				}
+				else
+				{
+					//5 ascii characters representing the 16 bit CRC
+					int crc_int = this.stageI_reflash_crc(this.dataToReflash);
+					//System.out.println("crc_int: " + crc_int);
+					
+					int index = crc_int / 10000;
+					crc_int -= index * 10000;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = crc_int / 1000;
+					crc_int -= index * 1000;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = crc_int / 100;
+					crc_int -= index * 100;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = crc_int / 10;
+					crc_int -= index * 10;
+					thisPacket.appendByte(ascii[index]);
+					
+					index = crc_int;
+					thisPacket.appendByte(ascii[index]);
+				}
+				
+				if(ID == 206)
+				{
+					//then reflashing data
+					int  offset =(int) (this.subPacketDataAddress - this.startReflashAddr);
+					//System.out.println("collect: " + offset + "-" + (offset + this.numBytesInEachSubPacket[packetIndex]) + " compared to size: " + this.dataToReflash.length);
+
+					//adjust the address to use in the next packet
+					this.subPacketDataAddress += numDataBytes;
+					
+					//then loop to add the bytes
+					for(int i = 0; i < numDataBytes; i++)
+					{
+						thisPacket.appendByte((int) (this.dataToReflash[i + offset] & 0xFF));
+					}
+				}
+
+				//the '3' byte
+				thisPacket.appendByte(0x3);
+				
+				//then the four message CRC bytes
+				byte[] msg_crc = stageI_pckt_check_bytes(thisPacket);
+				thisPacket.appendByte((int) (msg_crc[0] & 0xFF));
+				thisPacket.appendByte((int) (msg_crc[1] & 0xFF));
+				thisPacket.appendByte((int) (msg_crc[2] & 0xFF));
+				thisPacket.appendByte((int) (msg_crc[3] & 0xFF));
+				
+				//finally, add the packet to our list of packets to send
+				this.encoded_send_packets = Arrays.copyOf(this.encoded_send_packets, this.encoded_send_packets.length + 1);
+				this.encoded_send_packets[this.encoded_send_packets.length - 1] = thisPacket;
+			}
+		}
+				
+		if(this.numSubpackets > 0)
+		{
+			fractionComplete = (double) this.encoded_send_packets.length / (double) this.numSubpackets;
+		}
+		
+		return fractionComplete;
+	}
+	
+	
+	public double decode_StageI_packets()
+	{
+		//this function steps through each stageI bootloader packet and decodes
+		//it while writing to a text file the output. This is done step-by-step
+		double fractionComplete = 0;
+
+		//interpret the packet bytes
+		int mainPacketLength = 0;
+		int packetLength = 0;
+		int ID = 0;
+		int reflashPcktNo = 0;
+		
+		//now work on one packet
+		byte[] thisPacket = this.encoded_send_packets[this.decoding_packet_index].getPacket();
+
+		//collect the name of the file we'll write to
+		DaftOBDFileHandlers fileHandeler = new DaftOBDFileHandlers();
+		File logSaveLocation = fileHandeler.find_defn_fileLocation(this.settings_file, "Log save location: ");
+		String saveDecodeFileName = logSaveLocation.getPath() + "\\decoded bootloader recovery file output.txt";
+		File saveDecodeFile = new File(saveDecodeFileName);
+		BufferedWriter writer;
+
+		if(this.decoding_packet_index == 0)
+		{
+			this.index_of_last_encoded_byte = 0;//reset this counter when we start
+
+			//create a new file and overwrite the last one - this is where we'll save data
+			try {
+				saveDecodeFile.createNewFile();
+				writer = new BufferedWriter(new FileWriter(saveDecodeFile));
+				writer.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		//now, parse the packet and print to a file
+		//if we successfully created/found the file, proceed
+		if(saveDecodeFile.exists()) {
+			//System.out.println("Created file to save data of length: " + dataSet.length + " packets");
+
+			//open the file
+			//then append the line to the file
+			try {
+				writer = new BufferedWriter(new FileWriter(saveDecodeFile,true));//the ',true' ensures we're appending
+
+				//loop over the serial packet and interpret the bytes
+				for(int i = 0; i < thisPacket.length - 4; i++)
+				{
+					//the packet takes a regular form:
+					//packet structure = [2,#,#,#,#,#,ID,#,#,#,#,#,#,..data..,3,C1,C2,C3,C4]
+
+					if(i == 0)
+					{
+						if(thisPacket[i] != 2)
+						{
+							writer.append("Incorrect packet header: " + (int) (thisPacket[i] & 0xFF) + ". Should be: 2.");
+							writer.newLine();
+						}
+					}
+					else if(i >= 1 && i <= 4)
+					{
+						packetLength = packetLength*10 + (thisPacket[i] - 48);
+					}
+					else if(i == 6)
+					{
+						ID = (int) (thisPacket[i] & 0xFF);
+					}
+					else if(i > 6)
+					{
+						//interpret based on the ID
+						if(i < packetLength - 1)
+						{
+							if(ID == 206)
+							{
+								if(i >= 7 && i <= 12)
+								{
+									reflashPcktNo = reflashPcktNo * 10 + (thisPacket[i] - 48);
+
+									if(i == 12)
+									{
+										writer.append("Reflash packet number: " + reflashPcktNo + " contains: " + (packetLength - 14) + " bytes of data.");
+										writer.newLine();
+									}
+								}
+								else if(i > 12)
+								{
+									//we're on data! -> convert to Hex byte, print and change line every 16 bytes
+									String hexData = convert.Int_to_hex_string((int) thisPacket[i] & 0xFF);
+									if(hexData.length() < 2)
+									{
+										hexData = "0".concat(hexData);
+									}
+									writer.append(hexData);
+
+									if( (i - 12) % 16 == 0)
+									{
+										writer.newLine();
+									}
+								}
+							}
+							else if(ID == 207)
+							{
+								if(i >= 7 && i <= 11)
+								{
+									//this is actually the 16-bit CRC used to lock the bootloader
+									reflashPcktNo = (reflashPcktNo*10) + (thisPacket[i] - 48);
+									if(i == 11)
+									{
+										String hex_CRC = convert.Int_to_hex_string(reflashPcktNo);
+										writer.append("Data CRC as read from packet: " + hex_CRC);
+										writer.newLine();
+									}
+								}
+							}
+							else
+							{
+								writer.append("Unknown packet ID: " + ID + ". ");
+								writer.newLine();
+								writer.newLine();
+							}
+
+						}
+						else if(i == packetLength - 1)
+						{
+							writer.newLine();
+							if(thisPacket[i] != 3)
+							{
+								writer.append("Incorrect 'end of text' byte: " + (int) (thisPacket[i] & 0xFF));
+								writer.newLine();
+							}
+						}
+						else
+						{
+							//check the packet CRC bytes
+
+							//calculate the packet CRC bytes
+							Serial_Packet no_check_bytes = new Serial_Packet();
+							no_check_bytes.setPacket(Arrays.copyOf(thisPacket, thisPacket.length - 4));
+							byte[] pckt_CRC = stageI_pckt_check_bytes(no_check_bytes);
+
+							//then compare to what is in the packet
+							for(int j = 0; j < 4; j++)
+							{
+								if(pckt_CRC[j] != thisPacket[i + j])
+								{
+									writer.append("Incorrect check byte at index: " + (i+j) + " with value of: " + thisPacket[i + j] + " should be: " + pckt_CRC[j]);
+									writer.newLine();
+								}
+							}
+
+							break;
+						}
+					}
+
+
+
+				}
+				writer.newLine();
+				writer.close();//close the file
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+
+
+		//prepare for the next time this function is called- get the next packet
+		if(this.decoding_packet_index < this.encoded_send_packets.length)
+		{
+			this.decoding_packet_index += 1;//next time we'll work on the subsequent packet
+		}
+
+
+		fractionComplete = (double) (this.decoding_packet_index) / (double) (this.encoded_send_packets.length);
+
+
+		return fractionComplete;
+	}
+	
 	
 	public byte[] getBytesFromFile(long addr, long numBytesToGet)
 	{
@@ -1844,7 +2226,10 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		//create new files: this will not overwrite the last one
 		try {
 			saveBinFile.createNewFile();
-			saveSRECFile.createNewFile();
+			if(this.saveSREC)
+			{
+				saveSRECFile.createNewFile();
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -2032,6 +2417,361 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		
 		return success;
 	}
+	
+	public byte[] stageI_pckt_check_bytes(Serial_Packet pckt)
+	{
+		//this function calculates the four check bytes that are used to validate a serial packet
+		//sent during the stage I bootloader routines
+		
+		byte[] msg = pckt.getPacket();
+		
+		int polynomial = 291;//starting value of polynomial, a uint32_t
+		//length 1024
+		int[] lookupBytes = {0x00,0x00,0x00,0x00,0x77,0x07,0x30,0x96,0xEE,0x0E,0x61,0x2C,0x99,0x09,0x51,0xBA,0x07,0x6D,0xC4,0x19,0x70,0x6A,0xF4,0x8F,0xE9,0x63,0xA5,0x35,0x9E,0x64,0x95,0xA3,0x0E,0xDB,0x88,0x32,0x79,0xDC,0xB8,0xA4,0xE0,0xD5,0xE9,0x1E,0x97,0xD2,0xD9,0x88,0x09,0xB6,0x4C,0x2B,0x7E,0xB1,0x7C,0xBD,0xE7,0xB8,0x2D,0x07,0x90,0xBF,0x1D,0x91,0x1D,0xB7,0x10,0x64,0x6A,0xB0,0x20,0xF2,0xF3,0xB9,0x71,0x48,0x84,0xBE,0x41,0xDE,0x1A,0xDA,0xD4,0x7D,0x6D,0xDD,0xE4,0xEB,0xF4,0xD4,0xB5,0x51,0x83,0xD3,0x85,0xC7,0x13,0x6C,0x98,0x56,0x64,0x6B,0xA8,0xC0,0xFD,0x62,0xF9,0x7A,0x8A,0x65,0xC9,0xEC,0x14,0x01,0x5C,0x4F,0x63,0x06,0x6C,0xD9,0xFA,0x0F,0x3D,0x63,0x8D,0x08,0x0D,0xF5,0x3B,0x6E,0x20,0xC8,0x4C,0x69,0x10,0x5E,0xD5,0x60,0x41,0xE4,0xA2,0x67,0x71,0x72,0x3C,0x03,0xE4,0xD1,0x4B,0x04,0xD4,0x47,0xD2,0x0D,0x85,0xFD,0xA5,0x0A,0xB5,0x6B,0x35,0xB5,0xA8,0xFA,0x42,0xB2,0x98,0x6C,0xDB,0xBB,0xC9,0xD6,0xAC,0xBC,0xF9,0x40,0x32,0xD8,0x6C,0xE3,0x45,0xDF,0x5C,0x75,0xDC,0xD6,0x0D,0xCF,0xAB,0xD1,0x3D,0x59,0x26,0xD9,0x30,0xAC,0x51,0xDE,0x00,0x3A,0xC8,0xD7,0x51,0x80,0xBF,0xD0,0x61,0x16,0x21,0xB4,0xF4,0xB5,0x56,0xB3,0xC4,0x23,0xCF,0xBA,0x95,0x99,0xB8,0xBD,0xA5,0x0F,0x28,0x02,0xB8,0x9E,0x5F,0x05,0x88,0x08,0xC6,0x0C,0xD9,0xB2,0xB1,0x0B,0xE9,0x24,0x2F,0x6F,0x7C,0x87,0x58,0x68,0x4C,0x11,0xC1,0x61,0x1D,0xAB,0xB6,0x66,0x2D,0x3D,0x76,0xDC,0x41,0x90,0x01,0xDB,0x71,0x06,0x98,0xD2,0x20,0xBC,0xEF,0xD5,0x10,0x2A,0x71,0xB1,0x85,0x89,0x06,0xB6,0xB5,0x1F,0x9F,0xBF,0xE4,0xA5,0xE8,0xB8,0xD4,0x33,0x78,0x07,0xC9,0xA2,0x0F,0x00,0xF9,0x34,0x96,0x09,0xA8,0x8E,0xE1,0x0E,0x98,0x18,0x7F,0x6A,0x0D,0xBB,0x08,0x6D,0x3D,0x2D,0x91,0x64,0x6C,0x97,0xE6,0x63,0x5C,0x01,0x6B,0x6B,0x51,0xF4,0x1C,0x6C,0x61,0x62,0x85,0x65,0x30,0xD8,0xF2,0x62,0x00,0x4E,0x6C,0x06,0x95,0xED,0x1B,0x01,0xA5,0x7B,0x82,0x08,0xF4,0xC1,0xF5,0x0F,0xC4,0x57,0x65,0xB0,0xD9,0xC6,0x12,0xB7,0xE9,0x50,0x8B,0xBE,0xB8,0xEA,0xFC,0xB9,0x88,0x7C,0x62,0xDD,0x1D,0xDF,0x15,0xDA,0x2D,0x49,0x8C,0xD3,0x7C,0xF3,0xFB,0xD4,0x4C,0x65,0x4D,0xB2,0x61,0x58,0x3A,0xB5,0x51,0xCE,0xA3,0xBC,0x00,0x74,0xD4,0xBB,0x30,0xE2,0x4A,0xDF,0xA5,0x41,0x3D,0xD8,0x95,0xD7,0xA4,0xD1,0xC4,0x6D,0xD3,0xD6,0xF4,0xFB,0x43,0x69,0xE9,0x6A,0x34,0x6E,0xD9,0xFC,0xAD,0x67,0x88,0x46,0xDA,0x60,0xB8,0xD0,0x44,0x04,0x2D,0x73,0x33,0x03,0x1D,0xE5,0xAA,0x0A,0x4C,0x5F,0xDD,0x0D,0x7C,0xC9,0x50,0x05,0x71,0x3C,0x27,0x02,0x41,0xAA,0xBE,0x0B,0x10,0x10,0xC9,0x0C,0x20,0x86,0x57,0x68,0xB5,0x25,0x20,0x6F,0x85,0xB3,0xB9,0x66,0xD4,0x09,0xCE,0x61,0xE4,0x9F,0x5E,0xDE,0xF9,0x0E,0x29,0xD9,0xC9,0x98,0xB0,0xD0,0x98,0x22,0xC7,0xD7,0xA8,0xB4,0x59,0xB3,0x3D,0x17,0x2E,0xB4,0x0D,0x81,0xB7,0xBD,0x5C,0x3B,0xC0,0xBA,0x6C,0xAD,0xED,0xB8,0x83,0x20,0x9A,0xBF,0xB3,0xB6,0x03,0xB6,0xE2,0x0C,0x74,0xB1,0xD2,0x9A,0xEA,0xD5,0x47,0x39,0x9D,0xD2,0x77,0xAF,0x04,0xDB,0x26,0x15,0x73,0xDC,0x16,0x83,0xE3,0x63,0x0B,0x12,0x94,0x64,0x3B,0x84,0x0D,0x6D,0x6A,0x3E,0x7A,0x6A,0x5A,0xA8,0xE4,0x0E,0xCF,0x0B,0x93,0x09,0xFF,0x9D,0x0A,0x00,0xAE,0x27,0x7D,0x07,0x9E,0xB1,0xF0,0x0F,0x93,0x44,0x87,0x08,0xA3,0xD2,0x1E,0x01,0xF2,0x68,0x69,0x06,0xC2,0xFE,0xF7,0x62,0x57,0x5D,0x80,0x65,0x67,0xCB,0x19,0x6C,0x36,0x71,0x6E,0x6B,0x06,0xE7,0xFE,0xD4,0x1B,0x76,0x89,0xD3,0x2B,0xE0,0x10,0xDA,0x7A,0x5A,0x67,0xDD,0x4A,0xCC,0xF9,0xB9,0xDF,0x6F,0x8E,0xBE,0xEF,0xF9,0x17,0xB7,0xBE,0x43,0x60,0xB0,0x8E,0xD5,0xD6,0xD6,0xA3,0xE8,0xA1,0xD1,0x93,0x7E,0x38,0xD8,0xC2,0xC4,0x4F,0xDF,0xF2,0x52,0xD1,0xBB,0x67,0xF1,0xA6,0xBC,0x57,0x67,0x3F,0xB5,0x06,0xDD,0x48,0xB2,0x36,0x4B,0xD8,0x0D,0x2B,0xDA,0xAF,0x0A,0x1B,0x4C,0x36,0x03,0x4A,0xF6,0x41,0x04,0x7A,0x60,0xDF,0x60,0xEF,0xC3,0xA8,0x67,0xDF,0x55,0x31,0x6E,0x8E,0xEF,0x46,0x69,0xBE,0x79,0xCB,0x61,0xB3,0x8C,0xBC,0x66,0x83,0x1A,0x25,0x6F,0xD2,0xA0,0x52,0x68,0xE2,0x36,0xCC,0x0C,0x77,0x95,0xBB,0x0B,0x47,0x03,0x22,0x02,0x16,0xB9,0x55,0x05,0x26,0x2F,0xC5,0xBA,0x3B,0xBE,0xB2,0xBD,0x0B,0x28,0x2B,0xB4,0x5A,0x92,0x5C,0xB3,0x6A,0x04,0xC2,0xD7,0xFF,0xA7,0xB5,0xD0,0xCF,0x31,0x2C,0xD9,0x9E,0x8B,0x5B,0xDE,0xAE,0x1D,0x9B,0x64,0xC2,0xB0,0xEC,0x63,0xF2,0x26,0x75,0x6A,0xA3,0x9C,0x02,0x6D,0x93,0x0A,0x9C,0x09,0x06,0xA9,0xEB,0x0E,0x36,0x3F,0x72,0x07,0x67,0x85,0x05,0x00,0x57,0x13,0x95,0xBF,0x4A,0x82,0xE2,0xB8,0x7A,0x14,0x7B,0xB1,0x2B,0xAE,0x0C,0xB6,0x1B,0x38,0x92,0xD2,0x8E,0x9B,0xE5,0xD5,0xBE,0x0D,0x7C,0xDC,0xEF,0xB7,0x0B,0xDB,0xDF,0x21,0x86,0xD3,0xD2,0xD4,0xF1,0xD4,0xE2,0x42,0x68,0xDD,0xB3,0xF8,0x1F,0xDA,0x83,0x6E,0x81,0xBE,0x16,0xCD,0xF6,0xB9,0x26,0x5B,0x6F,0xB0,0x77,0xE1,0x18,0xB7,0x47,0x77,0x88,0x08,0x5A,0xE6,0xFF,0x0F,0x6A,0x70,0x66,0x06,0x3B,0xCA,0x11,0x01,0x0B,0x5C,0x8F,0x65,0x9E,0xFF,0xF8,0x62,0xAE,0x69,0x61,0x6B,0xFF,0xD3,0x16,0x6C,0xCF,0x45,0xA0,0x0A,0xE2,0x78,0xD7,0x0D,0xD2,0xEE,0x4E,0x04,0x83,0x54,0x39,0x03,0xB3,0xC2,0xA7,0x67,0x26,0x61,0xD0,0x60,0x16,0xF7,0x49,0x69,0x47,0x4D,0x3E,0x6E,0x77,0xDB,0xAE,0xD1,0x6A,0x4A,0xD9,0xD6,0x5A,0xDC,0x40,0xDF,0x0B,0x66,0x37,0xD8,0x3B,0xF0,0xA9,0xBC,0xAE,0x53,0xDE,0xBB,0x9E,0xC5,0x47,0xB2,0xCF,0x7F,0x30,0xB5,0xFF,0xE9,0xBD,0xBD,0xF2,0x1C,0xCA,0xBA,0xC2,0x8A,0x53,0xB3,0x93,0x30,0x24,0xB4,0xA3,0xA6,0xBA,0xD0,0x36,0x05,0xCD,0xD7,0x06,0x93,0x54,0xDE,0x57,0x29,0x23,0xD9,0x67,0xBF,0xB3,0x66,0x7A,0x2E,0xC4,0x61,0x4A,0xB8,0x5D,0x68,0x1B,0x02,0x2A,0x6F,0x2B,0x94,0xB4,0x0B,0xBE,0x37,0xC3,0x0C,0x8E,0xA1,0x5A,0x05,0xDF,0x1B,0x2D,0x02,0xEF,0x8D};//0x3878 to 0x3C74+4
+
+		for(int i = 0; i < msg.length; i++)
+		{
+			int keyShift = (polynomial >> 8) & 0xFFFFFF;//shift the polynomial 8 bits right, mind the unsigned nature we want
+			int packetByteLong = (msg[i] & 0xFF) + 170;//treat this as an unsigned, 32 bit integer
+			int index = (packetByteLong ^ polynomial) & 0xFF;//exclusive OR operation to convolute the CRC, mask this to byte length
+			int lookup = (lookupBytes[index*4] << 24) + (lookupBytes[index*4 + 1] << 16) + (lookupBytes[index*4 + 2] << 8) + (lookupBytes[index*4 + 3]);//collect the long word (32-bit) lookup value
+			polynomial = (lookup ^ keyShift);//exclusive OR
+		}
+		
+		byte[] crc = new byte[4];
+		
+		crc[0] = (byte) ((polynomial >> 24) & 0xFF);
+		crc[1] = (byte) ((polynomial >> 16) & 0xFF);
+		crc[2] = (byte) ((polynomial >> 8) & 0xFF);
+		crc[3] = (byte) ((polynomial) & 0xFF);
+		
+		return crc;
+
+		
+		/*
+		 * 0x001dac:	MOVE.L #291,D2	; source -> destination	7596 + 6	001001000011110000000000000000000000000100100011	243C00000123	$<#
+	0x001db2:	MOVE.W #0,D3	; source -> destination	7602 + 4	00110110001111000000000000000000	363C0000	6<
+	0x001db6:	BRA.B $32	; PC + 2 + dn(twos complement = 50 ) -> PC displacement: 52 points to: 0x001dea	7606 + 2	0110000000110010	6032	`2
+
+	0x001db8:	MOVE.W D3,D0	; source -> destination	7608 + 2	0011000000000011	3003	0
+	0x001dba:	ADDQ.W #1,D3	; immediate data + destination -> destination	7610 + 2	0101001001000011	5243	RC
+		;clear the higher order word in D0
+	0x001dbc:	SWAP D0	; Register (31 thru 16) -> register (15 thru 0)	7612 + 2	0100100001000000	4840	H@
+	0x001dbe:	CLR.W D0	; 0 -> Destination	7614 + 2	0100001001000000	4240	B@
+	0x001dc0:	SWAP D0	; Register (31 thru 16) -> register (15 thru 0)	7616 + 2	0100100001000000	4840	H@
+		;load the byte at (passed in address + counter) into D4 and mask to ensure only a byte is kept
+	0x001dc2:	MOVE.B ($0,A2,D0.L*1),D4	; source -> destination	7618 + 4	00011000001100100000100000000000	18320800	2
+	0x001dc6:	ANDI.L #255,D4	; immediate data && destination -> destination	7622 + 6	000000101000010000000000000000000000000011111111	0284000000FF	„ÿ
+		;D2 starts as 291 = 00000001 00100011
+	0x001dcc:	MOVE.L D2,D0	; source -> destination	7628 + 2	0010000000000010	2002
+	0x001dce:	LSR.L #8,D0	; Destination shifted by Count -> Destination	7630 + 2	1110000010001000	E088	àˆ
+	0x001dd0:	MOVE.L D4,D1	; source -> destination	7632 + 2	0010001000000100	2204	"
+	0x001dd2:	ADDI.L #170,D1	; immediate data + destination -> destination	7634 + 6	000001101000000100000000000000000000000010101010	0681000000AA
+	0x001dd8:	MOVE.L D2,D6	; source -> destination	7640 + 2	0010110000000010	2C02	,
+	0x001dda:	EOR.L D6,D1	; source OR(exclusive) destination -> destination	7642 + 2	1011110110000001	BD81
+		;D1 = low order byte of: ((passed in address + counter).B+170) EOR D2
+	0x001ddc:	ANDI.L #255,D1	; immediate data && destination -> destination	7644 + 6	000000101000000100000000000000000000000011111111	0281000000FF
+		;load long word from 0x3878+4*D1 onto D6
+	0x001de2:	MOVE.L ($0,A3,D1.L*4),D6	; source -> destination	7650 + 4	00101100001100110001110000000000	2C331C00	,3
+		;D0 starts as 0x01
+	0x001de6:	EOR.L D0,D6	; source OR(exclusive) destination -> destination	7654 + 2	1011000110000110	B186	±†
+		;update D2 to be (0x3878+4*(((passed in address + counter).B+170) EOR D2).B) EOR (second lowest order byte of D2)
+	0x001de8:	MOVE.L D6,D2	; source -> destination	7656 + 2	0010010000000110	2406	$
+
+	0x001dea:	MOVEQ #0,D0	; Immediate data -> destination	7658 + 2	0111000000000000	7000	p
+	0x001dec:	MOVE.W D3,D0	; source -> destination	7660 + 2	0011000000000011	3003	0
+	0x001dee:	CMP.L D5,D0	; Destination - source -> cc	7662 + 2	1011000010000101	B085	°…
+		;if D3.W < (loaded in long word), loop back
+	0x001df0:	BLT.B $c6	; if condition (Less than) true, then PC + 2 + dn -> PC, twos complement = -58  displacement: -56 points to: 0x001db8	7664 + 2	0110110111000110	6DC6	mÆ
+		;D2 is our calculated number
+	0x001df2:	MOVE.L D2,D0	; source -> destination	7666 + 2	0010000000000010	2002
+	0x001df4:	MOVEQ #16,D1	; Immediate data -> destination	7668 + 2	0111001000010000	7210	r
+		;look at the highest order byte in our calculated number
+	0x001df6:	LSR.L D1,D0	; Destination shifted by Count -> Destination	7670 + 2	1110001010101000	E2A8	â¨
+	0x001df8:	LSR.W #8,D0	; Destination shifted by Count -> Destination	7672 + 2	1110000001001000	E048	àH
+		;at this point, D3 = the loaded in long word
+	0x001dfa:	MOVE.W D3,D6	; source -> destination	7674 + 2	0011110000000011	3C03	<
+	0x001dfc:	ADDQ.W #1,D3	; immediate data + destination -> destination	7676 + 2	0101001001000011	5243	RC
+		;clear the higher order word in D6
+	0x001dfe:	SWAP D6	; Register (31 thru 16) -> register (15 thru 0)	7678 + 2	0100100001000110	4846	HF
+	0x001e00:	CLR.W D6	; 0 -> Destination	7680 + 2	0100001001000110	4246	BF
+	0x001e02:	SWAP D6	; Register (31 thru 16) -> register (15 thru 0)	7682 + 2	0100100001000110	4846	HF
+		;store the highest order byte if our calculated number at (input address+loaded in long word)
+	0x001e04:	MOVE.B D0,($0,A2,D6.L*1)	; source -> destination	7684 + 4	00010101100000000110100000000000	15806800	€h
+	0x001e08:	MOVE.L D2,D0	; source -> destination	7688 + 2	0010000000000010	2002
+	0x001e0a:	MOVEQ #16,D1	; Immediate data -> destination	7690 + 2	0111001000010000	7210	r
+	0x001e0c:	LSR.L D1,D0	; Destination shifted by Count -> Destination	7692 + 2	1110001010101000	E2A8	â¨
+	0x001e0e:	ANDI.W #255,D0	; immediate data && destination -> destination	7694 + 4	00000010010000000000000011111111	024000FF	@ÿ
+		;at this point, D3 = loaded in long word + 1
+	0x001e12:	MOVE.W D3,D6	; source -> destination	7698 + 2	0011110000000011	3C03	<
+	0x001e14:	ADDQ.W #1,D3	; immediate data + destination -> destination	7700 + 2	0101001001000011	5243	RC
+	0x001e16:	SWAP D6	; Register (31 thru 16) -> register (15 thru 0)	7702 + 2	0100100001000110	4846	HF
+	0x001e18:	CLR.W D6	; 0 -> Destination	7704 + 2	0100001001000110	4246	BF
+	0x001e1a:	SWAP D6	; Register (31 thru 16) -> register (15 thru 0)	7706 + 2	0100100001000110	4846	HF
+		;store the second highest order byte if our calculated number at (input address+loaded in long word+1)
+	0x001e1c:	MOVE.B D0,($0,A2,D6.L*1)	; source -> destination	7708 + 4	00010101100000000110100000000000	15806800	€h
+	0x001e20:	MOVE.L D2,D0	; source -> destination	7712 + 2	0010000000000010	2002
+	0x001e22:	ANDI.L #65535,D0	; immediate data && destination -> destination	7714 + 6	000000101000000000000000000000001111111111111111	02800000FFFF	€ÿÿ
+	0x001e28:	LSR.W #8,D0	; Destination shifted by Count -> Destination	7720 + 2	1110000001001000	E048	àH
+	0x001e2a:	MOVE.W D3,D1	; source -> destination	7722 + 2	0011001000000011	3203	2
+	0x001e2c:	ADDQ.W #1,D3	; immediate data + destination -> destination	7724 + 2	0101001001000011	5243	RC
+	0x001e2e:	SWAP D1	; Register (31 thru 16) -> register (15 thru 0)	7726 + 2	0100100001000001	4841	HA
+	0x001e30:	CLR.W D1	; 0 -> Destination	7728 + 2	0100001001000001	4241	BA
+	0x001e32:	SWAP D1	; Register (31 thru 16) -> register (15 thru 0)	7730 + 2	0100100001000001	4841	HA
+		;store the second lowest order byte if our calculated number at (input address+loaded in long word+2)
+	0x001e34:	MOVE.B D0,($0,A2,D1.L*1)	; source -> destination	7732 + 4	00010101100000000001100000000000	15801800	€
+	0x001e38:	MOVE.L D2,D0	; source -> destination	7736 + 2	0010000000000010	2002
+	0x001e3a:	ANDI.L #65535,D0	; immediate data && destination -> destination	7738 + 6	000000101000000000000000000000001111111111111111	02800000FFFF	€ÿÿ
+	0x001e40:	ANDI.W #255,D0	; immediate data && destination -> destination	7744 + 4	00000010010000000000000011111111	024000FF	@ÿ
+	0x001e44:	MOVE.W D3,D1	; source -> destination	7748 + 2	0011001000000011	3203	2
+	0x001e46:	ADDQ.W #1,D3	; immediate data + destination -> destination	7750 + 2	0101001001000011	5243	RC
+	0x001e48:	SWAP D1	; Register (31 thru 16) -> register (15 thru 0)	7752 + 2	0100100001000001	4841	HA
+	0x001e4a:	CLR.W D1	; 0 -> Destination	7754 + 2	0100001001000001	4241	BA
+	0x001e4c:	SWAP D1	; Register (31 thru 16) -> register (15 thru 0)	7756 + 2	0100100001000001	4841	HA
+		;store the lowest order byte if our calculated number at (input address+loaded in long word+3)
+	0x001e4e:	MOVE.B D0,($0,A2,D1.L*1)	; source -> destination	7758 + 4	00010101100000000001100000000000	15801800	€
+		 */
+
+		/*
+		 * test this code:
+		byte[] packet = {2,48,48,48,56,48,6,3};//this is the first 'acknowledge response' packet, less the four check bytes
+		//byte[] packet = {2, 48, 48, 49, 52, 51, (byte) 203, 48, 48, 48, 48, 48, 48, 3};//this is the first packet from the ECU requesting reflash data
+		Serial_Packet testPckt = new Serial_Packet();
+		testPckt.setPacket(packet);
+		byte[] crc = stageI_pckt_check_bytes(testPckt);
+
+		System.out.print("[ ");
+		for(int i = 0; i < packet.length; i++)
+		{
+			System.out.print( (int) (packet[i] & 0xFF) + " ");
+		}
+		for(int i = 0; i < crc.length; i++)
+		{
+			System.out.print( (int) (crc[i] & 0xFF) + " ");
+		}
+		System.out.println("]");
+		//input: [ 2 48 48 48 56 48 6 3  ] (first ack)
+		//output: [ 2 48 48 48 56 48 6 3 227 245 208 192 ]
+		
+		//input: [ 2 48 48 48 56 49 6 3 ] (second ack)
+		//output: [ 2 48 48 48 56 49 6 3 226 55 186 247 ]
+		 
+		//input: [ 2 48 48 49 52 51 203 48 48 48 48 48 48 3 ] (first req for data)
+		//output: [ 2 48 48 49 52 51 203 48 48 48 48 48 48 3 36 15 221 162 ]
+		 */
+	}
+	
+	public int stageI_reflash_crc(byte[] stgI_bootldr_bytes)
+	{
+		//this function loops over the entire set of stageII bootloader bytes and calculates 
+		//the 16-bit crc that locks out access to the stageI bootloader and allows reflashing
+		//of the stageII bootloader via the stageI bootloader
+		
+		//0x3CB0 to 0x3EAE + 2 from ROM, length 512
+		int[] lookupBytes = {0x00,0x00,0x10,0x21,0x20,0x42,0x30,0x63,0x40,0x84,0x50,0xA5,0x60,0xC6,0x70,0xE7,0x81,0x08,0x91,0x29,0xA1,0x4A,0xB1,0x6B,0xC1,0x8C,0xD1,0xAD,0xE1,0xCE,0xF1,0xEF,0x12,0x31,0x02,0x10,0x32,0x73,0x22,0x52,0x52,0xB5,0x42,0x94,0x72,0xF7,0x62,0xD6,0x93,0x39,0x83,0x18,0xB3,0x7B,0xA3,0x5A,0xD3,0xBD,0xC3,0x9C,0xF3,0xFF,0xE3,0xDE,0x24,0x62,0x34,0x43,0x04,0x20,0x14,0x01,0x64,0xE6,0x74,0xC7,0x44,0xA4,0x54,0x85,0xA5,0x6A,0xB5,0x4B,0x85,0x28,0x95,0x09,0xE5,0xEE,0xF5,0xCF,0xC5,0xAC,0xD5,0x8D,0x36,0x53,0x26,0x72,0x16,0x11,0x06,0x30,0x76,0xD7,0x66,0xF6,0x56,0x95,0x46,0xB4,0xB7,0x5B,0xA7,0x7A,0x97,0x19,0x87,0x38,0xF7,0xDF,0xE7,0xFE,0xD7,0x9D,0xC7,0xBC,0x48,0xC4,0x58,0xE5,0x68,0x86,0x78,0xA7,0x08,0x40,0x18,0x61,0x28,0x02,0x38,0x23,0xC9,0xCC,0xD9,0xED,0xE9,0x8E,0xF9,0xAF,0x89,0x48,0x99,0x69,0xA9,0x0A,0xB9,0x2B,0x5A,0xF5,0x4A,0xD4,0x7A,0xB7,0x6A,0x96,0x1A,0x71,0x0A,0x50,0x3A,0x33,0x2A,0x12,0xDB,0xFD,0xCB,0xDC,0xFB,0xBF,0xEB,0x9E,0x9B,0x79,0x8B,0x58,0xBB,0x3B,0xAB,0x1A,0x6C,0xA6,0x7C,0x87,0x4C,0xE4,0x5C,0xC5,0x2C,0x22,0x3C,0x03,0x0C,0x60,0x1C,0x41,0xED,0xAE,0xFD,0x8F,0xCD,0xEC,0xDD,0xCD,0xAD,0x2A,0xBD,0x0B,0x8D,0x68,0x9D,0x49,0x7E,0x97,0x6E,0xB6,0x5E,0xD5,0x4E,0xF4,0x3E,0x13,0x2E,0x32,0x1E,0x51,0x0E,0x70,0xFF,0x9F,0xEF,0xBE,0xDF,0xDD,0xCF,0xFC,0xBF,0x1B,0xAF,0x3A,0x9F,0x59,0x8F,0x78,0x91,0x88,0x81,0xA9,0xB1,0xCA,0xA1,0xEB,0xD1,0x0C,0xC1,0x2D,0xF1,0x4E,0xE1,0x6F,0x10,0x80,0x00,0xA1,0x30,0xC2,0x20,0xE3,0x50,0x04,0x40,0x25,0x70,0x46,0x60,0x67,0x83,0xB9,0x93,0x98,0xA3,0xFB,0xB3,0xDA,0xC3,0x3D,0xD3,0x1C,0xE3,0x7F,0xF3,0x5E,0x02,0xB1,0x12,0x90,0x22,0xF3,0x32,0xD2,0x42,0x35,0x52,0x14,0x62,0x77,0x72,0x56,0xB5,0xEA,0xA5,0xCB,0x95,0xA8,0x85,0x89,0xF5,0x6E,0xE5,0x4F,0xD5,0x2C,0xC5,0x0D,0x34,0xE2,0x24,0xC3,0x14,0xA0,0x04,0x81,0x74,0x66,0x64,0x47,0x54,0x24,0x44,0x05,0xA7,0xDB,0xB7,0xFA,0x87,0x99,0x97,0xB8,0xE7,0x5F,0xF7,0x7E,0xC7,0x1D,0xD7,0x3C,0x26,0xD3,0x36,0xF2,0x06,0x91,0x16,0xB0,0x66,0x57,0x76,0x76,0x46,0x15,0x56,0x34,0xD9,0x4C,0xC9,0x6D,0xF9,0x0E,0xE9,0x2F,0x99,0xC8,0x89,0xE9,0xB9,0x8A,0xA9,0xAB,0x58,0x44,0x48,0x65,0x78,0x06,0x68,0x27,0x18,0xC0,0x08,0xE1,0x38,0x82,0x28,0xA3,0xCB,0x7D,0xDB,0x5C,0xEB,0x3F,0xFB,0x1E,0x8B,0xF9,0x9B,0xD8,0xAB,0xBB,0xBB,0x9A,0x4A,0x75,0x5A,0x54,0x6A,0x37,0x7A,0x16,0x0A,0xF1,0x1A,0xD0,0x2A,0xB3,0x3A,0x92,0xFD,0x2E,0xED,0x0F,0xDD,0x6C,0xCD,0x4D,0xBD,0xAA,0xAD,0x8B,0x9D,0xE8,0x8D,0xC9,0x7C,0x26,0x6C,0x07,0x5C,0x64,0x4C,0x45,0x3C,0xA2,0x2C,0x83,0x1C,0xE0,0x0C,0xC1,0xEF,0x1F,0xFF,0x3E,0xCF,0x5D,0xDF,0x7C,0xAF,0x9B,0xBF,0xBA,0x8F,0xD9,0x9F,0xF8,0x6E,0x17,0x7E,0x36,0x4E,0x55,0x5E,0x74,0x2E,0x93,0x3E,0xB2,0x0E,0xD1,0x1E,0xF0};
+
+		int crc = 291;//initialize the CRC for calculation
+		
+		//let's loop over the reflash byte set that contains data
+		//between 0x8000-0xFFFE (exclusive) to calculate the CRC
+		for(int i = 0; i < stgI_bootldr_bytes.length; i++)
+		{
+			int index = (crc >> 8) & 0xFF;//calculate an index
+			int lookup = (lookupBytes[index*2] << 8) + lookupBytes[index*2 + 1];//lookup the value based on the index, no larger than 16 bits
+			
+			//prepare the components of the convolution calculation
+			int shift = crc << 8;//may be shifted to 24 bits, but we'll not use the highest 8 bits in the end
+			int XORd = shift ^ lookup;
+			int data =  ((int) stgI_bootldr_bytes[i] & 0xFF) + 170;//this won't be more than 9 bits
+			
+			//then perform the convolution, mind the 16 bit constraint
+			crc = (XORd ^ data) & 0xFFFF;
+			//System.out.println("Index" + i + ", CRC: " + crc);
+		}
+		
+		int stageII_CRC = crc;
+		
+		return stageII_CRC;
+		
+		//the assembly code that motivated this:
+		/*
+		 ;subroutine: input byte and word (each on long word)
+		;return D0 = {[word from (0x3cb0+2*high order byte from input word)] EOR [input word * 256]} EOR {input byte + 170}
+	0x0027a8:	LINK.W A6,$fff8	; SP - 4 -> SP; An ->(SP); SP-> An; SP+dn -> SP, dn => twos complement = -8 	10152 + 4	01001110010101101111111111111000	4E56FFF8	NVÿø
+	0x0027ac:	MOVEM.L A2/D2,(A7)	; Registers -> destination (OR) source -> registers; register list mask: A7,A6,A5,A4,A3,A2,A1,A0,D7,D6,D5,D4,D3,D2,D1,D0 is reversed for -(An)	10156 + 4	01001000110101110000010000000100	48D70404	H×
+		;$874ba was at 0x3cb0
+	0x0027b0:	LEA ($874ba).L,A2	; load effective address into address register	10160 + 6	010001011111100100000000000010000111010010111010	45F9000874BA	Eùtº
+		;load in number at 14 past stack
+		;this is the input word, onto D2 then D0
+	0x0027b6:	MOVE.W ($e,A6),D2	; source -> destination	10166 + 4	00110100001011100000000000001110	342E000E	4.
+	0x0027ba:	MOVE.W D2,D0	; source -> destination	10170 + 2	0011000000000010	3002	0
+		;divide by 2^8 = 256
+		;D0 = high order byte from input word
+	0x0027bc:	LSR.W #8,D0	; Destination shifted by Count -> Destination	10172 + 2	1110000001001000	E048	àH
+	0x0027be:	ANDI.W #255,D0	; immediate data && destination -> destination	10174 + 4	00000010010000000000000011111111	024000FF	@ÿ
+		;clear the higher word in D0
+	0x0027c2:	SWAP D0	; Register (31 thru 16) -> register (15 thru 0)	10178 + 2	0100100001000000	4840	H@
+	0x0027c4:	CLR.W D0	; 0 -> Destination	10180 + 2	0100001001000000	4240	B@
+	0x0027c6:	SWAP D0	; Register (31 thru 16) -> register (15 thru 0)	10182 + 2	0100100001000000	4840	H@
+		;load in word value at (0x3cb0+2*D0 bytes) and clear the higher word
+	0x0027c8:	MOVE.W ($0,A2,D0.L*2),D1	; source -> destination	10184 + 4	00110010001100100000101000000000	32320A00	22
+	0x0027cc:	SWAP D1	; Register (31 thru 16) -> register (15 thru 0)	10188 + 2	0100100001000001	4841	HA
+	0x0027ce:	CLR.W D1	; 0 -> Destination	10190 + 2	0100001001000001	4241	BA
+	0x0027d0:	SWAP D1	; Register (31 thru 16) -> register (15 thru 0)	10192 + 2	0100100001000001	4841	HA
+	0x0027d2:	MOVEQ #0,D0	; Immediate data -> destination	10194 + 2	0111000000000000	7000	p
+	0x0027d4:	MOVE.W D2,D0	; source -> destination	10196 + 2	0011000000000010	3002	0
+		;mult by 2^8
+		;D0 = input word * 256
+	0x0027d6:	ASL.L #8,D0	; Destination shifted by Count -> Destination	10198 + 2	1110000110000000	E180	á€
+		;D1 = [word from (0x3cb0+2*high order byte from input word)] EOR [input word * 256]
+	0x0027d8:	EOR.L D0,D1	; source OR(exclusive) destination -> destination	10200 + 2	1011000110000001	B181
+	0x0027da:	MOVEQ #0,D0	; Immediate data -> destination	10202 + 2	0111000000000000	7000	p
+		;load input byte onto D0
+	0x0027dc:	MOVE.B ($b,A6),D0	; source -> destination	10204 + 4	00010000001011100000000000001011	102E000B	.
+	0x0027e0:	SWAP D0	; Register (31 thru 16) -> register (15 thru 0)	10208 + 2	0100100001000000	4840	H@
+	0x0027e2:	CLR.W D0	; 0 -> Destination	10210 + 2	0100001001000000	4240	B@
+	0x0027e4:	SWAP D0	; Register (31 thru 16) -> register (15 thru 0)	10212 + 2	0100100001000000	4840	H@
+	0x0027e6:	ADDI.L #170,D0	; immediate data + destination -> destination	10214 + 6	000001101000000000000000000000000000000010101010	0680000000AA	€ª
+		;D1 = {[word from (0x3cb0+2*high order byte from input word)] EOR [input word * 256]} EOR {input byte + 170}
+	0x0027ec:	EOR.L D0,D1	; source OR(exclusive) destination -> destination	10220 + 2	1011000110000001	B181
+	0x0027ee:	MOVE.L D1,D0	; source -> destination	10222 + 2	0010000000000001	2001
+	0x0027f0:	MOVEM.L (A7),A2/D2	; Registers -> destination (OR) source -> registers; register list mask: A7,A6,A5,A4,A3,A2,A1,A0,D7,D6,D5,D4,D3,D2,D1,D0 is reversed for -(An)	10224 + 4	01001100110101110000010000000100	4CD70404	L×
+	0x0027f4:	UNLK A6	; unlink: An -> SP; (SP) -> An; SP + 4 -> SP	10228 + 2	0100111001011110	4E5E	N^
+	0x0027f6:	RTS	; return from subroutine (SP) -> PC; SP + 4 -> SP
+
+		 */
+	}
+
+	
+	public void stageI_send_ack(boolean ackState)
+	{
+		//this function sends an acknowledge packet to the ECU
+		
+		byte[] ack = {2, 48, 48, 48, 56, 48, 6, 3};
+		if(!ackState)
+		{
+			ack[6] = 21;//neg ack
+		}
+		Serial_Packet ack_pckt = new Serial_Packet();
+		ack_pckt.setPacket(ack);
+		byte[] crc = stageI_pckt_check_bytes(ack_pckt);
+		this.ComPort.send(ack);
+		this.ComPort.send(crc);
+		
+		/*
+		//use a fixed packet
+		byte[] ack = {2, 48, 48, 48, 56, 48, 6, 3, (byte) (227 & 0xFF), (byte) (245 & 0xFF), (byte) (208 & 0xFF), (byte) (192 & 0xFF)};
+		this.ComPort.send(ack);
+		*/
+	}
+	
+	public void stageI_send_ack()
+	{
+		stageI_send_ack(true);
+	}
+	
+	public boolean stageI_read_ack()
+	{
+		//this function reads back an acknowledge packet from the ECU and compares the checksum bytes
+		//if there is an error, then return false
+		boolean valid = true;
+		byte[] read_ack = this.ComPort.read(12);
+		
+		if(read_ack.length == 12)
+		{
+			//check for the ascii 'ack' or 'neg ack'
+			if(read_ack[6] != 6 || read_ack[6] != 21)
+			{
+				//not an acknowledge packet
+				valid = false;
+			}
+			
+			//calculate the check bytes
+			Serial_Packet ack_pckt = new Serial_Packet();
+			ack_pckt.setPacket(Arrays.copyOf(read_ack, read_ack.length - 4));
+			byte[] crc = stageI_pckt_check_bytes(ack_pckt);
+			for(int i = 0; i < crc.length; i++)
+			{
+				if(read_ack[read_ack.length - 4 + i] != crc[i])
+				{
+					valid = false;
+					break;
+				}
+			}
+		}
+		
+		return valid;
+	}
+	
+	
+	public int read_stgI_packet()
+	{
+		//this function reads in the stage I bootloader packet by interpreting the byte length
+		//it checks the checksum bytes and then if the message is an ID = 203 message,
+		//it returns the value represented by the ASCII message request index bytes
+		int retIndex = -1;
+		
+		byte[] header = this.ComPort.read(5);
+		
+		if(header.length == 5)
+		{
+			//calculate the packet length
+			int len = ((header[1] & 0xFF) - 48)*1000 + ((header[2] & 0xFF) - 48)*100 + ((header[3] & 0xFF) - 48)*10 + ((header[4] & 0xFF) - 48);
+			int bytesLeft = len - 5 + 4;
+			byte[] pckt = this.ComPort.read(bytesLeft);
+			
+			if(pckt.length == bytesLeft)
+			{
+				//re-assemble the packet and check fidelity
+				Serial_Packet wholePacket = new Serial_Packet();
+				byte[] packet = Arrays.copyOf(header, header.length);
+				for(int i = 0; i < pckt.length - 4; i++)
+				{
+					packet = Arrays.copyOf(packet, packet.length + 1);
+					packet[packet.length - 1] = pckt[i];
+				}
+				wholePacket.setPacket(packet);
+				byte[] check = this.stageI_pckt_check_bytes(wholePacket);//calculate the correct check bytes
+				//then compare these to what was read in:
+				boolean crc_good = true;
+				for(int i = 0; i < check.length; i++)
+				{
+					if(check[i] != pckt[i+pckt.length - 4])
+					{
+						//we have an error
+						crc_good = false;
+					}
+				}
+				
+				if(crc_good)
+				{
+					//send the ack back to the ECU that we received the packet properly
+					stageI_send_ack(true);
+					
+					//now process the packet
+					if((int) (packet[6] & 0xFF) == 203)
+					{
+						if(packet.length >= 13)
+						{
+							//use the packet data to figure out which reflashing message to send next
+							retIndex = ((packet[7] & 0xFF) - 48)*100000 + ((packet[8] & 0xFF) - 48)*10000 + ((packet[9] & 0xFF) - 48)*1000 + ((packet[10] & 0xFF) - 48)*100 + ((packet[11] & 0xFF) - 48)*10 + ((packet[12] & 0xFF) - 48);
+						}
+					}
+					else
+					{
+						//we received a different packet ID, maybe 202, 204, 208 or 209
+					}
+				}
+				else
+				{
+					//send the neg ack to the ECU due to a failed checksum
+					stageI_send_ack(false);
+				}
+			}
+		}
+		return retIndex;
+	}
+	
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
@@ -2198,8 +2938,12 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		else if("saveData".equals(e.getActionCommand())) {
 			//if we need to save data, open a file and write all of the data
 			System.out.println("Save the encoded packets to text file.");
-			writeToReflashTextFile(this.raw_send_packets,"decodedFlashBytes.txt");
+			if(this.raw_send_packets.length > 0)
+			{
+				writeToReflashTextFile(this.raw_send_packets,"decodedFlashBytes.txt");
+			}
 			
+			/*
 			Serial_Packet[] encoded_and_end_pckts = Arrays.copyOf(this.encoded_send_packets, this.encoded_send_packets.length + 1);
 			Serial_Packet finalPacket = new Serial_Packet();
 			finalPacket.appendByte(1);
@@ -2207,6 +2951,8 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			finalPacket.appendByte(116);
 			encoded_and_end_pckts[encoded_and_end_pckts.length - 1] = finalPacket;
 			writeToReflashTextFile(encoded_and_end_pckts,"encodedFlashBytes.txt");
+			*/
+			writeToReflashTextFile(this.encoded_send_packets,"encodedFlashBytes.txt");
 			
 		}
 		else if("inputHexStAddr".equals(e.getActionCommand())) {
@@ -2275,157 +3021,274 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			//manage connection via OBD to ECU
 			if(this.active)
 			{
-				if(!this.stageI)
+				if(this.encodingFinished)
 				{
-					//stage II bootloader interaction 
-					
-					if(this.begin_connect_to_ECU || !this.encodingFinished)
+					if(!this.stageI)
 					{
-						
-						//try sending the [1 113 114] message
-						byte[] initMsg = {1, 113, 114};
-						ComPort.send(initMsg);
+						//stage II bootloader interaction
 
-						//the try to read the inverted response byte 0x8D
-						byte[] response = ComPort.read(1);
-
-						//now change state if we read in the correct response
-						if(response.length > 0)
+						if(this.begin_connect_to_ECU)
 						{
-							//System.out.println("Response: " + response);
-							if((int) (response[0] & 0xFF) == 0x8D && this.begin_connect_to_ECU)
+
+							//try sending the [1 113 114] message
+							byte[] initMsg = {1, 113, 114};
+							this.ComPort.send(initMsg);
+
+							//the try to read the inverted response byte 0x8D
+							byte[] response = this.ComPort.read(1);
+
+							//now change state if we read in the correct response
+							if(response.length > 0)
 							{
-								this.begin_connect_to_ECU = false;//we're connected so we don't need to keep looping through
-
-								//send the command to encode ECU data if it's not done
-								resetEncodingFlags();
-
-								//then change the Comport timeouts back to normal
-								ComPort.changeRx_timeout(500);
-
-								this.statusText.setText("Connected to ECU");
-								this.statusText.repaint();
-							}
-						}
-						else
-						{
-							//update the status test to instruct the user to turn on the ECU
-							String stats = this.statusText.getText();
-							if(!stats.equals("Turn on power to ECU"))
-							{
-								this.statusText.setText("Turn on power to ECU");
-								this.statusText.repaint();
-							}
-						}
-
-						//set flag to keep re-scheduling the Com interaction
-						keepRunning = true;
-					}
-					else
-					{
-						//we're going to send encoded messages to the ECU
-						if(this.reflash_msg_index < this.encoded_send_packets.length)
-						{
-							System.out.println("Index: " + this.reflash_msg_index);
-							byte[] msg = this.encoded_send_packets[this.reflash_msg_index].getPacket();
-							ComPort.send(msg);
-
-							//then read back the ECU acknowledgement of packet reception: the inverted checksum byte
-							byte[] check_response = ComPort.read(1);
-
-							if(this.specialRead && this.reflash_msg_index > 0)
-							{
-								//read back the ECU's response to our special query for a ROM read
-								byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
-								
-								//then respond with the inverted checksum byte
-								byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
-								ComPort.send(invert);
-								
-								//then save the data into our repository of read data for saving
-								if(read_ROM.length > 2)
+								//System.out.println("Response: " + response);
+								if((int) (response[0] & 0xFF) == 0x8D && this.begin_connect_to_ECU)
 								{
-									if(read_ROM[1] == 112)
-									{
-										for(int i = 2; i < read_ROM.length - 1; i++)
-										{
-											this.read_ROM_data = Arrays.copyOf(this.read_ROM_data, this.read_ROM_data.length + 1);
-											this.read_ROM_data[this.read_ROM_data.length - 1] = read_ROM[i];
-										}
-										this.reflash_msg_index += 1;
-									}
+									this.begin_connect_to_ECU = false;//we're connected so we don't need to keep looping through
+
+									//then change the Comport timeouts back to normal
+									this.ComPort.changeRx_timeout(500);
+
+									this.statusText.setText("Connected to ECU");
+									this.statusText.repaint();
 								}
-								//we don't need to check the ECU readiness state if we're just reading the ROM
-							}
-							else if(this.stageII_ECU_readiness())
-							{
-								//then read back the ECU response saying it is ready for the next packet, or if there was an error
-								this.reflash_msg_index += 1;
-							}
-							
-							keepRunning = true;
-							
-							int frac_complete =  ( this.reflash_msg_index * 10000 ) /  this.encoded_send_packets.length;
-							double frac_int = (double) frac_complete / 100;//try to keep two decimal places
-							
-							if(frac_int == 100 && this.specialRead)
-							{
-								this.statusText.setText("Saving data, be patient...");
-								this.statusText.repaint();
 							}
 							else
 							{
-								this.statusText.setText("Sending messages: " + frac_int + "%");
-								this.statusText.repaint();
+								//update the status test to instruct the user to turn on the ECU
+								String stats = this.statusText.getText();
+								if(!stats.equals("Turn on power to ECU"))
+								{
+									this.statusText.setText("Turn on power to ECU");
+									this.statusText.repaint();
+								}
 							}
+
+							//set flag to keep re-scheduling the Com interaction
+							keepRunning = true;
 						}
 						else
 						{
-							//send the end session message 1 115 116
-							byte[] end_bootloader_session = {1, 115, 116};
-							ComPort.send(end_bootloader_session);
-							
-							//and read back the ECU's ack
-							byte[] check_response = new byte[1];
-							check_response = ComPort.read(1);
-							
-							//then read back the ECU response saying we had success or if there was an error
-							this.stageII_ECU_readiness();
-							
-							this.active = false;//end activity with the bootloader
-							
-							//and if we're doing the special read functionality, save the data to a text file
-							if(this.specialRead)
+							//we're going to send encoded messages to the ECU
+							if(this.reflash_msg_index < this.encoded_send_packets.length)
 							{
-								writeSRECandBinary(this.read_ROM_data);
+								//System.out.println("Index: " + this.reflash_msg_index);
+								byte[] msg = this.encoded_send_packets[this.reflash_msg_index].getPacket();
+								this.ComPort.send(msg);
+
+								//then read back the ECU acknowledgement of packet reception: the inverted checksum byte
+								byte[] check_response = this.ComPort.read(1);
+
+								if(this.specialRead && this.reflash_msg_index > 0)
+								{
+									//read back the ECU's response to our special query for a ROM read
+									byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
+
+									//then respond with the inverted checksum byte
+									byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
+									this.ComPort.send(invert);
+
+									//then save the data into our repository of read data for saving
+									if(read_ROM.length > 2)
+									{
+										if(read_ROM[1] == 112)
+										{
+											for(int i = 2; i < read_ROM.length - 1; i++)
+											{
+												this.read_ROM_data = Arrays.copyOf(this.read_ROM_data, this.read_ROM_data.length + 1);
+												this.read_ROM_data[this.read_ROM_data.length - 1] = read_ROM[i];
+											}
+											this.reflash_msg_index += 1;
+										}
+									}
+									//we don't need to check the ECU readiness state if we're just reading the ROM
+								}
+								else if(this.stageII_ECU_readiness())
+								{
+									//then read back the ECU response saying it is ready for the next packet, or if there was an error
+									this.reflash_msg_index += 1;
+								}
+
+								keepRunning = true;
+
+								int frac_complete =  ( this.reflash_msg_index * 10000 ) /  this.encoded_send_packets.length;
+								double frac_int = (double) frac_complete / 100;//try to keep two decimal places
+
+								if(frac_int == 100 && this.specialRead)
+								{
+									this.statusText.setText("Saving data, be patient...");
+									this.statusText.repaint();
+								}
+								else
+								{
+									this.statusText.setText("Sending messages: " + frac_int + "%");
+									this.statusText.repaint();
+								}
+							}
+							else
+							{
+								//send the end session message 1 115 116
+								byte[] end_bootloader_session = {1, 115, 116};
+								this.ComPort.send(end_bootloader_session);
+
+								//and read back the ECU's ack
+								byte[] check_response = new byte[1];
+								check_response = this.ComPort.read(1);
+
+								//then read back the ECU response saying we had success or if there was an error
+								this.stageII_ECU_readiness();
+
+								this.active = false;//end activity with the bootloader
+
+								//and if we're doing the special read functionality, save the data to a text file
+								if(this.specialRead)
+								{
+									writeSRECandBinary(this.read_ROM_data);
+								}
 							}
 						}
 					}
-				}
-				else
-				{
-					//stage I bootloader interaction
+					else
+					{
+						//stage I bootloader interaction
+						if(this.begin_connect_to_ECU)
+						{
+							//establish connection to ECU
+							//try sending the [83 89 78] message, byte by byte
+							byte[] initMsg = {0x53};
+							this.ComPort.send(initMsg);
+
+							//then try to read the inverted response byte 0x73
+							byte[] response = this.ComPort.read(1);
+
+							//now change state if we read in the correct response
+							if(response.length > 0)
+							{
+								//slow the serial timeout so we can take our time
+								this.ComPort.changeRx_timeout(5000);
+								
+								//exchange the other two entry bytes
+								initMsg[0] = 0x59;
+								this.ComPort.send(initMsg);
+
+								//then try to read the inverted response byte 0x79
+								response = ComPort.read(1);
+								
+								initMsg[0] = 0x4E;
+								this.ComPort.send(initMsg);
+
+								//then try to read the inverted response byte 0x6E
+								response = ComPort.read(1);
+								
+								//send the command to clear bootloader ROM in order to get things started
+								byte[] msg = {2, 48, 48, 48, 56, 48,(byte) (200 & 0xFF), 3, 26, 57, 101, 12};
+								this.ComPort.send(msg);
+								
+								//and read back the ECU's ack response
+								stageI_read_ack();
+								
+								//and read back the ECU's proceed to erase ROM msg
+								byte[] proceed = this.ComPort.read(12);//should be the ID = 201 packet
+								
+								//then give an acknowledgement that we received the packet
+								stageI_send_ack();
+								
+								//--there's a delay here while the ECU bootloader ROM is cleared--
+								
+								if(this.begin_connect_to_ECU)
+								{
+									this.begin_connect_to_ECU = false;//we're connected so we don't need to keep looping through
+
+									this.statusText.setText("Connected to ECU");
+									this.statusText.repaint();
+								}
+							}
+							else
+							{
+								//update the status test to instruct the user to turn on the ECU
+								String stats = this.statusText.getText();
+								if(!stats.equals("Turn on power to ECU"))
+								{
+									this.statusText.setText("Turn on power to ECU");
+									this.statusText.repaint();
+								}
+							}
+
+							//set flag to keep re-scheduling the Com interaction
+							keepRunning = true;
+						}
+						else
+						{
+							//manage StageI bootloader interactions
+								
+							//read the ECU's ID = 203 message to get the packet index to send
+							int index = read_stgI_packet();
+							
+							if(index >= 0 && this.encoded_send_packets.length > index)
+							{
+								byte[] send_packet = this.encoded_send_packets[index].getPacket();
+								this.ComPort.send(send_packet);
+								
+								this.stageI_read_ack();//read back the ECU's acknowledgement of our packet
+								
+								int frac_complete =  ( index * 10000 ) /  this.encoded_send_packets.length;
+								double frac_int = (double) frac_complete / 100;//try to keep two decimal places
+								
+								this.statusText.setText("Sending messages: " + frac_int + "%");
+								this.statusText.repaint();
+								
+								keepRunning = true;//keep comms open with the ECU
+							}
+							else
+							{
+								//we did not receive a request for more of the reflashing data
+								//make one more attempt to read a packet from the ECU
+								byte[] lastMsg = this.ComPort.read(12);
+								
+								//we'll only read something back if we are down the logic branch for a successful 
+								//bootloader reflash- we'd get an ID = 204 message in confirmation
+								if(lastMsg.length > 0)
+								{
+									stageI_send_ack();
+									
+									//we're completed successfully
+									this.statusText.setText("Reflashing complete");
+									this.statusText.repaint();
+								}
+								else
+								{
+									//something went wrong
+									this.statusText.setText("Reflashing error");
+									this.statusText.repaint();
+								}
+								
+								this.active = false;//end activity with the bootloader
+							}
+						}
+					}
 				}
 			}
 		
 			//encode packets if the encoding is not done and if we're not trying to connect to the ECU
-			if(!this.encodingFinished && !this.begin_connect_to_ECU)
+			if(!this.encodingFinished)
 			{
+				//have we read in a binary/hex file?
 				if(this.hexData.length != 0)
 				{
 					//we will either encode stage I or stage II bootloader packets
-					if(!this.stageI)
+					
+					//first, we must load/parse the data that we're going to use to build packets:
+					double reflashing_data_getter = get_bytes_to_reflash();
+					
+					if(reflashing_data_getter >= 1.00)
 					{
-						//System.out.println("Encoding stageII packet");
-						//stage II bootloader 
-						//first, we must load the data that we're going to use to build packets:
-						double reflashing_data_getter = get_bytes_to_reflash_stageII();
-						double sub_packet_fraction_complete = 0;
-						double encoding_fraction_complete = 0;
-
-						
-						if(reflashing_data_getter >= 1.00)
+						if(!this.stageI)
 						{
+							//System.out.println("Encoding stageII packet");
+							//stage II bootloader 
+							double sub_packet_fraction_complete = 0;
+							double encoding_fraction_complete = 0;
+
+
 							//once we have all of the data, we'll build sub-packets
 							sub_packet_fraction_complete = build_decoded_stageII_packet();
 							if(sub_packet_fraction_complete >= 1.00)
@@ -2459,21 +3322,40 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								statusText.setText("Building reflash packets: " + frac + "%");
 								this.statusText.repaint();
 							}
+
 						}
-						else
+						else if(this.stageI)
 						{
-							//update the status to show how far we've completed collecting data for reflashing
-							int frac = (int) (reflashing_data_getter * 100);
-							//System.out.println("Getting reflash data: " + frac + "%");
-							statusText.setText("Parsing hex data: " + frac + "%");
-							this.statusText.repaint();
+							//stage I bootloader
+							//let's build packets!
+							double encoding_fraction_complete = build_stageI_packet();
+							
+							if(encoding_fraction_complete >= 1.00)
+							{
+								//we're done 
+								this.encodingFinished = true;
+								//System.out.println("Encoding complete");
+								this.statusText.setText("Encoding complete");
+								this.statusText.repaint();
+							}
+							else
+							{
+								//update the status to show how far we've completed encoding
+								int frac = (int) (encoding_fraction_complete * 100);
+								//System.out.println("Encoding packet: " + frac + "%");
+								this.statusText.setText("Encoding packets: " + frac + "%");
+								this.statusText.repaint();
+							}
 						}
 					}
-					else if(this.stageI)
+					else
 					{
-						//stage I bootloader
+						//update the status to show how far we've completed collecting data for reflashing
+						int frac = (int) (reflashing_data_getter * 100);
+						//System.out.println("Getting reflash data: " + frac + "%");
+						statusText.setText("Parsing hex data: " + frac + "%");
+						this.statusText.repaint();
 					}
-					
 				}
 				else if(this.specialRead)
 				{
@@ -2502,15 +3384,24 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 					this.statusText.repaint();
 				}
 				
-				if(!this.encodingFinished || this.decode_data)
+				if(!this.encodingFinished || this.decode_data || this.begin_connect_to_ECU)
 				{
+					//System.out.println("keep running!");
 					keepRunning = true;
 				}
 			}
 			else if(this.decode_data)
 			{
 				//decode packets
-				double decoding_fraction = decode_StageII_packets();
+				double decoding_fraction = 0;
+				if(!this.stageI)
+				{
+					decoding_fraction = decode_StageII_packets();
+				}
+				else
+				{
+					decoding_fraction = decode_StageI_packets();
+				}
 				
 				if(decoding_fraction >= 1.00)
 				{

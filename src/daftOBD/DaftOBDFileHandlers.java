@@ -414,9 +414,13 @@ public class DaftOBDFileHandlers {
 								}
 								
 								
-								if(fileLine.contains("inputAddr=\""))
+								if(fileLine.contains("inputAddr=\"true\""))
 								{
 									reflash.setInputAddressVisibility(true);//show the JTextFields that allow the user to unput the target address and length for reflashing 
+								}
+								else if(fileLine.contains("inputAddr=\"false\""))
+								{
+									reflash.setInputAddressVisibility(false);
 								}
 								
 								if(fileLine.contains("userSetHexStartAddr=\"true\""))
@@ -441,6 +445,12 @@ public class DaftOBDFileHandlers {
 								
 								//and add the object to the tree
 								treeDefinitionList.addReflash(reflash);
+								
+								//then if we're done, remove the flag setting
+								if(fileLine.contains("/>"))
+								{
+									onReflash = false;
+								}
 							}
 							else if(fileLine.contains("</reflash>"))
 							{
