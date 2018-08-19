@@ -899,6 +899,96 @@ public class DaftOBDFileHandlers {
 		}
 	}
 	
+	public void appendStrArray_byteLogFile(File settings_file, String[] byteSetString)
+	{
+		//this function loops through all of the strings in 'byteSetString' and
+		//appends them line-by-line to the byte log file
+
+		//first, find the location that we should save the log file to
+		File logSaveLocation = find_defn_fileLocation(settings_file, "Log save location: ");
+		String byteLogFileName = logSaveLocation.getPath() + "\\Daft OBD byte log.txt";
+		File byteLogFile = new File(byteLogFileName);
+
+		//if the file does not exist, try creating it
+		if(!byteLogFile.exists())
+		{
+			try {
+				byteLogFile.createNewFile();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		//if we successfully created/found the file, proceed
+		if(byteLogFile.exists()) {
+
+			//open the file
+			//then append the line to the file
+			BufferedWriter writer;
+			try {
+				writer = new BufferedWriter(new FileWriter(byteLogFile,true));//set to append
+				
+				for(int i = 0; i < byteSetString.length; i++)
+				{
+					writer.append(byteSetString[i]);
+					writer.newLine();
+				}
+				
+				//close the file
+				writer.close();
+			} catch (IOException e) {
+				// Failed to open the file to write data to
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void appendStrArray_dataLogFile(File settings_file, String[] dataSetString)
+	{
+		//this function loops through all strings in 'dataSetString' and
+		//appends them line-by-line to the data log file
+		
+		//first, find the location that we should save the log file to
+		File logSaveLocation = find_defn_fileLocation(settings_file, "Log save location: ");
+		String dataLogFileName = logSaveLocation.getPath() + "\\Daft OBD data log.txt";
+		File dataLogFile = new File(dataLogFileName);
+
+		//if the file does not exist, try creating it
+		if(!dataLogFile.exists())
+		{
+			try {
+				dataLogFile.createNewFile();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		//if we successfully created/found the file, proceed
+		if(dataLogFile.exists()) {
+
+			//open the file
+			//then append the line to the file
+			BufferedWriter writer;
+			try {
+				writer = new BufferedWriter(new FileWriter(dataLogFile,true));//set to append
+				
+				for(int i = 0; i < dataSetString.length; i++)
+				{
+					writer.append(dataSetString[i]);
+					writer.newLine();
+				}
+				
+				//close the file
+				writer.close();
+			} catch (IOException e) {
+				// Failed to open the file to write data to
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	//this function extracts the string after the input string Tag in the line
 	private String stringAfter(String line, String tag)
 	{

@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
+import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +42,8 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	serial_USB_comm ComPort;
 	boolean running = false;
 	double logStartTime = 0;
+	String[] logDataList = new String[0];
+	String[] logByteList = new String[0];
     
 	//bring in the file handler class so that we can update our settings files and read in our
 	//definitions in order to build the main window content
@@ -214,18 +217,6 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	    		//collect the time that we are using as the beginning of logging
 	    		logStartTime = System.currentTimeMillis();
 	    		
-	    		//write the byte names that we're polling into the byte log
-	    		String logByteHeaders = daftTreeRoot.getLogPIDnames();
-	    		logByteHeaders = "Time(s),".concat(logByteHeaders);
-	    		fileHandler.appendln_byteLogFile(settings_file, logByteHeaders);
-	    		
-	    		//and write the output data names that we're polling into the data log
-	    		String dataByteHeaders = daftTreeRoot.getLogHeaders();
-	    		dataByteHeaders = "Time(s),".concat(dataByteHeaders);
-	    		fileHandler.appendln_dataLogFile(settings_file, dataByteHeaders);
-	    		
-	    		
-	    		//adjust this to allow for variable length number of receive messages
 	    	}
 	    	else
 	    	{
@@ -239,6 +230,26 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				//reset the status text
 				statusText.setText("Inactive");
 				statusText.repaint();
+				
+				//shutdown any active threads:
+				ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(0);
+				
+				//reset the comport device
+				this.ComPort.reset();
+				
+				//save the byte log
+				if(this.logByteList.length > 0)
+				{
+					this.fileHandler.appendStrArray_byteLogFile(this.settings_file, this.logByteList);
+					this.logByteList = new String[0];
+				}
+				
+				//save the data log
+				if(this.logDataList.length > 0)
+				{
+					this.fileHandler.appendStrArray_dataLogFile(this.settings_file, this.logDataList);
+					this.logDataList = new String[0];
+				}
 	    	}
 	    }
 	    else {
@@ -379,13 +390,33 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		int readIndex = 0;
 		String logBytes = "";
 		
+		//check to see if we've collected our polling headers:
+		if(this.logByteList.length == 0)
+		{
+			//write the byte names that we're polling into the byte log
+    		String logByteHeaders = daftTreeRoot.getLogPIDnames();
+    		logByteHeaders = "Time(s),".concat(logByteHeaders);
+    		//fileHandler.appendln_byteLogFile(settings_file, logByteHeaders);
+    		this.logByteList = Arrays.copyOf(this.logByteList, this.logByteList.length + 1);
+    		this.logByteList[this.logByteList.length - 1] = logByteHeaders;
+    		
+    		//and write the output data names that we're polling into the data log
+    		String dataByteHeaders = daftTreeRoot.getLogHeaders();
+    		dataByteHeaders = "Time(s),".concat(dataByteHeaders);
+    		//fileHandler.appendln_dataLogFile(settings_file, dataByteHeaders);
+    		this.logDataList = Arrays.copyOf(this.logDataList, this.logDataList.length + 1);
+    		this.logDataList[this.logDataList.length - 1] = dataByteHeaders;
+		}
+		
 		//loop over the message flow order
 		for(int j = 0; j < messageFlowOrder.length; j++)
 		{
+			//System.out.print("msg index: " + j);
 			logBytes = String.valueOf( (System.currentTimeMillis() - logStartTime) / 1000);
 			byte[] thisPacket = new byte[0];
 			if(messageFlowOrder[j] == false)
 			{
+				//System.out.println(" send");
 				//send message: loop through all of the serial packets
 				//first, we'll update the packet data
 				dataToSend[sendIndex].refreshPacket();
@@ -407,7 +438,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			{
 				//read message
 				//loop through all of the serial packets
-				//System.out.println("Attempt read");
+				//System.out.println(" read");
 				
 				//update the baudrate if necessary
 				ComPort.updateBaudRate(dataToRead[readIndex].getBaudrate());
@@ -434,14 +465,23 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				}
 				//System.out.println("]");
 				logBytes = logBytes.concat("]");
-				fileHandler.appendln_byteLogFile(settings_file, logBytes);
+				//fileHandler.appendln_byteLogFile(settings_file, logBytes);
+				
+				this.logByteList = Arrays.copyOf(this.logByteList, this.logByteList.length+1);
+				this.logByteList[this.logByteList.length-1] = logBytes;
 			}
 		}
 		
 		//then collect all of the logged outputs and write these to the data file
 		String logData = String.valueOf( (System.currentTimeMillis() - logStartTime) / 1000);
 		logData = logData.concat(",").concat(daftTreeRoot.getLogOutputs());
-		fileHandler.appendln_dataLogFile(settings_file, logData);
+		//fileHandler.appendln_dataLogFile(settings_file, logData);
+		//System.out.println(logData);
+		
+		this.logDataList = Arrays.copyOf(this.logDataList, this.logDataList.length+1);
+		this.logDataList[this.logDataList.length-1] = logData;
+		
+		
 		
 		return success;
 	}

@@ -85,6 +85,21 @@ public class serial_USB_comm {
 		}
 	}
 	
+	public void reset()
+	{
+		//this function resets the com port device
+		
+		try {
+			this.FTDI_cable.purgeBuffer(true, true);//clear both rx and tx buffers
+			this.FTDI_cable.setBitMode((byte) 0xFF, BitModes.BITMODE_RESET);//reset the device
+		} catch (FTD2XXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//reset some of the important counters/global vars
+		this.baudRate = 10400;
+	}
 	
 	public void updateBaudRate(int newBaud) {
 		//if the current baud rate and newBaud match, don't change anything
@@ -264,6 +279,8 @@ public class serial_USB_comm {
 					byte_as_bits[j] = 1;
 				}
 				
+				updateReadiness(false);//set a flag so no one interferes with our process
+				
 				//System.out.println("bit length for bitbang: " + byte_as_bits.length);
 				
 				//then create a set of delayed execution tasks to send this byte, bit-by-bit
@@ -271,7 +288,7 @@ public class serial_USB_comm {
 				for(int j = 0; j < byteLength; j++)
 				{
 					//System.out.println("Schedule: " + byte_as_bits[j]);
-					scheduler.schedule(new sendBit(this.FTDI_cable, byte_as_bits[j],(byteLength - j),this), j*timeDelay_betweenBits, TimeUnit.MICROSECONDS);
+					scheduler.schedule(new sendBit(this.FTDI_cable, byte_as_bits[j],(byteLength - j),this, scheduler), j*timeDelay_betweenBits, TimeUnit.MICROSECONDS);
 				}
 				//System.out.println("Done scheduling");
 			}
@@ -279,17 +296,18 @@ public class serial_USB_comm {
 		else
 		{
 			//otherwise we can simply send data
+			updateReadiness(false);
 			try {
 				FTDI_cable.write(data);
 				
-				
+				/*
 				System.out.print("Send: [ ");
 				for(int i = 0; i < data.length; i++)
 				{
 					System.out.print((int) (data[i] & 0xFF) + " ");
 				}
 				System.out.println("]");
-				
+				*/
 				
 			} catch (FTD2XXException e) {
 				// TODO Auto-generated catch block
@@ -304,6 +322,7 @@ public class serial_USB_comm {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			updateReadiness(true);
 		}
 	}
 	
@@ -378,20 +397,24 @@ public class serial_USB_comm {
 			else
 			{
 				//we're running normally and can simply read in the data
+				updateReadiness(false);
 				try {
 					readBytes = FTDI_cable.read(numBytesToRead);
 					
+					/*
 					System.out.print("Read: [ ");
 					for(int i = 0; i < readBytes.length; i++)
 					{
 						System.out.print((int) (readBytes[i] & 0xFF) + " ");
 					}
 					System.out.println("]");
+					*/
 					
 				} catch (FTD2XXException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				updateReadiness(true);
 			}
 		}
 		return readBytes;
@@ -401,6 +424,7 @@ public class serial_USB_comm {
 	{
 		//this function is used to update the readiness state of the Com Port
 		this.ready_for_next_command = newState;
+		//System.out.println("comport ready? " + newState);
 	}
 }
 
@@ -409,13 +433,15 @@ class sendBit implements Runnable {
 	int bit = 0;
 	int bitsLeft = 2;
 	serial_USB_comm parentPort;
+	ScheduledExecutorService scheduler;
 	
-	public sendBit(FTDevice device, int bit_to_send, int bits_left_to_send, serial_USB_comm parent)
+	public sendBit(FTDevice device, int bit_to_send, int bits_left_to_send, serial_USB_comm parent, ScheduledExecutorService s)
 	{
 		this.ftdi_device = device;
 		this.bit = bit_to_send;
 		this.bitsLeft = bits_left_to_send;
 		this.parentPort = parent;
+		this.scheduler = s;
 	}
 
 	public void run() {
@@ -431,6 +457,7 @@ class sendBit implements Runnable {
 			e.printStackTrace();
 		}
 		this.parentPort.updateReadiness(this.bitsLeft - 1 <= 0);
+		scheduler.shutdown();
 		return;
 	}	
 }
@@ -446,7 +473,7 @@ class readBit implements Runnable {
 	}
 
 	public void run() {
-		//send the bit
+		//read the bits
 		try {
 			//this read command will output to all 8 pins 
 			//of the FTDI device, depending on the mask 

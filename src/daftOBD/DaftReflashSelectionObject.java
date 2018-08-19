@@ -113,6 +113,7 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 	serial_USB_comm ComPort;//use the FTDI cable
 	JTextField statusText;//update the status message
 	File settings_file;//get log save location
+	String[] string_comm_log = new String[0];
 	
 	//for managing connecting to the ECU
 	boolean active = false;//a flag indicating that connection to ECU is active
@@ -375,11 +376,14 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		//this function tells the reflash object to begin communicating with the ECU and to encode the data to send
 		if(!this.running)
 		{
+			//System.out.println("begin!");
 			this.running = true;
 			this.begin_connect_to_ECU = true;//we want to connect to the ECU
 			this.active = true;//we're activating communication with the ECU
 			this.reflash_msg_index = 0;//reset the index for sending packets to the ECU
 			this.read_ROM_data = new byte[0];
+			this.string_comm_log = new String[0];//reset our log array
+			
 
 			//change the COM port settings to have shorter timeouts until we get our connection established
 			if(!this.stageI)
@@ -2385,6 +2389,7 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		this.numSubpackets = 0;//allows the encoding to start over from the beginning
 		this.dataToReflash = new byte[0];//reset our collection of data used to reflash so we re-collect it
 		this.collectReflashDataIndex = 0;//reset our index for building the data set so we re-collect it
+		this.encoded_send_packets = new Serial_Packet[0];//reset our encoded data
 	}
 	
 	public boolean stageII_ECU_readiness()
@@ -2396,6 +2401,18 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		//then read back the ECU response saying it is ready for the next packet, or if there was an error
 		byte[] ECU_readiness = this.ComPort.read(4);
 		
+		//save the data in our byte log string
+		String readData = "Read: [ ";
+		for(int i = 0; i < ECU_readiness.length; i++)
+		{
+			readData = readData.concat(this.convert.Int_to_dec_string((int) ECU_readiness[i] & 0xFF)).concat(" ");
+		}
+		readData = readData.concat("]");
+		
+		this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+		this.string_comm_log[this.string_comm_log.length - 1] = readData;
+		
+		//then act depending on the ECU response
 		if(ECU_readiness.length == 4)
 		{
 			if((int) (ECU_readiness[2] & 0xFF) == 0)
@@ -3043,6 +3060,15 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								//System.out.println("Response: " + response);
 								if((int) (response[0] & 0xFF) == 0x8D && this.begin_connect_to_ECU)
 								{
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = "Generic reflash bootloader session";
+									
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = "Send: [ 1 113 114 ]";
+										
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = "Read: [ 141 ]";
+											
 									this.begin_connect_to_ECU = false;//we're connected so we don't need to keep looping through
 
 									//then change the Comport timeouts back to normal
@@ -3074,19 +3100,45 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								//System.out.println("Index: " + this.reflash_msg_index);
 								byte[] msg = this.encoded_send_packets[this.reflash_msg_index].getPacket();
 								this.ComPort.send(msg);
+								
+								String sentData = "Send: [ ";
+								for(int i = 0; i < msg.length; i++)
+								{
+									sentData = sentData.concat(this.convert.Int_to_dec_string((int) msg[i] & 0xFF)).concat(" ");
+								}
+								sentData = sentData.concat("]");
+								
+								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+								this.string_comm_log[this.string_comm_log.length - 1] = sentData;
 
 								//then read back the ECU acknowledgement of packet reception: the inverted checksum byte
 								byte[] check_response = this.ComPort.read(1);
+								String readData = "Read: [ ".concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ]");
+								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+								this.string_comm_log[this.string_comm_log.length - 1] = readData;
 
 								if(this.specialRead && this.reflash_msg_index > 0)
 								{
 									//read back the ECU's response to our special query for a ROM read
 									byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
 
+									readData = "Read: [ ";
+									for(int i = 0; i < read_ROM.length; i++)
+									{
+										readData = readData.concat(this.convert.Int_to_dec_string((int) read_ROM[i] & 0xFF)).concat(" ");
+									}
+									readData = readData.concat("]");
+									
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = readData;
+									
 									//then respond with the inverted checksum byte
 									byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
 									this.ComPort.send(invert);
-
+									sentData = "Send: [ ".concat(this.convert.Int_to_dec_string( (int) invert[0] & 0xFF) ).concat(" ]");
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = sentData;
+									
 									//then save the data into our repository of read data for saving
 									if(read_ROM.length > 2)
 									{
@@ -3129,10 +3181,16 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								//send the end session message 1 115 116
 								byte[] end_bootloader_session = {1, 115, 116};
 								this.ComPort.send(end_bootloader_session);
+								String finalSend = "Send: [ 1 115 116 ]";
+								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+								this.string_comm_log[this.string_comm_log.length - 1] = finalSend;
 
 								//and read back the ECU's ack
 								byte[] check_response = new byte[1];
 								check_response = this.ComPort.read(1);
+								String readData = "Read: [ ".concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ]");
+								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+								this.string_comm_log[this.string_comm_log.length - 1] = readData;
 
 								//then read back the ECU response saying we had success or if there was an error
 								this.stageII_ECU_readiness();
@@ -3440,6 +3498,13 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			this.running = false;
 			statusText.setText("Inactive");
 			this.statusText.repaint();
+			
+			//save our data log if it has contents
+			if(this.string_comm_log.length > 0)
+			{
+				DaftOBDFileHandlers handler = new DaftOBDFileHandlers();
+				handler.appendStrArray_byteLogFile(this.settings_file, this.string_comm_log);
+			}
 		}
 		
 		return;//close the thread, else memory use continues to increase
