@@ -555,41 +555,44 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				if(scanList[i].isSelected)
 				{
 					countActive++;
-					boolean initFinished = false;
-					while(!initFinished)
+					if(scanList[i].requiresInit)
 					{
-						for(int j = 0; j < initList.length; j++)
+						boolean initFinished = false;
+						while(!initFinished)
 						{
-							if(initList[j].initID.equals(scanList[i].initID))
+							for(int j = 0; j < initList.length; j++)
 							{
-								//we've found the init of interest
-								//now check to see if the init has been sent
-								if(!initList[j].isSelected)
+								if(initList[j].initID.equals(scanList[i].initID))
 								{
-									//we need to send the init
-									statusText.setText("Sending Init.");
-									statusText.repaint();
-									
-									Serial_Packet[] InitToSend = initList[j].getSendPacketList();
-									Serial_Packet[] InitToRead = initList[j].getReadPacketList();
-									boolean[] messageFlowOrder = initList[j].getFlowControl();
-									
-									initFinished = send_and_receive_message_cycle(InitToSend, InitToRead, messageFlowOrder);
-									if(initFinished)
+									//we've found the init of interest
+									//now check to see if the init has been sent
+									if(!initList[j].isSelected)
 									{
-										initList[j].isSelected = true;//set the flag saying that our init was complete
+										//we need to send the init
+										statusText.setText("Sending Init.");
+										statusText.repaint();
+
+										Serial_Packet[] InitToSend = initList[j].getSendPacketList();
+										Serial_Packet[] InitToRead = initList[j].getReadPacketList();
+										boolean[] messageFlowOrder = initList[j].getFlowControl();
+
+										initFinished = send_and_receive_message_cycle(InitToSend, InitToRead, messageFlowOrder);
+										if(initFinished)
+										{
+											initList[j].isSelected = true;//set the flag saying that our init was complete
+										}
+										else
+										{
+											statusText.setText("Init. fail");
+											statusText.repaint();
+										}
+										break;
 									}
 									else
 									{
-										statusText.setText("Init. fail");
-										statusText.repaint();
+										initFinished = true;
+										break;
 									}
-									break;
-								}
-								else
-								{
-									initFinished = true;
-									break;
 								}
 							}
 						}

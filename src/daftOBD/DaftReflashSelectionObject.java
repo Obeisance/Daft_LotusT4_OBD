@@ -412,6 +412,11 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			this.running = false;
 			this.active = false;
 			
+			//then schedule one further action
+			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+			scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
+			scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			
 			this.statusText.setText("Inactive");
 			this.statusText.repaint();
 		}
@@ -3043,7 +3048,8 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 					if(!this.stageI)
 					{
 						//stage II bootloader interaction
-
+						
+						//initiate connection to ECU
 						if(this.begin_connect_to_ECU)
 						{
 
@@ -3071,8 +3077,9 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 											
 									this.begin_connect_to_ECU = false;//we're connected so we don't need to keep looping through
 
-									//then change the Comport timeouts back to normal
-									this.ComPort.changeRx_timeout(500);
+									//then change the Comport timeouts to be long so we can accommodate the 
+									//flash erase timescale
+									this.ComPort.changeRx_timeout(4000);
 
 									this.statusText.setText("Connected to ECU");
 									this.statusText.repaint();
@@ -3116,48 +3123,56 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								String readData = "Read: [ ".concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ]");
 								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
 								this.string_comm_log[this.string_comm_log.length - 1] = readData;
-
-								if(this.specialRead && this.reflash_msg_index > 0)
+								
+								if(check_response.length > 0)//if we drop the check byte, re-send the packet
 								{
-									//read back the ECU's response to our special query for a ROM read
-									byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
+									if(this.specialRead && this.reflash_msg_index > 0)
+									{
+										//read back the ECU's response to our special query for a ROM read
+										byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
 
-									readData = "Read: [ ";
-									for(int i = 0; i < read_ROM.length; i++)
-									{
-										readData = readData.concat(this.convert.Int_to_dec_string((int) read_ROM[i] & 0xFF)).concat(" ");
-									}
-									readData = readData.concat("]");
-									
-									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
-									this.string_comm_log[this.string_comm_log.length - 1] = readData;
-									
-									//then respond with the inverted checksum byte
-									byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
-									this.ComPort.send(invert);
-									sentData = "Send: [ ".concat(this.convert.Int_to_dec_string( (int) invert[0] & 0xFF) ).concat(" ]");
-									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
-									this.string_comm_log[this.string_comm_log.length - 1] = sentData;
-									
-									//then save the data into our repository of read data for saving
-									if(read_ROM.length > 2)
-									{
-										if(read_ROM[1] == 112)
+										readData = "Read: [ ";
+										for(int i = 0; i < read_ROM.length; i++)
 										{
-											for(int i = 2; i < read_ROM.length - 1; i++)
-											{
-												this.read_ROM_data = Arrays.copyOf(this.read_ROM_data, this.read_ROM_data.length + 1);
-												this.read_ROM_data[this.read_ROM_data.length - 1] = read_ROM[i];
-											}
-											this.reflash_msg_index += 1;
+											readData = readData.concat(this.convert.Int_to_dec_string((int) read_ROM[i] & 0xFF)).concat(" ");
 										}
+										readData = readData.concat("]");
+
+										this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+										this.string_comm_log[this.string_comm_log.length - 1] = readData;
+
+										//then respond with the inverted checksum byte
+										byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
+										this.ComPort.send(invert);
+										sentData = "Send: [ ".concat(this.convert.Int_to_dec_string( (int) invert[0] & 0xFF) ).concat(" ]");
+										this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+										this.string_comm_log[this.string_comm_log.length - 1] = sentData;
+
+										//then save the data into our repository of read data for saving
+										if(read_ROM.length > 2)
+										{
+											if(read_ROM[1] == 112)
+											{
+												for(int i = 2; i < read_ROM.length - 1; i++)
+												{
+													this.read_ROM_data = Arrays.copyOf(this.read_ROM_data, this.read_ROM_data.length + 1);
+													this.read_ROM_data[this.read_ROM_data.length - 1] = read_ROM[i];
+												}
+												this.reflash_msg_index += 1;
+											}
+										}
+										//we don't need to check the ECU readiness state if we're just reading the ROM
 									}
-									//we don't need to check the ECU readiness state if we're just reading the ROM
-								}
-								else if(this.stageII_ECU_readiness())
-								{
-									//then read back the ECU response saying it is ready for the next packet, or if there was an error
-									this.reflash_msg_index += 1;
+									else if(this.stageII_ECU_readiness())
+									{
+										//then read back the ECU response saying it is ready for the next packet, or if there was an error
+										this.reflash_msg_index += 1;
+										if(this.reflash_msg_index == 1)
+										{
+											this.ComPort.changeRx_timeout(500);//shorten the timeout so that we can recover from dropped packets by resending 
+										}
+
+									}
 								}
 
 								keepRunning = true;

@@ -26,6 +26,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 	public boolean isSelected;//a flag showing if this parameter is to be polled when the 'start' button is pressed
 		//if this is an init, then this flag shows false if the init needs to be sent, or true if it has been completed already
 	public String initID;//either define which 'Init' this object is, or which 'Init' it needs to have completed
+	public boolean requiresInit = false;//a flag stating that this parameter needs an init
 	public int numberOfInputBoxes = 0;//number of user input boxes to be included with this object
 	 
 	public boolean isVisible;//as part of a tree, the visibility can be toggled on or off		
@@ -129,6 +130,12 @@ public class DaftOBDSelectionObject implements ActionListener {
 		//this function toggles the checkbox state and isSelected flag
 		this.isSelected = false;
 		DaftSelectionCheckBox.setSelected(this.isSelected);
+	}
+	
+	public void setInit(String initName) {
+		//this function sets the init name for this parameter
+		this.initID = initName;
+		this.requiresInit = true;
 	}
 
 	public void actionPerformed(ActionEvent arg0) {

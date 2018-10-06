@@ -10,7 +10,7 @@ public class DaftProgramWindow {
 	
 	public static void createAndShowGUI() {
 		//a frame to put our user interface into
-		JFrame main_window = new JFrame("Daft OBD v2.04");
+		JFrame main_window = new JFrame("Daft OBD v2.05");
 		main_window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);//set what the window does when closed
 		
 		//load or create our settings file

@@ -4004,4 +4004,343 @@
   <decode data>0x2E801</decode data>
  </reflash>
  <reflash name="Bootloader recovery" userSetHexStartAddr="true" stageI="true" inputAddr="false" saveButton="true" decodeButton="true" encodeButton="true"/>
+ 
+ <init name="OBD init fast">
+  <send type="data" baud="5" length="1">
+   <data>0x33</data>
+  </send>
+  <receive type="data" baud="104000" length="3">
+   <data>0x55</data>
+   <data>0x94</data>
+   <data type="int" size="uint8" name="twiddleThisFast" variable="twiddleFast"/>
+  </receive>
+  <send type="data" baud="104000" length="1">
+   <data type="input" size="uint8" name="107" expression="~twiddleFast" dependent="twiddleFast"/>
+  </send>
+  <receive type="data" baud="104000" length="1">
+   <data>0xCC</data>
+  </receive>
+ </init>
+ <pid name="04 Normalized engine load" mode="Fast Baud" init="OBD init fast">
+  <send type="data" baud="104000" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length="7">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0x4</data>
+   <data type="int" size="uint8" name="Normalized engine load fast [%]" expression="#/2.55"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0C Engine speed" mode="Fast Baud" init="OBD init fast">
+  <send type="data" baud="104000" length=6>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x1</data>
+   <data>0xC</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length="8">
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>65</data>
+   <data>0xC</data>
+   <data type="double" size="uint16" name="Engine speed fast [rev/min]" expression="#/4"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="205 fuel injection pulse length" mode="Fast Baud" init="OBD init fast">
+  <send type="data" baud="104000" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x5</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length=9>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x5</data>
+   <data type="int" size="uint16" name="Fuel injection pulse length fast [microsec]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Reset CEL" mode="Fast Baud" init="OBD init fast" read_only_once="false">
+  <send type="data" baud="104000" length=5>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x4</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length=5>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>68</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0101 STFT upstream O2 sensor rich voltage target" mode="Fast Baud" init="OBD init fast" read_only_once="false">
+  <send type="data" baud="104000" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x1</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="STFT upstream O2 sensor rich voltage target fast" expression="#/200"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="0601 ?? upstream O2 sensor ?? voltage" mode="Fast Baud" init="OBD init fast">
+  <send type="data" baud="104000" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x5</data>
+   <data>0x6</data>
+   <data>0x1</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length=8>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>69</data>
+   <data>0x6</data>
+   <data>0x1</data>
+   <data type="double" size="uint8" name="601 ?? upstream O2 sensor ?? voltage fast"/>
+   <data>0x0</data>
+   <data type="double" size="uint8" name="601 ?? upstream O2 sensor ?? voltage fast"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="203 ?? counter index ??" mode="Fast Baud" init="OBD init fast">
+  <send type="data" baud="104000" length=7>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x22</data>
+   <data>0x2</data>
+   <data>0x3</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="104000" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>98</data>
+   <data>0x2</data>
+   <data>0x3</data>
+   <data type="int" size="uint32" name="counter index ?? fast"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <init name="OBD init+fast baud">
+  <send type="data" baud="5" length="1">
+   <data>0x33</data>
+  </send>
+  <receive type="data" baud="10400" length="3">
+   <data>0x55</data>
+   <data>0x94</data>
+   <data type="int" size="uint8" name="twiddleThis+fast baud" variable="twiddle+Fast"/>
+  </receive>
+  <send type="data" baud="10400" length="1">
+   <data type="input" size="uint8" name="107" expression="~twiddle+Fast" dependent="twiddle+Fast"/>
+  </send>
+  <receive type="data" baud="10400" length="1">
+   <data>0xCC</data>
+  </receive>
+  <send type="data" baud="10400" length=5>
+   <data>104</data>
+   <data>106</data>
+   <data>241</data>
+   <data>0x3C</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=11>
+   <data>72</data>
+   <data>107</data>
+   <data>16</data>
+   <data>124</data>
+   <data>0x31</data>
+   <data>0x32</data>
+   <data>0x35</data>
+   <data>0x30</data>
+   <data>0x33</data>
+   <data>0x31</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </init>
+
+
+ <pid name="Test Read" mode="Fast K-Line" init="OBD init+fast baud">
+  <send type="data" baud="125031" length=8>
+   <data>85</data>
+   <data>12</data>
+   <data>17</data>
+   <data>17</data>
+   <data>0x08</data>
+   <data>0x0D</data>
+   <data>0x56</data>
+   <data>32</data>
+   <data>0x08</data>
+   <data>0x76</data>
+   <data>0x56</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="125031" length=21>
+   <data>170</data>
+   <data>53</data>
+   <data>17</data>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-VIN" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-CALID" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="ASCII" size="uint8" name="Fast-Make Model Year" combined="true"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
+ <pid name="Test Write" mode="Fast K-Line" init="OBD init+fast baud">
+  <send type="data" baud="125031" length=8>
+   <data>85</data>
+   <data>25</data>
+   <data>136</data>
+   <data>17</data>
+   <data>0x08</data>
+   <data>0x0D</data>
+   <data>0x56</data>
+   <data>0x68</data>
+   <data>0x65</data>
+   <data>0x6C</data>
+   <data>0x6C</data>
+   <data>0x6F</data>
+   <data>0x20</data>
+   <data>0x77</data>
+   <data>0x6F</data>
+   <data>0x72</data>
+   <data>0x6C</data>
+   <data>0x64</data>
+   <data>0x20</data>
+   <data>0x20</data>
+   <data>0x20</data>
+   <data>0x20</data>
+   <data>0x20</data>
+   <data>0x20</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="125031" length=21>
+   <data>170</data>
+   <data>4</data>
+   <data>136</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+</pid>
+
+ <pid name="Test Write 2" mode="Fast K-Line" init="OBD init+fast baud">
+  <send type="data" baud="125031" length=8>
+   <data>85</data>
+   <data>25</data>
+   <data>136</data>
+   <data>17</data>
+   <data>0x08</data>
+   <data>0x0D</data>
+   <data>0x56</data>
+   <data>0x53</data>
+   <data>0x43</data>
+   <data>0x43</data>
+   <data>0x50</data>
+   <data>0x43</data>
+   <data>0x31</data>
+   <data>0x31</data>
+   <data>0x31</data>
+   <data>0x30</data>
+   <data>0x35</data>
+   <data>0x48</data>
+   <data>0x41</data>
+   <data>0x33</data>
+   <data>0x30</data>
+   <data>0x30</data>
+   <data>0x30</data>
+   <data>0x30</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="125031" length=21>
+   <data>170</data>
+   <data>4</data>
+   <data>136</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+</pid>
 </parameter list>

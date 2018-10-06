@@ -196,6 +196,7 @@ public class DaftOBDFileHandlers {
 		String mode = null;
 		String name = null;
 		String initName = null;
+		boolean init_needed = false;
 		Serial_Packet send_packet = new Serial_Packet();
 		Serial_Packet[] sendPacketList = new Serial_Packet[0];
 		Serial_Packet read_packet = new Serial_Packet();
@@ -281,7 +282,13 @@ public class DaftOBDFileHandlers {
 								if(fileLine.contains("init="))
 								{
 									initName = stringBetween(fileLine, "init=\"","\"");
+									init_needed = true;
 								}
+								else
+								{
+									init_needed = false;
+								}
+								
 								if(fileLine.contains("read_only_once=\"true\""))
 								{
 									read_only_once = true;
@@ -308,7 +315,12 @@ public class DaftOBDFileHandlers {
 								//DaftOBDSelectionObject DaftTreeLeaf = new DaftOBDSelectionObject(mode, name, dataToSend, numberInputBoxes);
 								DaftOBDSelectionObject DaftTreeLeaf = new DaftOBDSelectionObject(mode, name, sendPacketList, readPacketList);
 								DaftTreeLeaf.flowControl = flowControl;
-								DaftTreeLeaf.initID = initName;
+								
+								if(init_needed)
+								{
+									DaftTreeLeaf.setInit(initName);
+								}
+								
 								if(read_only_once)
 								{
 									DaftTreeLeaf.setReadOnce(read_only_once);
