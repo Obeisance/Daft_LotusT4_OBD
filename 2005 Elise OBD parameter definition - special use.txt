@@ -14,6 +14,9 @@
 //	valid expression includes operators '(',')','exp()','^','log()','ln()','*','/','+','-','&','XOR','|','>>','<<'
 //		and a denotion of the variable '#'
 //valid fourth level parameters are 'lookup' which can have fields 'data' and 'conv'
+//be careful because the parser (poorly) checks for significant digits after 
+//every operation and it considers the number of decimal places on constant values too.
+
 
 <parameter list>
  <init name="OBD init">
@@ -4005,162 +4008,6 @@
  </reflash>
  <reflash name="Bootloader recovery" userSetHexStartAddr="true" stageI="true" inputAddr="false" saveButton="true" decodeButton="true" encodeButton="true"/>
  
- <init name="OBD init fast">
-  <send type="data" baud="5" length="1">
-   <data>0x33</data>
-  </send>
-  <receive type="data" baud="104000" length="3">
-   <data>0x55</data>
-   <data>0x94</data>
-   <data type="int" size="uint8" name="twiddleThisFast" variable="twiddleFast"/>
-  </receive>
-  <send type="data" baud="104000" length="1">
-   <data type="input" size="uint8" name="107" expression="~twiddleFast" dependent="twiddleFast"/>
-  </send>
-  <receive type="data" baud="104000" length="1">
-   <data>0xCC</data>
-  </receive>
- </init>
- <pid name="04 Normalized engine load" mode="Fast Baud" init="OBD init fast">
-  <send type="data" baud="104000" length=6>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x1</data>
-   <data>0x4</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length="7">
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>65</data>
-   <data>0x4</data>
-   <data type="int" size="uint8" name="Normalized engine load fast [%]" expression="#/2.55"/>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
- <pid name="0C Engine speed" mode="Fast Baud" init="OBD init fast">
-  <send type="data" baud="104000" length=6>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x1</data>
-   <data>0xC</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length="8">
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>65</data>
-   <data>0xC</data>
-   <data type="double" size="uint16" name="Engine speed fast [rev/min]" expression="#/4"/>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
- <pid name="205 fuel injection pulse length" mode="Fast Baud" init="OBD init fast">
-  <send type="data" baud="104000" length=7>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x22</data>
-   <data>0x2</data>
-   <data>0x5</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length=9>
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>98</data>
-   <data>0x2</data>
-   <data>0x5</data>
-   <data type="int" size="uint16" name="Fuel injection pulse length fast [microsec]"/>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
- <pid name="Reset CEL" mode="Fast Baud" init="OBD init fast" read_only_once="false">
-  <send type="data" baud="104000" length=5>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x4</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length=5>
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>68</data>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
- <pid name="0101 STFT upstream O2 sensor rich voltage target" mode="Fast Baud" init="OBD init fast" read_only_once="false">
-  <send type="data" baud="104000" length=7>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x5</data>
-   <data>0x1</data>
-   <data>0x1</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length=8>
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>69</data>
-   <data>0x1</data>
-   <data>0x1</data>
-   <data type="double" size="uint8" name="STFT upstream O2 sensor rich voltage target fast" expression="#/200"/>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
- <pid name="0601 ?? upstream O2 sensor ?? voltage" mode="Fast Baud" init="OBD init fast">
-  <send type="data" baud="104000" length=7>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x5</data>
-   <data>0x6</data>
-   <data>0x1</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length=8>
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>69</data>
-   <data>0x6</data>
-   <data>0x1</data>
-   <data type="double" size="uint8" name="601 ?? upstream O2 sensor ?? voltage fast"/>
-   <data>0x0</data>
-   <data type="double" size="uint8" name="601 ?? upstream O2 sensor ?? voltage fast"/>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
- <pid name="203 ?? counter index ??" mode="Fast Baud" init="OBD init fast">
-  <send type="data" baud="104000" length=7>
-   <data>104</data>
-   <data>106</data>
-   <data>241</data>
-   <data>0x22</data>
-   <data>0x2</data>
-   <data>0x3</data>
-   <data type="sum" size="uint8"/>
-  </send>
-  <receive type="data" baud="104000" length=11>
-   <data>72</data>
-   <data>107</data>
-   <data>16</data>
-   <data>98</data>
-   <data>0x2</data>
-   <data>0x3</data>
-   <data type="int" size="uint32" name="counter index ?? fast"/>
-   <data type="sum" size="uint8"/>
-  </receive>
- </pid>
 
  <init name="OBD init+fast baud">
   <send type="data" baud="5" length="1">
@@ -4200,8 +4047,8 @@
  </init>
 
 
- <pid name="Test Read" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=8>
+ <pid name="Read VIN, CALID and Car type" mode="Fast K-Line" init="OBD init+fast baud">
+  <send type="data" baud="125031" length=12>
    <data>85</data>
    <data>12</data>
    <data>17</data>
@@ -4215,7 +4062,7 @@
    <data>0x56</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=21>
+  <receive type="data" baud="125031" length=53>
    <data>170</data>
    <data>53</data>
    <data>17</data>
@@ -4273,7 +4120,7 @@
  </pid>
 
  <pid name="Test Write" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=8>
+  <send type="data" baud="125031" length=25>
    <data>85</data>
    <data>25</data>
    <data>136</data>
@@ -4300,16 +4147,16 @@
    <data>0x20</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=21>
+  <receive type="data" baud="125031" length=4>
    <data>170</data>
    <data>4</data>
    <data>136</data>
    <data type="sum" size="uint8"/>
   </receive>
-</pid>
+ </pid>
 
  <pid name="Test Write 2" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=8>
+  <send type="data" baud="125031" length=25>
    <data>85</data>
    <data>25</data>
    <data>136</data>
@@ -4336,11 +4183,149 @@
    <data>0x30</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=21>
+  <receive type="data" baud="125031" length=4>
    <data>170</data>
    <data>4</data>
    <data>136</data>
    <data type="sum" size="uint8"/>
   </receive>
-</pid>
+ </pid>
+
+ <pid name="Fueling parameters" mode="Fast K-Line" init="OBD init+fast baud">
+  <send type="data" baud="125031" length=88>
+   <data>85</data>
+   <data>88</data>
+   <data>17</data>
+   <data>3</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x16</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x8A</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0xBE</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0xC0</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x46</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x02</data>
+   <data>0xF2</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0x3E</data>
+   <data>8</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0x42</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0xBA</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0xD6</data>
+   <data>6</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xAA</data>
+   <data>14</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xB4</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xCC</data>
+   <data>10</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xD0</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xDE</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xE0</data>
+   <data>5</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xE6</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x0C</data>
+   <data>0xFE</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x0D</data>
+   <data>0x02</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x14</data>
+   <data>0x74</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x17</data>
+   <data>0xB2</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="125031" length=86>
+   <data>170</data>
+   <data>86</data>
+   <data>17</data>
+   <data type="double" size="uint8" name="80116 Coolant temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
+   <data type="int" size="uint8" name="80117 unused fp"/>
+   <data type="double" size="uint8" name="80118 Intake air temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
+   <data type="double" size="uint16" name="8018a MAF ramp fp [g/sec]" expression="#*200.00"/>
+   <data type="double" size="uint8" name="801be Engine speed fp [rpm]" expression="(# + 16.00)*375.00/12.00"/>
+   <data type="double" size="uint8" name="801c0 Engine-start coolant temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
+   <data type="double" size="uint16" name="80146 ECU voltage fp [V]" expression="(#*18.00)/1000.00"/>
+   <data type="double" size="uint16" name="802f2 Subtract from req'd fuel fp [decigram fuel]"/>
+   <data type="double" size="uint32" name="8033e Open loop fueling adjustment fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="80342 Open loop fueling adjustment fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="80346 Open loop fueling adjustment fp [microsecond injection pulse]"/>
+   <data type="double" size="uint16" name="803ba Short term fuel trim fp [%]" expression="#/20.00"/>
+   <data type="double" size="uint16" name="803d6 Long term fuel trim fp [%]" expression="#/20.00"/>
+   <data type="double" size="uint16" name="808aa Fuel injector voltage latency pulse correction fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808ac Fuel trim corrected base fuel pulse fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808b4 Req'd fuel/vol efficiency fp [microsecond injection pulse]"/>
+   <data type="double" size="uint8" name="808b8 Coolant temp and engine load injector pulse length scaling fp [%]" expression="#*100.00/64.00"/>
+   <data type="int" size="uint8" name="808b9 unused fp"/>
+   <data type="double" size="uint8" name="808ba Intake air temp injector pulse length scaling fp [%]" expression="#*100.00/128.00"/>
+   <data type="int" size="uint8" name="808bb unused fp"/>
+   <data type="double" size="uint8" name="808bc MAF ramp and engine-start coolant temp injector pulse length scaling fp [%]" expression="#*100.00/32.00"/>
+   <data type="int" size="uint8" name="808bd unused fp"/>
+   <data type="double" size="uint32" name="808be Total fuel injector pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808cc Cold start cranking base fuel pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808d0 Total cold start cranking fuel pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808d4 Base fuel pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint16" name="808d8 Fuel injection crank angle target fp [Deg BTDC]"/>
+   <data type="double" size="uint16" name="808de Commanded A/F ratio fp [A/F]" expression="#/100.00"/>
+   <data type="double" size="uint16" name="808e0 Fuel per microsecond or VE fp [decigram/microsec]"/>
+   <data type="double" size="uint16" name="808e2 Fuel mass req'd fp [decigram]"/>
+   <data type="double" size="uint16" name="808e6 Corrected fuel mass req'd fp [decigram]"/>
+   <data type="double" size="uint8" name="808e8 Fuel injection crank angle target fraction fp [?]"/>
+   <data type="int" size="uint8" name="808e9 unused fp"/>
+   <data type="double" size="uint8" name="808ea A/F enrichment fp [A/F]"/>
+   <data type="double" size="uint32" name="80cfe MAF per stroke fp [mg air]"/>
+   <data type="double" size="uint8" name="80d02 Eng load fp [mg air]" expression="#*4.00"/>
+   <data type="double" size="uint32" name="81474 Alternate fuel inj pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint8" name="817b2 Idle learned fuel pulse length correction fp [microsecond injection pulse]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
 </parameter list>

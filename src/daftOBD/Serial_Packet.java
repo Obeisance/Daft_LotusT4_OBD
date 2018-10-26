@@ -203,9 +203,15 @@ public class Serial_Packet {
 			if(byteIndex < this.packetData.length)
 			{
 				byte pcktByte = this.packetData[byteIndex];
+				//System.out.println("Get byte: " + pcktByte + ", from index: " + byteIndex);
 				collectedFromPacket = collectedFromPacket << 8;
-				collectedFromPacket = collectedFromPacket | (int) pcktByte;
+				collectedFromPacket = collectedFromPacket | (((int) pcktByte) & 0xFF);
 				bitsCollectedFromPacket += 8;
+				byteIndex += 1;
+			}
+			else
+			{
+				break;
 			}
 		}
 		
