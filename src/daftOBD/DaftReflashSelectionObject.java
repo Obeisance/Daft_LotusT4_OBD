@@ -3124,7 +3124,7 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
 								this.string_comm_log[this.string_comm_log.length - 1] = readData;
 								
-								if(check_response.length > 0)//if we drop the check byte, re-send the packet
+								if(check_response.length > 0)//if we drop/miss the check byte, re-send the packet
 								{
 									if(this.specialRead && this.reflash_msg_index > 0)
 									{

@@ -91,9 +91,21 @@ public class Output {
 		//collect the input data according to the bit length
 		//assume that the input data has been shifted so bit0 is the end of data
 		this.intData = this.parentPacket.getShiftedBitData(this.bit_start_position, this.bitLength);
-		
-		//use the mask in order to remove unnecessary bits
+
+		//use the mask in order to remove unnecessary bits, and pay attention to sign of data
 		this.intData = this.intData & this.dataMask;
+		if(!this.type.contains("uint"))//we have either signed or unsigned integers
+		{
+			//add back in the sign bits -> sign extend
+			if((this.intData >> (this.bitLength-1) ) == 1)//check to see if the negative bit is set
+			{
+				for(int i = 31; i >= this.bitLength; i--)//assume that the intData is a 32 bit integer, at most
+				{
+					this.intData = this.intData | (0x1 << i);
+				}
+			}
+		}
+		
 		
 		//System.out.println("Time to update output: " + this.name + ", using data: " + this.intData);
 
