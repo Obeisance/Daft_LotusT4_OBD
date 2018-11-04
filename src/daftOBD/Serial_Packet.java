@@ -345,8 +345,10 @@ public class Serial_Packet {
 	public String getOutputNameList() {
 		//this function returns the names of all 'outputs' from this Serial_Packet
 		String names = "";
+		//System.out.print("Check to see if the outputs in this packet should be read...");
 		if(shouldBeRead())
 		{
+			//System.out.println("Collect the names of " + this.outputList.length + " outputs");
 			for(int i = 0; i < this.outputList.length; i++)
 			{
 				if(!this.outputList[i].child_to_other_output)
@@ -354,6 +356,10 @@ public class Serial_Packet {
 					names = names.concat(this.outputList[i].name).concat(",");
 				}
 			}
+		}
+		else
+		{
+			//System.out.println("nope");
 		}
 		return names;
 	}
@@ -438,11 +444,13 @@ public class Serial_Packet {
 				}
 				substitutedExpression = parser.replace_variable_String_with_value(varValue, varName, substitutedExpression);
 			}
+			//System.out.println("Uses an expression of length: " + this.expression.length() + " which is: " + substitutedExpression);
 		}
 		
 		//System.out.println("Compare: " + substitutedExpression + " and " + this.condition);
 		
 		//first, we should check for the type of condition
+		//System.out.println("Compare the conditional reporting string: " + this.condition);
 		Conversion_Handler convert = new Conversion_Handler();
 		if(this.condition.contains("<"))
 		{
@@ -474,6 +482,7 @@ public class Serial_Packet {
 		else if(this.condition.contains(">"))
 		{
 			String filteredCondition = convert.stringAfter(this.condition,">");
+			//System.out.println("Try to parse the condition, remove the '>': " + filteredCondition);
 			boolean equals = false;
 			if(filteredCondition.contains("="))
 			{

@@ -216,10 +216,14 @@ public class DaftTreeComponent implements MouseListener {
 			{
 				DaftOBDSelectionObject currentOBDParam = DaftObjects[i];
 				Serial_Packet[] receivePackets = currentOBDParam.getReadPacketList();
+				//System.out.println("Collect variable names from " + receivePackets.length + " packets");
 				for(int j = 0; j < receivePackets.length; j++)
 				{
-					outputList = outputList.concat(receivePackets[j].getOutputNameList());
+					String output_names_in_this_packet = receivePackets[j].getOutputNameList();
+					//System.out.println("Output names on packet " + (j+1) + ": " + output_names_in_this_packet);
+					outputList = outputList.concat(output_names_in_this_packet);
 				}
+				//System.out.println("All Output names: " + outputList);
 			}
 		}
 		return outputList;

@@ -121,6 +121,7 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 	int reflash_msg_index = 0;//an index that allows us to keep track of where we are in the reflashing process
 	
 	Conversion_Handler convert = new Conversion_Handler();//allow us to convert between different number types
+	ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(0);//to allow time-scheduled tasks
 	
 	
 	DaftReflashSelectionObject(String nameString) {
@@ -401,10 +402,11 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			resetEncodingFlags();
 			
 			//then schedule further action
-			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-			scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
-			scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
-
+			//ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+			//scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
+			//scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			this.scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
+			
 		}
 		else
 		{
@@ -413,9 +415,10 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			this.active = false;
 			
 			//then schedule one further action
-			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-			scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
-			scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			//ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+			//scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
+			//scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			this.scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
 			
 			this.statusText.setText("Inactive");
 			this.statusText.repaint();
@@ -1309,7 +1312,7 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				writer = new BufferedWriter(new FileWriter(saveDecodeFile));
 				writer.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				//Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -1603,7 +1606,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				
 				writer.close();//close the file
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -1833,7 +1835,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				writer = new BufferedWriter(new FileWriter(saveDecodeFile));
 				writer.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -1963,7 +1964,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				writer.newLine();
 				writer.close();//close the file
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -2180,7 +2180,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		try {
 			saveReflashFile.createNewFile();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -2210,7 +2209,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				}
 				writer.close();//close the file
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -2240,7 +2238,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				saveSRECFile.createNewFile();
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -2252,10 +2249,8 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			binFile.write(hexData);
 			binFile.close();
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -2286,7 +2281,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 						writer.newLine();
 						writer.close();//close the file
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -2301,7 +2295,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 						writer.newLine();
 						writer.close();//close the file
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -2406,20 +2399,36 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		//then read back the ECU response saying it is ready for the next packet, or if there was an error
 		byte[] ECU_readiness = this.ComPort.read(4);
 		
-		//save the data in our byte log string
-		String readData = "Read: [ ";
-		for(int i = 0; i < ECU_readiness.length; i++)
-		{
-			readData = readData.concat(this.convert.Int_to_dec_string((int) ECU_readiness[i] & 0xFF)).concat(" ");
-		}
-		readData = readData.concat("]");
-		
-		this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
-		this.string_comm_log[this.string_comm_log.length - 1] = readData;
+		//check to see that what we read is what we expect, too	
 		
 		//then act depending on the ECU response
 		if(ECU_readiness.length == 4)
 		{
+			//make an effort to deal with dropped packets
+			if((int) (ECU_readiness[0] & 0xFF) != 2 || (int) (ECU_readiness[1] &0xFF) != 0x72)
+			{
+				//we should read in another byte, assuming that we missed the check byte earlier
+				//and read it in with the current four bytes
+				byte[] missed = this.ComPort.read(1);
+				
+				String readData = "Read: [ ";
+				if(missed.length > 0)
+				{
+					//save the check byte data in our byte log string
+					readData = readData.concat(this.convert.Int_to_dec_string((int) ECU_readiness[0] & 0xFF)).concat(" ");
+					
+					//and shift the data that is in the readiness byte packet so we can treat it as normal
+					ECU_readiness[0] = ECU_readiness[1];
+					ECU_readiness[1] = ECU_readiness[2];
+					ECU_readiness[2] = ECU_readiness[3];
+					ECU_readiness[3] = missed[0];
+				}
+				readData = readData.concat("]");
+
+				this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+				this.string_comm_log[this.string_comm_log.length - 1] = readData;
+			}
+			
 			if((int) (ECU_readiness[2] & 0xFF) == 0)
 			{
 				//2 114 0 116 - message received successfully - continue on
@@ -2436,6 +2445,17 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				this.ComPort.send(invert);
 			}
 		}
+		
+		//save the data in our byte log string
+		String readData = "Read: [ ";
+		for(int i = 0; i < ECU_readiness.length; i++)
+		{
+			readData = readData.concat(this.convert.Int_to_dec_string((int) ECU_readiness[i] & 0xFF)).concat(" ");
+		}
+		readData = readData.concat("]");
+
+		this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+		this.string_comm_log[this.string_comm_log.length - 1] = readData;
 		
 		return success;
 	}
@@ -2811,7 +2831,6 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				try {
 					this.hexData = Files.readAllBytes(hexPath);//then read in all bytes of data from the hex file
 				} catch (IOException e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
 				System.out.println("Done reading hex file. Length: " + this.hexData.length + " bytes");
@@ -2910,9 +2929,10 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 				//System.out.println("Begin encoding");
 				this.running = true;
 				//schedule the runnable function to begin encoding bytes
-	    		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-	    		scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
-	    		scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+	    		//ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+	    		//scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
+	    		//scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+				this.scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
 			}
 			else
 			{
@@ -2943,9 +2963,10 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 					//System.out.println("Begin decoding");
 					this.running = true;
 					//schedule the runnable function to begin encoding bytes
-					ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-					scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
-					scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+					//ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+					//scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
+					//scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+					this.scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
 				}
 				else
 				{
@@ -3120,60 +3141,67 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 
 								//then read back the ECU acknowledgement of packet reception: the inverted checksum byte
 								byte[] check_response = this.ComPort.read(1);
-								String readData = "Read: [ ".concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ]");
+								String readData = "Read: [ ";
+								if(check_response.length > 0)
+								{
+									readData = readData.concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ");
+								}
+								readData = readData.concat("]");
+								
 								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
 								this.string_comm_log[this.string_comm_log.length - 1] = readData;
 								
-								if(check_response.length > 0)//if we drop/miss the check byte, re-send the packet
+
+								if(this.specialRead && this.reflash_msg_index > 0)
 								{
-									if(this.specialRead && this.reflash_msg_index > 0)
+									//read back the ECU's response to our special query for a ROM read
+									//this is not robust to missing the ECU's ack byte above
+									
+									byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
+
+									readData = "Read: [ ";
+									for(int i = 0; i < read_ROM.length; i++)
 									{
-										//read back the ECU's response to our special query for a ROM read
-										byte[] read_ROM = ComPort.read((int) (msg[6] & 0xFF) + 3);//read back the number of bytes we requested and the header, checksum and packet length
+										readData = readData.concat(this.convert.Int_to_dec_string((int) read_ROM[i] & 0xFF)).concat(" ");
+									}
+									readData = readData.concat("]");
 
-										readData = "Read: [ ";
-										for(int i = 0; i < read_ROM.length; i++)
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = readData;
+
+									//then respond with the inverted checksum byte
+									byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
+									this.ComPort.send(invert);
+									sentData = "Send: [ ".concat(this.convert.Int_to_dec_string( (int) invert[0] & 0xFF) ).concat(" ]");
+									this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
+									this.string_comm_log[this.string_comm_log.length - 1] = sentData;
+
+									//then save the data into our repository of read data for saving
+									if(read_ROM.length > 2)
+									{
+										if(read_ROM[1] == 112)
 										{
-											readData = readData.concat(this.convert.Int_to_dec_string((int) read_ROM[i] & 0xFF)).concat(" ");
-										}
-										readData = readData.concat("]");
-
-										this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
-										this.string_comm_log[this.string_comm_log.length - 1] = readData;
-
-										//then respond with the inverted checksum byte
-										byte[] invert = {(byte) ~read_ROM[read_ROM.length -1]};
-										this.ComPort.send(invert);
-										sentData = "Send: [ ".concat(this.convert.Int_to_dec_string( (int) invert[0] & 0xFF) ).concat(" ]");
-										this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
-										this.string_comm_log[this.string_comm_log.length - 1] = sentData;
-
-										//then save the data into our repository of read data for saving
-										if(read_ROM.length > 2)
-										{
-											if(read_ROM[1] == 112)
+											for(int i = 2; i < read_ROM.length - 1; i++)
 											{
-												for(int i = 2; i < read_ROM.length - 1; i++)
-												{
-													this.read_ROM_data = Arrays.copyOf(this.read_ROM_data, this.read_ROM_data.length + 1);
-													this.read_ROM_data[this.read_ROM_data.length - 1] = read_ROM[i];
-												}
-												this.reflash_msg_index += 1;
+												this.read_ROM_data = Arrays.copyOf(this.read_ROM_data, this.read_ROM_data.length + 1);
+												this.read_ROM_data[this.read_ROM_data.length - 1] = read_ROM[i];
 											}
+											this.reflash_msg_index += 1;
 										}
-										//we don't need to check the ECU readiness state if we're just reading the ROM
 									}
-									else if(this.stageII_ECU_readiness())
-									{
-										//then read back the ECU response saying it is ready for the next packet, or if there was an error
-										this.reflash_msg_index += 1;
-										if(this.reflash_msg_index == 1)
-										{
-											this.ComPort.changeRx_timeout(500);//shorten the timeout so that we can recover from dropped packets by resending 
-										}
-
-									}
+									//we don't need to check the ECU readiness state if we're just reading the ROM
 								}
+								else if(this.stageII_ECU_readiness())
+								{
+									//then read back the ECU response saying it is ready for the next packet, or if there was an error
+									this.reflash_msg_index += 1;
+									if(this.reflash_msg_index == 1)
+									{
+										this.ComPort.changeRx_timeout(1000);//shorten the timeout so that we can recover from dropped packets by resending 
+									}
+
+								}
+
 
 								keepRunning = true;
 
@@ -3203,7 +3231,13 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 								//and read back the ECU's ack
 								byte[] check_response = new byte[1];
 								check_response = this.ComPort.read(1);
-								String readData = "Read: [ ".concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ]");
+								String readData = "Read: [ ";
+								if(check_response.length > 0)
+								{
+									readData = readData.concat(this.convert.Int_to_dec_string( (int) check_response[0] & 0xFF) ).concat(" ");
+								}
+								readData = readData.concat("]");
+								
 								this.string_comm_log = Arrays.copyOf(this.string_comm_log, this.string_comm_log.length + 1);
 								this.string_comm_log[this.string_comm_log.length - 1] = readData;
 
@@ -3503,9 +3537,10 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 		{
 			//System.out.println("Schedule next event");
 			//schedule another runnable call
-			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    		scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
-    		scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			//ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    		//scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
+    		//scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+			this.scheduler.schedule(this, 100, TimeUnit.MICROSECONDS);
 		}
 		else
 		{

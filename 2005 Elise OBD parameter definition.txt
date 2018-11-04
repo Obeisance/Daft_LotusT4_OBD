@@ -1540,7 +1540,7 @@
    <data type="ASCII" size="uint8" name="Calibration ID" combined="true"/>
    <data type="sum" size="uint8"/>
   </receive>
-  <receive type="repeatif" baud="10400" length=11 expression="numForCID" dependent="numForVin" condition=">2" maxRepeatNum="1">
+  <receive type="repeatif" baud="10400" length=11 expression="numForCID" dependent="numForCID" condition=">2" maxRepeatNum="1">
    <data>72</data>
    <data>107</data>
    <data>16</data>

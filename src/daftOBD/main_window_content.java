@@ -44,6 +44,9 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	double logStartTime = 0;
 	String[] logDataList = new String[0];
 	String[] logByteList = new String[0];
+	
+	//and an Executor to handle time-based operations
+	ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(0);//we'll continuously reuse this pool
     
 	//bring in the file handler class so that we can update our settings files and read in our
 	//definitions in order to build the main window content
@@ -180,6 +183,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			
 	    }
 	    else if("reload device list".equals(e.getActionCommand())) {
+	    	//if no devices are found, we re-load the device list
 	    	Object obj = e.getSource();
 	    	if(obj instanceof JMenuItem)
 	    	{
@@ -211,9 +215,8 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	    	if(running)
 	    	{
 	    		//schedule an event
-	    		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-	    		scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);
-	    		scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+	    		this.scheduler = Executors.newScheduledThreadPool(0);
+	    		this.scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);	    		
 	    		//collect the time that we are using as the beginning of logging
 	    		logStartTime = System.currentTimeMillis();
 	    		
@@ -227,15 +230,15 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 					initList[i].isSelected = false;
 				}
 				
+				//shutdown any active thread requests:
+				this.scheduler.shutdown();//make sure to tell the executor to shut down open threads when they finished, and to stop accepting new thread requests.
+				
+				//reset the comport device to clear data buffers
+				this.ComPort.reset();
+				
 				//reset the status text
 				statusText.setText("Inactive");
 				statusText.repaint();
-				
-				//shutdown any active threads:
-				ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(0);
-				
-				//reset the comport device
-				this.ComPort.reset();
 				
 				//save the byte log
 				if(this.logByteList.length > 0)
@@ -253,6 +256,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	    	}
 	    }
 	    else {
+	    	//if an action commands switching the FTDI device
 	    	String[] comList = ComPort.getDeviceStringList();
 	    	boolean found = false;
 	    	for(int i = 0; i < comList.length; i++)
@@ -391,24 +395,29 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		String logBytes = "";
 		
 		//check to see if we've collected our polling headers:
+		//System.out.println("Write new file headers, if necessary...");
 		if(this.logByteList.length == 0)
 		{
 			//write the byte names that we're polling into the byte log
     		String logByteHeaders = daftTreeRoot.getLogPIDnames();
     		logByteHeaders = "Time(s),".concat(logByteHeaders);
+    		//System.out.println("Byte headers: " + logByteHeaders);
     		//fileHandler.appendln_byteLogFile(settings_file, logByteHeaders);
     		this.logByteList = Arrays.copyOf(this.logByteList, this.logByteList.length + 1);
     		this.logByteList[this.logByteList.length - 1] = logByteHeaders;
+    		//System.out.println("First string in byte list: " + this.logByteList[0]);
     		
     		//and write the output data names that we're polling into the data log
     		String dataByteHeaders = daftTreeRoot.getLogHeaders();
     		dataByteHeaders = "Time(s),".concat(dataByteHeaders);
+    		//System.out.println("Data headers: " + dataByteHeaders);
     		//fileHandler.appendln_dataLogFile(settings_file, dataByteHeaders);
     		this.logDataList = Arrays.copyOf(this.logDataList, this.logDataList.length + 1);
     		this.logDataList[this.logDataList.length - 1] = dataByteHeaders;
 		}
 		
 		//loop over the message flow order
+		//System.out.println("Number of steps: " + messageFlowOrder.length);
 		for(int j = 0; j < messageFlowOrder.length; j++)
 		{
 			//System.out.print("msg index: " + j);
@@ -441,17 +450,22 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				//System.out.println(" read");
 				
 				//update the baudrate if necessary
+				//System.out.println("Changing baud rate for reading: " + dataToRead[readIndex].getBaudrate());
 				ComPort.updateBaudRate(dataToRead[readIndex].getBaudrate());
 				byte[] readPacket = ComPort.read(dataToRead[readIndex].packetLength);//read the number of bytes we're looking for
 				//thisPacket = dataToRead[readIndex].getPacket();
 				thisPacket = readPacket;
 				
-				success = false;
+				//System.out.print("read: [ ");
+				logBytes = logBytes.concat(" Read: [ ");
+				
 				if(thisPacket.length > 0)//read success
 				{
-					success = dataToRead[readIndex].compare_pckt_and_update_outputs(readPacket);//compare the read-in data
-					//System.out.print("read: [ ");
-					logBytes = logBytes.concat(" Read: [ ");
+					boolean state = dataToRead[readIndex].compare_pckt_and_update_outputs(readPacket);//compare the read-in data
+					if(!success && state)
+					{
+						success = state;//any 'true' will be latched, so the only return of 'false' is if all polling efforts fail
+					}
 				}
 				readIndex ++;
 			}
@@ -463,13 +477,13 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 					//System.out.print((int) (thisPacket[k] & 0xFF) + " ");
 					logBytes = logBytes.concat(String.valueOf((int) (thisPacket[k] & 0xFF))).concat(" ");
 				}
-				//System.out.println("]");
-				logBytes = logBytes.concat("]");
-				//fileHandler.appendln_byteLogFile(settings_file, logBytes);
-				
-				this.logByteList = Arrays.copyOf(this.logByteList, this.logByteList.length+1);
-				this.logByteList[this.logByteList.length-1] = logBytes;
 			}
+			//System.out.println("]");
+			logBytes = logBytes.concat("]");
+			//fileHandler.appendln_byteLogFile(settings_file, logBytes);
+			
+			this.logByteList = Arrays.copyOf(this.logByteList, this.logByteList.length+1);
+			this.logByteList[this.logByteList.length-1] = logBytes;
 		}
 		
 		//then collect all of the logged outputs and write these to the data file
@@ -517,26 +531,22 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 
 	@Override
 	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
 	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mousePressed(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mouseReleased(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
+
 	}
 	
 	public void run() {
@@ -554,9 +564,11 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			{
 				if(scanList[i].isSelected)
 				{
+					//System.out.println("Scanning: " + scanList[i].parameterID);
 					countActive++;
 					if(scanList[i].requiresInit)
 					{
+						//System.out.println(scanList[i].parameterID + " requires init: " + scanList[i].initID);
 						boolean initFinished = false;
 						while(!initFinished)
 						{
@@ -569,27 +581,48 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 									if(!initList[j].isSelected)
 									{
 										//we need to send the init
-										statusText.setText("Sending Init.");
-										statusText.repaint();
+										String current_status = statusText.getText();
+										if(!current_status.equals("Sending Init."))
+										{
+											statusText.setText("Sending Init.");
+											statusText.repaint();
+										}
 
 										Serial_Packet[] InitToSend = initList[j].getSendPacketList();
 										Serial_Packet[] InitToRead = initList[j].getReadPacketList();
 										boolean[] messageFlowOrder = initList[j].getFlowControl();
-
+										
+										//System.out.println("Sending Init...");
+										//System.out.println("Sending " + InitToSend.length + " messages");
+										//System.out.println("Reading " + InitToRead.length + " messages");
+										
 										initFinished = send_and_receive_message_cycle(InitToSend, InitToRead, messageFlowOrder);
 										if(initFinished)
 										{
+											current_status = statusText.getText();
+											if(!current_status.equals("Init. success"))
+											{
+												statusText.setText("Init. success");
+												statusText.repaint();
+											}
+											
 											initList[j].isSelected = true;//set the flag saying that our init was complete
 										}
 										else
 										{
-											statusText.setText("Init. fail");
-											statusText.repaint();
+											current_status = statusText.getText();
+											if(!current_status.equals("Init. fail"))
+											{
+												statusText.setText("Init. fail");
+												statusText.repaint();
+											}
 										}
 										break;
 									}
 									else
 									{
+										
+										
 										initFinished = true;
 										break;
 									}
@@ -601,27 +634,30 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 					Serial_Packet[] dataToRead = scanList[i].getReadPacketList();
 					boolean[] messageFlowOrder = scanList[i].getFlowControl();
 					
-					
-					String current_status = statusText.getText();
-					if(!current_status.equals("Running"))
-					{
-						statusText.setText("Running");
-						statusText.repaint();
-					}
-					
-					
 					boolean msgCycleSuccess = send_and_receive_message_cycle(dataToSend, dataToRead, messageFlowOrder);
 
 					if(msgCycleSuccess == false)
 					{
 						//we had a polling failure:
-						statusText.setText("Poll failure");
-						statusText.repaint();
+						String current_status = statusText.getText();
+						if(!current_status.equals("Poll failure"))
+						{
+							statusText.setText("Poll failure");
+							statusText.repaint();
+						}
 						
 						finished_reading_ThisTime[i] = false;
 					}
 					else
 					{
+						//we are running correctly
+						String current_status = statusText.getText();
+						if(!current_status.equals("Running"))
+						{
+							statusText.setText("Running");
+							statusText.repaint();
+						}
+						
 						finished_reading_ThisTime[i] = true;
 					}
 				}
@@ -640,9 +676,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			if(countActive > 0)
 			{
 				//schedule another serial data exchange
-				ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-				scheduler.schedule(this, 1, TimeUnit.MILLISECONDS);
-				scheduler.shutdown();//make sure to tell the executor to shut down the thread when finished!
+				this.scheduler.schedule(this, 1, TimeUnit.MILLISECONDS);
 			}
 			else
 			{
@@ -687,6 +721,13 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				this.start_button.doClick();
 			}
 			
+			//in case someone clicked the 'start' button in the mean time
+			if(!running)
+			{
+				//reset the status text
+				statusText.setText("Inactive");
+				statusText.repaint();
+			}
 			
 			//practice other code
 		}
