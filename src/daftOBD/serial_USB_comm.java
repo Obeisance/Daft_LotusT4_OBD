@@ -82,7 +82,6 @@ public class serial_USB_comm {
 			{
 				//System.out.println("Close FTDI cable");
 				try {
-					this.reset();
 					this.FTDI_cable.close();
 					this.ready_for_next_command = false;
 				} catch (FTD2XXException e) {
@@ -130,62 +129,33 @@ public class serial_USB_comm {
 		}
 		
 		//reset some of the important counters/global vars
+		/*
 		this.baudRate = 10400;
 		try {
+			//System.out.println("setting baud to 10400");
 			this.FTDI_cable.setBaudRate(this.baudRate);
 		} catch (FTD2XXException e) {
 			e.printStackTrace();
 		}
+		*/
 	}
 	
 	public void updateBaudRate(int newBaud) {
 		//if the current baud rate and newBaud match, don't change anything
-		//System.out.println("Check readiness to change baud rate");
-		while(!this.ready_for_next_command)
-		{
-			//we're not ready for a new command -> infinite loop
-			boolean is_stopped = this.scheduler.isShutdown();//something to delay while in this potentially infinite loop
-			if(is_stopped)
-			{
-				//System.out.println("Scheduler is stopped");
-			}
-		}
-		//System.out.println("Ready to change baud rate");
-		
 		if(this.baudRate != newBaud)
 		{
-			/*
-			//reset the device in order to change baud rate
-			if(this.FTDI_cable.isOpened())
+			//System.out.println("Check readiness to change baud rate");
+			while(!this.ready_for_next_command)
 			{
-				try {
-					this.FTDI_cable.purgeBuffer(true, true);//clear both rx and tx buffers
-					this.FTDI_cable.resetDevice();
-				} catch (FTD2XXException e1) {
-					e1.printStackTrace();
+				//we're not ready for a new command -> infinite loop
+				boolean is_stopped = this.scheduler.isShutdown();//something to delay while in this potentially infinite loop
+				if(is_stopped)
+				{
+					//System.out.println("Scheduler is stopped");
 				}
 			}
+			//System.out.println("Ready to change baud rate");
 			
-			
-			//close the device interface/com channel
-			if(this.FTDI_cable.isOpened())
-			{
-				try {
-					this.FTDI_cable.close();
-					updateReadiness(false);//once the device is closed, it is not ready to receive a command
-				} catch (FTD2XXException e) {
-					e.printStackTrace();
-				}
-			}
-			
-			//re-open the device so we can send messages
-			try {
-				this.FTDI_cable.open();
-				updateReadiness(true);//now that the device is open, it is ready to receive commands
-			} catch (FTD2XXException e) {
-				e.printStackTrace();
-			}
-			*/
 			
 			//change the baud rate
 			//System.out.println("Change baud rate to: " + newBaud);
