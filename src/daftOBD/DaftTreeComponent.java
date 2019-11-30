@@ -116,6 +116,7 @@ public class DaftTreeComponent implements MouseListener {
 						y_index += 1;
 					}
 				}
+				
 				if(currentMode.equals("Reflash"))
 				{
 					//special treatment for Reflash mode since it is not a DaftOBDSelectionObject

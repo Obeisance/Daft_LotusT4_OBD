@@ -4047,8 +4047,8 @@
  </init>
 
 
- <pid name="Read VIN, CALID and Car type" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=12>
+ <pid name="Read VIN, CALID and Car type" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=12>
    <data>85</data>
    <data>12</data>
    <data>17</data>
@@ -4062,7 +4062,7 @@
    <data>0x56</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=53>
+  <receive type="data" baud="10400" length=53>
    <data>170</data>
    <data>53</data>
    <data>17</data>
@@ -4119,8 +4119,8 @@
   </receive>
  </pid>
 
- <pid name="Test Write" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=25>
+ <pid name="Test Write" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=25>
    <data>85</data>
    <data>25</data>
    <data>136</data>
@@ -4147,7 +4147,7 @@
    <data>0x20</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=4>
+  <receive type="data" baud="10400" length=4>
    <data>170</data>
    <data>4</data>
    <data>136</data>
@@ -4155,8 +4155,8 @@
   </receive>
  </pid>
 
- <pid name="Test Write 2" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=25>
+ <pid name="Test Write 2" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=25>
    <data>85</data>
    <data>25</data>
    <data>136</data>
@@ -4183,7 +4183,7 @@
    <data>0x30</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=4>
+  <receive type="data" baud="10400" length=4>
    <data>170</data>
    <data>4</data>
    <data>136</data>
@@ -4191,8 +4191,8 @@
   </receive>
  </pid>
 
- <pid name="Fueling parameters" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=88>
+ <pid name="Fueling parameters" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=88>
    <data>85</data>
    <data>88</data>
    <data>17</data>
@@ -4282,14 +4282,14 @@
    <data>0xB2</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=86>
+  <receive type="data" baud="10400" length=86>
    <data>170</data>
    <data>86</data>
    <data>17</data>
    <data type="double" size="uint8" name="80116 Coolant temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
    <data type="int" size="uint8" name="80117 unused fp"/>
    <data type="double" size="uint8" name="80118 Intake air temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
-   <data type="double" size="uint16" name="8018a MAF ramp fp [g/sec]" expression="#*200.00"/>
+   <data type="double" size="uint16" name="8018a Cumulative MAF fp [microgram air]" expression="#/25.00"/>
    <data type="double" size="uint8" name="801be Engine speed fp [rpm]" expression="(# + 16.00)*375.00/12.00"/>
    <data type="double" size="uint8" name="801c0 Engine-start coolant temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
    <data type="double" size="uint16" name="80146 ECU voltage fp [V]" expression="(#*18.00)/1000.00"/>
@@ -4297,8 +4297,8 @@
    <data type="double" size="uint32" name="8033e (OL_1) Open loop fueling adjustment fp [microsecond injection pulse]"/>
    <data type="double" size="uint32" name="80342 (OL_2) Open loop fueling adjustment fp [microsecond injection pulse]"/>
    <data type="double" size="uint32" name="80346 (OL_3) Open loop fueling adjustment fp [microsecond injection pulse]"/>
-   <data type="double" size="uint16" name="803ba (S) Short term fuel trim fp [%]" expression="#/20.00"/>
-   <data type="double" size="uint16" name="803d6 (L) Long term fuel trim fp [%]" expression="#/20.00"/>
+   <data type="double" size="int16" name="803ba (S) Short term fuel trim fp [%]" expression="#/20.00"/>
+   <data type="double" size="int16" name="803d6 (L) Long term fuel trim fp [%]" expression="#/20.00"/>
    <data type="double" size="uint16" name="808aa (V_lat) Fuel injector voltage latency pulse correction fp [microsecond injection pulse]"/>
    <data type="double" size="uint32" name="808ac Fuel trim corrected base fuel pulse fp [microsecond injection pulse]"/>
    <data type="double" size="uint32" name="808b4 Req'd fuel/vol efficiency fp [microsecond injection pulse]"/>
@@ -4309,8 +4309,8 @@
    <data type="double" size="uint8" name="808bc (C_cm) MAF ramp and engine-start coolant temp injector pulse length scaling fp [%]" expression="#*100.00/32.00"/>
    <data type="int" size="uint8" name="808bd unused fp"/>
    <data type="double" size="uint32" name="808be (F) Total fuel injector pulse length fp [microsecond injection pulse]"/>
-   <data type="double" size="uint32" name="808cc (I_cool't temp) Cold start cranking base fuel pulse length fp [microsecond injection pulse]"/>
-   <data type="double" size="uint32" name="808d0 Total cold start cranking fuel pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808cc (I_cool't temp) Cranking base fuel pulse length fp [microsecond injection pulse]"/>
+   <data type="double" size="uint32" name="808d0 Total cranking fuel pulse length fp [microsecond injection pulse]"/>
    <data type="double" size="uint32" name="808d4 Base fuel pulse length fp [microsecond injection pulse]"/>
    <data type="double" size="uint16" name="808d8 Fuel injection crank angle target fp [Deg BTDC]"/>
    <data type="double" size="uint16" name="808de (A/F_cmd) Commanded A/F ratio fp [A/F]" expression="#/100.00"/>
@@ -4327,10 +4327,10 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="Timing parameters" mode="Fast K-Line" init="OBD init+fast baud">
-  <send type="data" baud="125031" length=100>
+ <pid name="Timing parameters" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=108>
    <data>85</data>
-   <data>100</data>
+   <data>108</data>
    <data>17</data>
    <data>3</data>
    <data>0x08</data>
@@ -4368,10 +4368,14 @@
    <data>0x08</data>
    <data>0x02</data>
    <data>0x62</data>
-   <data>2</data>
+   <data>4</data>
    <data>0x08</data>
    <data>0x02</data>
-   <data>0x6C</data>
+   <data>0x6A</data>
+   <data>8</data>
+   <data>0x08</data>
+   <data>0x02</data>
+   <data>0x72</data>
    <data>2</data>
    <data>0x08</data>
    <data>0x02</data>
@@ -4404,6 +4408,10 @@
    <data>0x08</data>
    <data>0x08</data>
    <data>0xF2</data>
+   <data>8</data>
+   <data>0x08</data>
+   <data>0x0c</data>
+   <data>0x18</data>
    <data>1</data>
    <data>0x08</data>
    <data>0x0D</data>
@@ -4430,9 +4438,9 @@
    <data>0xB0</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="125031" length=60>
+  <receive type="data" baud="10400" length=78>
    <data>170</data>
-   <data>60</data>
+   <data>78</data>
    <data>17</data>
    <data type="double" size="uint8" name="80116 Coolant temp tp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
    <data type="int" size="uint8" name="80117 unused tp"/>
@@ -4440,29 +4448,42 @@
    <data type="double" size="uint8" name="80134 Throttle position tp [%]" expression="#/2.55"/>
    <data type="double" size="uint16" name="80146 ECU voltage tp [V]" expression="(#*18.00)/1000.00"/>
    <data type="double" size="uint16" name="80154 Predictive/filtered delta throt. pos. tp [%/time?]" expression="#/10.20"/>
-   <data type="double" size="uint16" name="8018a MAF ramp tp [g/sec]" expression="#*200.00"/>
+   <data type="double" size="uint16" name="8018a Cumulative MAF fp [microgram air]" expression="#/25.00"/>
    <data type="double" size="int32" name="801b2 Change in engine speed tp [%]" expression="#"/>
    <data type="double" size="uint8" name="801be Engine speed tp [rpm]" expression="(# + 16.00)*375.00/12.00"/>
    <data type="double" size="uint8" name="801c0 Engine-start coolant temp tp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
    <data type="double" size="int16" name="80262 (A_sl) Primary spark timing advance speed-load correction tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="int16" name="80264 Primary spark timing advance speed-load correction tp [Deg BTDC]" expression="#/4.00"/>
-   <data type="double" size="int16" name="80266 Spark timing lookup parameter tp [??]"/>
-   <data type="double" size="int16" name="8026c (A) Spark timing advance tp [Deg BTDC]" expression="#/4.00"/>
-   <data type="double" size="uint16" name="8027c Spark pulse length voltage correction tp [??]"/>
+   <data type="double" size="int16" name="80266 Spark timing advance compared to primary spark timing advance speed-load correction for knock sum correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int16" name="8026a (A_in-use) In-use Spark timing advance tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int16" name="8026c (A) OBD Spark timing advance tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int16" name="80272 Ignition angle coil A tp [Deg]" expression="#/4.00"/>
+   <data type="double" size="int16" name="80274 Ignition angle coil B tp [Deg]" expression="#/4.00"/>
+   <data type="double" size="int16" name="80276 Ignition angle coil C tp [Deg]" expression="#/4.00"/>
+   <data type="double" size="int16" name="80278 Ignition angle coil D tp [Deg]" expression="#/4.00"/>
+   <data type="double" size="uint16" name="8027c Spark pulse length voltage correction tp [microsecond]"/>
    <data type="double" size="int8" name="802be (A_cranking) Cranking spark timing advance tp [Deg BTDC]" expression="#/4.00"/>
-   <data type="double" size="int8" name="802c0 Spark timing lookup parameter tp [??]"/>
+   <data type="double" size="int8" name="802c0 In-use spark timing rate of change tp [Deg BTDC/50 millisec]" expression="#/4.00"/>
    <data type="double" size="int16" name="802c4 (A_it) Idle spark timing advance idle target vs engine speed correction tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="int16" name="802c6 (A_es) Idle spark timing advance delta engine speed correction tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="int16" name="802c8 Idle spark timing advance idle target vs engine speed correction hi veh spd tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="int16" name="802ca (A_c) Idle spark timing advance coolant temp correction tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="int16" name="802cc (A_iat) Idle spark timing advance intake air temp correction tp [Deg BTDC]" expression="#/4.00"/>
-   <data type="double" size="int16" name="802d0 (c_mr/255) Primary spark timing advance MAF ramp scaling tp [a.u.]" expression="#/255.00"/>
+   <data type="double" size="int16" name="802d0 (c_mr) Primary spark timing advance MAF ramp scaling tp [a.u.]" expression="#/255.00"/>
    <data type="double" size="int8" name="802d6 (A_delta tp) Primary spark timing advance delta throt pos correction tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="int16" name="802d8 (A_iat) Primary spark timing advance intake air temp correction tp [Deg BTDC]" expression="#/4.00"/>
-   <data type="double" size="int16" name="802da (c_spd*A_c/128) Primary spark timing advance engine speed vs coolant temp correction tp [Deg BTDC]" expression="#/4.00"/>
-   <data type="double" size="int16" name="802dc (c_spd) Primary spark timing advance engine speed scaling tp [a.u.]"/>
-   <data type="double" size="int8" name="802de (A_c) Primary spark timing advance coolant temp correction tp [a.u.]"/>
+   <data type="double" size="int16" name="802da (A_spd*C_c) Primary spark timing advance engine speed vs coolant temp correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int16" name="802dc (A_spd) Primary spark timing advance engine speed correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="802de (C_c) Primary spark timing advance coolant temp scaling tp [a.u.]" expression="#/128.00"/>
    <data type="double" size="int16" name="808f2 Difference between idle target and engine speed tp [rpm]"/>
+   <data type="double" size="int8" name="80c18 (A_knock-transient) Ignition retard coil A - transient knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c19 (A_knock-transient) Ignition retard coil C - transient knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c1a (A_knock-transient) Ignition retard coil D - transient knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c1b (A_knock-transient) Ignition retard coil B - transient knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c1c (A_knock-sum) Ignition retard coil A - speed-load knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c1d (A_knock-sum) Ignition retard coil C - speed-load knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c1e (A_knock-sum) Ignition retard coil D - speed-load knock correction tp [Deg BTDC]" expression="#/4.00"/>
+   <data type="double" size="int8" name="80c1f (A_knock-sum) Ignition retard coil B - speed-load knock correction tp [Deg BTDC]" expression="#/4.00"/>
    <data type="double" size="uint8" name="80d02 Eng load tp [mg air]" expression="#*4.00"/>
    <data type="double" size="int8" name="80d79 Constant used in timing calcs tp [a.u.]"/>
    <data type="double" size="int8" name="84045 (A_idle-catch) Idle spark timing advance idle-catch tp [Deg BTDC]" expression="#/4.00"/>
@@ -4472,5 +4493,40 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
+ <pid name="Analog to Digital Raw" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=8>
+   <data>85</data>
+   <data>8</data>
+   <data>17</data>
+   <data>32</data>
+   <data>0xFF</data>
+   <data>0xF2</data>
+   <data>0xB0</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=36>
+   <data>170</data>
+   <data>36</data>
+   <data>17</data>
+   <data type="int" size="uint16" name="FFF2B0 Knock sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2B2 MAF sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2B4 Throttle Position sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2B6 ECU Voltage sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2B8 Coolant Temperature sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2BA Intake Air Temperature sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2BC Unused Ch7 sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2BE Oxygen Sensor 1 sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2C0 Oxygen Sensor 2 sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2C2 Knock gnd sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2C4 Oxygen Sensor 1 Heater sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2C6 Barometric Pressure sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2C8 Evap Pressure Sensor Switch sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2CA Fuel Level sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2CC Oxygen Sensor 2 Heater sig AtoD"/>
+   <data type="int" size="uint16" name="FFF2CE Unused Ch16 sig AtoD"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <RAMwrite name="Update calibration RAM from file" mode="Write to RAM" init="OBD init" baud="10400" targetAddressRAM="0x84000" targetAddressROM="0x70000" targetLength="0x6000"/>
 
 </parameter list>

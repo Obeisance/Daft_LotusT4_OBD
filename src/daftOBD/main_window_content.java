@@ -620,9 +620,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 										break;
 									}
 									else
-									{
-										
-										
+									{		
 										initFinished = true;
 										break;
 									}

@@ -4,9 +4,17 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
@@ -19,7 +27,9 @@ public class DaftOBDSelectionObject implements ActionListener {
 	JPanel DaftPanel = new JPanel();
 	JCheckBox DaftSelectionCheckBox;
 	
+	
 	//parameters that define a selection object
+	int special_operation_mode = 0;
 	public String mode;//OBD mode such as '0x1' or 'Init', or comm mode such as 'Reflash'
 	public String parameterID;//OBD PID such as '0x1' or 'Vehicle speed'
 	public String[] dataToSend = new String[0];//a set of strings describing data to send using the control JTextField boxes
@@ -36,7 +46,22 @@ public class DaftOBDSelectionObject implements ActionListener {
 	
 	boolean readOnce = false;//a flag that states that the PID should be read only once per polling cycle
 	
-	//constructor	
+	//Stuff for the special operation mode for RAM write
+	Conversion_Handler convert = new Conversion_Handler();//allow us to convert between different number types
+	public long RAMtargetAddress = 0x84000;
+	public long ROMtargetAddress = 0x70000;
+	public long ROMtoRAMlength = 0x6000;
+	public int specialModeBaud = 10400;
+	int file_chooser_return_value = 1;//0x0 means that we have a hex file chosen
+	//extra GUI parts in case we have a special RAMwrite use for this object
+	JFrame fileSelectFrame;
+	JButton fileSelectButton;//a button which allows us to select a binary file
+	JFileChooser binarySourceChooser;//a file selection window to pick the binary file
+	File hexFile;//a file that contains the data we'll extract for reflashing
+	byte[] hexData = new byte[0];//store the entire hex file as byte data
+	byte[] prev_hexData = new byte[0];//store the entire hex file as byte data
+	
+	//constructors
 	public DaftOBDSelectionObject(String m, String pid, Serial_Packet[] list_of_packets_to_send, Serial_Packet[] list_of_packets_to_read) {	
 		//set the parameters that define the object
 		this.mode = m;
@@ -68,6 +93,37 @@ public class DaftOBDSelectionObject implements ActionListener {
 		}
 	}
 	
+	public DaftOBDSelectionObject(String m, String pid, int specialMode, String RAMtarget, String ROMtarget, String ROMlength, String baudRate) {
+		//set the parameters that define the object
+		this.mode = m;
+		this.parameterID = pid;
+		this.isSelected = false;
+		this.isVisible = false;
+		this.special_operation_mode = specialMode;
+		
+		//Initialize the parameters that allow us to visually present this object to the user
+		//the object consists of a JCheckBox and a possible set of JTextFields
+		//first, add the JCheckBox that allows the parameter to be selected
+		DaftSelectionCheckBox = new JCheckBox(this.parameterID);
+		DaftSelectionCheckBox.setSelected(this.isSelected);
+		DaftSelectionCheckBox.addActionListener(this);
+		this.DaftPanel.add(DaftSelectionCheckBox);
+		
+		if(this.special_operation_mode == 1)
+		{
+			//this is a RAMwrite special mode object!! we should add a file selection button
+			this.RAMtargetAddress = (convert.Hex_or_Dec_string_to_int(RAMtarget) & 0xFFFFFFFF);
+			this.ROMtargetAddress = (convert.Hex_or_Dec_string_to_int(ROMtarget) & 0xFFFFFFFF);
+			this.ROMtoRAMlength = (convert.Hex_or_Dec_string_to_int(ROMlength) & 0xFFFFFFFF);
+			this.specialModeBaud = (convert.Hex_or_Dec_string_to_int(baudRate) & 0xFFFFFFFF);
+			
+			this.binarySourceChooser = new JFileChooser();
+			this.fileSelectButton = new JButton("Select Hex File");
+			this.fileSelectButton.addActionListener(this);
+			this.fileSelectButton.setActionCommand("get hex");
+			this.DaftPanel.add(this.fileSelectButton);
+		}
+	}
 	
 	public String toString() {
 		return this.parameterID;
@@ -79,6 +135,13 @@ public class DaftOBDSelectionObject implements ActionListener {
 	}
 	
 	public Serial_Packet[] getSendPacketList() {
+		if(this.special_operation_mode == 1)
+		{
+			//build the send and return packet list, and the flow control!
+			this.sendPacketList = buildSendPacketsFromFile();
+			this.receivePacketList = buildReadPacketsFromFile();
+			this.flowControl = buildFlowControlFromFile();
+		}
 		return this.sendPacketList;
 	}
 	
@@ -137,6 +200,177 @@ public class DaftOBDSelectionObject implements ActionListener {
 		this.initID = initName;
 		this.requiresInit = true;
 	}
+	
+	public void readBinaryFile() {
+		//read in the binary file that was selected with the file chooser
+		if (this.file_chooser_return_value == JFileChooser.APPROVE_OPTION) {
+			//if the user selected a file, get the file
+			this.hexFile = this.binarySourceChooser.getSelectedFile();
+
+			Path hexPath = Paths.get(this.hexFile.toURI());//convert it to a path
+			String fileName = this.hexFile.getName();
+			if(fileName.contains(".bin") || fileName.contains(".BIN"))
+			{
+				try {
+					this.prev_hexData = Arrays.copyOf(this.hexData, this.hexData.length);
+					this.hexData = Files.readAllBytes(hexPath);//then read in all bytes of data from the hex file
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				//System.out.println("Done reading hex file. Length: " + this.hexData.length + " bytes");
+			}
+		}
+	}
+	
+	public Serial_Packet[] buildSendPacketsFromFile() {
+		//build the data packets automatically to send to the ECU
+		readBinaryFile();//first, we refresh the binary file that we read in
+		
+		Serial_Packet[] newListOfPackets = new Serial_Packet[0];
+		Serial_Packet newPacket = new Serial_Packet();
+		newPacket.setBaudrate(this.specialModeBaud);
+		newPacket.appendByte(0x55);//header
+		newPacket.appendByte(0x3);//length -> update later
+		newPacket.appendByte(0x88);//write data command
+		int contiguous_data_index = newPacket.packetLength;//index for 'number of bytes to write' count
+		
+		//then, figure out how much of the binary file has changed since last time
+		//and add changed bytes to the serial data message. We're only interested
+		//in a segment of the file...
+		for(long i = this.ROMtargetAddress; i < this.hexData.length && i < (this.ROMtargetAddress + this.ROMtoRAMlength); i++) 
+		{
+			byte byte_to_send = this.hexData[(int)i];
+			
+			//decide if we should send this byte
+			boolean send_the_byte = false;
+			if(this.prev_hexData.length >= i)
+			{
+				if(this.prev_hexData[(int)i] != byte_to_send)
+				{
+					//the data has been changed, so we'll send the byte
+					send_the_byte = true;
+				}
+			}
+			else
+			{
+				//no previous data exists, so we'll send the byte
+				send_the_byte = true;
+			}
+			
+			//if we should send the byte, check to see if we should also send its address
+			if(send_the_byte)
+			{
+				if(newPacket.packetLength == contiguous_data_index)
+				{
+					//add a placeholder for 'number of bytes ot write' as 
+					//well as the address of data to send
+					newPacket.appendByte(0);//number of bytes to write
+					int displacement = (int)(i - this.ROMtargetAddress + this.RAMtargetAddress);
+					int addrHi = (displacement & 0xFF0000) >> 16;
+					int addrMid = (displacement & 0x00FF00) >> 8;
+					int addrLo = (displacement & 0x0000FF);
+					newPacket.appendByte(addrHi);
+					newPacket.appendByte(addrMid);
+					newPacket.appendByte(addrLo);
+				}
+				newPacket.appendByte(byte_to_send);
+			}
+			else
+			{
+				//we've broken the contiguous data
+				//so we should write the 'length of data to send' byte
+				if(newPacket.packetLength > contiguous_data_index)
+				{
+					int length_of_data = newPacket.packetLength - (contiguous_data_index + 1) - 3;
+					newPacket.changeByte(length_of_data, contiguous_data_index);
+				}
+				contiguous_data_index = newPacket.packetLength;
+			}
+			
+			if(newPacket.packetLength > 70)
+			{
+				//it's time to switch packets
+				//complete the last packet: write the 'length of data to send'
+				if(newPacket.packetLength > contiguous_data_index)
+				{
+					int length_of_data = newPacket.packetLength - (contiguous_data_index + 1) - 3;
+					newPacket.changeByte(length_of_data, contiguous_data_index);
+				}
+				
+				//and write the 'total length of packet' byte
+				newPacket.changeByte(newPacket.packetLength + 1, 1);
+				
+				//append a checksum byte
+				newPacket.appendChecksum();
+				
+				//append that packet to the set of packets
+				newListOfPackets = Arrays.copyOf(newListOfPackets, newListOfPackets.length + 1);
+				newListOfPackets[newListOfPackets.length - 1] = newPacket;
+				
+				//and start a new packet
+				newPacket = new Serial_Packet();
+				newPacket.setBaudrate(this.specialModeBaud);
+				newPacket.appendByte(0x55);//header
+				newPacket.appendByte(0x3);//length -> update later
+				newPacket.appendByte(0x88);//write data command
+				contiguous_data_index = newPacket.packetLength;//index for 'number of bytes to write' count
+			}
+			
+		}
+		//it's time to finalize the last packet
+		//complete the packet: write the 'length of data to send'
+		if(newPacket.packetLength > contiguous_data_index)
+		{
+			int length_of_data = newPacket.packetLength - (contiguous_data_index + 1) - 3;
+			newPacket.changeByte(length_of_data, contiguous_data_index);
+		}
+		
+		//and write the 'total length of packet' byte
+		newPacket.changeByte(newPacket.packetLength + 1, 1);
+		
+		//append a checksum byte
+		newPacket.appendChecksum();
+		
+		//append that packet to the set of packets
+		newListOfPackets = Arrays.copyOf(newListOfPackets, newListOfPackets.length + 1);
+		newListOfPackets[newListOfPackets.length - 1] = newPacket;
+		
+		return newListOfPackets;
+	}
+	
+	public Serial_Packet[] buildReadPacketsFromFile() {
+		//build the set of data packets automatically to read from the ECU
+		
+		Serial_Packet[] newListOfPackets = new Serial_Packet[0];
+		Serial_Packet newPacket;
+		
+		for(int i = 0; i < this.sendPacketList.length; i++)
+		{
+			newPacket = new Serial_Packet();
+			newPacket.setBaudrate(this.specialModeBaud);
+			newPacket.appendByte(0xAA);//header
+			newPacket.appendByte(0x4);//length
+			newPacket.appendByte(0x88);//write data command
+			newPacket.appendChecksum();//checksum
+			
+			newListOfPackets = Arrays.copyOf(newListOfPackets, newListOfPackets.length + 1);
+			newListOfPackets[newListOfPackets.length - 1] = newPacket;
+		}
+		
+		
+		return newListOfPackets;
+	}
+	
+	public boolean[] buildFlowControlFromFile() {
+		//build the list of flow control packets, assume send/rec. etc..
+		boolean[] newFlowControlPacket = new boolean[this.sendPacketList.length*2];
+		for(int i = 0; i < newFlowControlPacket.length; i+=2)
+		{
+			newFlowControlPacket[i] = false;//send/write
+			newFlowControlPacket[i+1] = true;//read
+		}
+		return newFlowControlPacket;
+	}
 
 	public void actionPerformed(ActionEvent arg0) {
 		Object causedAction = arg0.getSource();
@@ -144,6 +378,11 @@ public class DaftOBDSelectionObject implements ActionListener {
 		{
 			this.isSelected = !this.isSelected;
 			//System.out.println("Change selection state");
+		}
+		else if("get hex".equals(arg0.getActionCommand())) {
+			//let the user choose the ECU program data file
+			file_chooser_return_value = this.binarySourceChooser.showDialog(fileSelectFrame, "Done selecting hex file");
+			readBinaryFile();
 		}
 	}
 	

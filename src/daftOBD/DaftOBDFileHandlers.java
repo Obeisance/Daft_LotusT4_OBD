@@ -192,6 +192,7 @@ public class DaftOBDFileHandlers {
 		boolean sendFlag = false;
 		boolean onDataList = false;
 		boolean onReflash = false;
+		boolean onRAMwrite = false;
 		
 		String mode = null;
 		String name = null;
@@ -297,10 +298,11 @@ public class DaftOBDFileHandlers {
 								{
 									read_only_once = false;
 								}
-								
+
 								sendPacketList = new Serial_Packet[0];//reset the list of send data packets associated with the parameter
 								readPacketList = new Serial_Packet[0];
 								flowControl = new boolean[0];
+
 							}
 							else if(fileLine.contains("</pid>"))
 							{
@@ -467,6 +469,90 @@ public class DaftOBDFileHandlers {
 							else if(fileLine.contains("</reflash>"))
 							{
 								onReflash = false;
+							}
+							else if(fileLine.contains("<RAMwrite")) {
+								onRAMwrite = true;
+								String data_source = "0x70000";
+								String data_length = "0x6000";
+								String data_destin = "0x84000";
+								String bitRate = "10400";
+								
+								
+								//then read in the parts of this line that define the PID
+								if(fileLine.contains("name="))
+								{
+									name = stringBetween(fileLine, "name=\"","\"");
+								}
+								if(fileLine.contains("mode="))
+								{
+									mode = stringBetween(fileLine, "mode=\"","\"");
+								}
+								if(fileLine.contains("init="))
+								{
+									initName = stringBetween(fileLine, "init=\"","\"");
+									init_needed = true;
+								}
+								else
+								{
+									init_needed = false;
+								}
+								
+								if(fileLine.contains("read_only_once=\"true\""))
+								{
+									read_only_once = true;
+								}
+								else
+								{
+									read_only_once = false;
+								}
+								
+								if(fileLine.contains("targetAddressROM="))
+								{
+									data_source = stringBetween(fileLine,"targetAddressROM=\"","\"");
+								}
+								if(fileLine.contains("targetLength="))
+								{
+									data_length = stringBetween(fileLine,"targetLength=\"","\"");
+								}
+								if(fileLine.contains("targetAddressRAM="))
+								{
+									data_destin = stringBetween(fileLine,"targetAddressRAM=\"","\"");
+								}
+								if(fileLine.contains("baud="))
+								{
+									bitRate = stringBetween(fileLine,"baud=\"","\"");
+								}
+								
+								
+								//create the RAM write object- this will ultimately auto-generate
+								//the send, receive and flow control variables
+								DaftOBDSelectionObject DaftTreeLeaf_RAM_write = new DaftOBDSelectionObject(mode, name, 1, data_destin, data_source, data_length, bitRate);								
+								
+								if(init_needed)
+								{
+									DaftTreeLeaf_RAM_write.setInit(initName);
+								}
+								
+								if(read_only_once)
+								{
+									DaftTreeLeaf_RAM_write.setReadOnce(read_only_once);
+								}
+								
+								//then add this object to our tree
+								treeDefinitionList.add(DaftTreeLeaf_RAM_write);
+								
+								//and clear our PID data buffers
+								mode = null;
+								name = null;
+								
+								//then if we're done, remove the flag setting
+								if(fileLine.contains("/>"))
+								{
+									onRAMwrite = false;
+								}
+							}
+							else if(fileLine.contains("/RAMwrite>")) {
+								onRAMwrite = false;
 							}
 
 							//if we're on a parameter, we should process the string to find the

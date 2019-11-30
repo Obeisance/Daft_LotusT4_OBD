@@ -39,3 +39,12 @@ program. An example definition file is included:
 
 When selecting an OBD cable to use, the program is a bit buggy if 
 the cable is not plugged in before the program is started.
+
+Note: some of the 'special use' definition file function is enabled
+by customization of the ROM on the vehicle (read function in
+both bootloader and runtime, etc.) See other repositories for the
+customized ROM images.
+
+find my threads on Lotustalk.com to contact me:
+https://www.lotustalk.com/threads/daft-disassembly.352193/
+https://www.lotustalk.com/threads/notes-about-2005-elise-fueling-and-timing-control.463664/
