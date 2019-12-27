@@ -3787,7 +3787,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x4B</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">

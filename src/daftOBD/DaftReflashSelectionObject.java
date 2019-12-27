@@ -3553,7 +3553,7 @@ public class DaftReflashSelectionObject implements ActionListener, FocusListener
 			if(this.string_comm_log.length > 0)
 			{
 				DaftOBDFileHandlers handler = new DaftOBDFileHandlers();
-				handler.appendStrArray_byteLogFile(this.settings_file, this.string_comm_log);
+				handler.appendStrArray_byteLogFile(this.settings_file, "", this.string_comm_log);
 			}
 		}
 		

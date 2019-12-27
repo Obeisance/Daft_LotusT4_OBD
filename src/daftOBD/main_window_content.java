@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,6 +45,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	double logStartTime = 0;
 	String[] logDataList = new String[0];
 	String[] logByteList = new String[0];
+	String file_dateID = "";
 	
 	//and an Executor to handle time-based operations
 	ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(0);//we'll continuously reuse this pool
@@ -119,11 +121,30 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		return menubar;
 	}
 	
+	public void save_PID_select_state() {
+		//save the PIDs that are selected
+		DaftOBDSelectionObject[] scanList = daftTreeRoot.getComponents();
+		String PIDmask = "";
+		for(int i = 0; i < scanList.length; i++) {
+			if(scanList[i].isSelected) {
+				PIDmask = PIDmask.concat("1");
+			}
+			else
+			{
+				PIDmask = PIDmask.concat("0");
+			}
+		}
+		fileHandler.update_settings_logParameters(settings_file, PIDmask);
+		//System.out.println(PIDmask);
+	}
+	
 	public void actionPerformed(ActionEvent e) {
 		//lets handle the events of pressing different menu items	
 		if ("exit".equals(e.getActionCommand())) {
 			//close the communication device
 			ComPort.close_USB_comm_device();
+			
+			save_PID_select_state();
 			
 	    	//exit the program
 	    	System.exit(0);
@@ -177,6 +198,8 @@ public class main_window_content implements ActionListener, MouseListener, Runna
                 fileHandler.update_settings_logDefn(settings_file, file.getPath());
                 //we could immediately update the parameter list, but it may be easier to wait for a restart
         		daftTreeRoot = fileHandler.import_Log_definition_list(settings_file);
+        		
+        		fileHandler.update_settings_logParameters(settings_file, "0");//reset the saved PIDs 
             } else {
             	//System.out.println("Open command cancelled by user.");
             }
@@ -219,7 +242,9 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	    		this.scheduler.schedule(this, 10, TimeUnit.MILLISECONDS);	    		
 	    		//collect the time that we are using as the beginning of logging
 	    		logStartTime = System.currentTimeMillis();
-	    		
+	    		LocalDateTime thisSec = LocalDateTime.now();
+	    		file_dateID = thisSec.getYear() + "-" + thisSec.getMonth() + "-" + thisSec.getDayOfMonth() + " " + thisSec.getHour() + " " + thisSec.getMinute() + " " + thisSec.getSecond();
+	    		System.out.println(file_dateID);
 	    	}
 	    	else
 	    	{
@@ -243,14 +268,14 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				//save the byte log
 				if(this.logByteList.length > 0)
 				{
-					this.fileHandler.appendStrArray_byteLogFile(this.settings_file, this.logByteList);
+					this.fileHandler.appendStrArray_byteLogFile(this.settings_file, this.file_dateID, this.logByteList);
 					this.logByteList = new String[0];
 				}
 				
 				//save the data log
 				if(this.logDataList.length > 0)
 				{
-					this.fileHandler.appendStrArray_dataLogFile(this.settings_file, this.logDataList);
+					this.fileHandler.appendStrArray_dataLogFile(this.settings_file, this.file_dateID, this.logDataList);
 					this.logDataList = new String[0];
 				}
 	    	}
@@ -339,7 +364,18 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		
 		//these lines belong in the function that reads the file and populates the list
 		//we'll test them here for now
-		daftTreeRoot = fileHandler.import_Log_definition_list(settings_file);
+		daftTreeRoot = fileHandler.import_Log_definition_list(settings_file);//import the log parameters
+		boolean[] PIDs_to_activate = fileHandler.import_PID_reload_list(settings_file);//collect and update the PID selection status
+		DaftOBDSelectionObject[] scanList = daftTreeRoot.getComponents();
+		for(int i = 0; i < scanList.length; i++) {
+			if(PIDs_to_activate.length > i) {
+				if(PIDs_to_activate[i])
+				{
+					scanList[i].DaftSelectionCheckBox.setSelected(true);
+					scanList[i].isSelected = true;
+				}
+			}
+		}
 		daftTree = daftTreeRoot.buildDaftTreePanel();
 
 		modeBox.add(daftTree,modeBoxConstraints);
@@ -432,6 +468,8 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 
 				//then, grab the bytes to print/send
 				thisPacket = dataToSend[sendIndex].getPacket();
+				
+				//dataToSend[sendIndex].print_packet();//for diagnostics of input changes
 
 				//update the baudrate if necessary
 				ComPort.updateBaudRate(dataToSend[sendIndex].getBaudrate());

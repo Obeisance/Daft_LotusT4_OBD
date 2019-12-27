@@ -25,7 +25,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 	
 	//We'll want to present this class in a JPanel
 	JPanel DaftPanel = new JPanel();
-	JCheckBox DaftSelectionCheckBox;
+	public JCheckBox DaftSelectionCheckBox;
 	
 	
 	//parameters that define a selection object
@@ -377,7 +377,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 		if(causedAction instanceof JCheckBox)
 		{
 			this.isSelected = !this.isSelected;
-			//System.out.println("Change selection state");
+			//System.out.println("Change selection state: " + this.isSelected);
 		}
 		else if("get hex".equals(arg0.getActionCommand())) {
 			//let the user choose the ECU program data file

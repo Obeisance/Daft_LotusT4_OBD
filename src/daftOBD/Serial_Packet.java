@@ -256,12 +256,12 @@ public class Serial_Packet {
 		//in order to get the data, we need to first align the bits on a byte edge
 		//before shifting them to the bit start position within the byte where we're
 		//placing it -> assume that input data is aligned to bit0 instead of the packet
-		//position
-		int bitShiftToByteAlign = bitLength % 8;
-		int firstSplit = data << (8 - bitShiftToByteAlign);
+		//position, big endian
+		int bitShiftToByteAlign = bitLength % 8;//the number of non-byte even bits
+		int firstSplit = data << (8 - bitShiftToByteAlign);//shift so that the new data is byte aligned
 		while(firstSplit > 255)
 		{
-			firstSplit = firstSplit >> 8;
+			firstSplit = firstSplit >> 8;//then collect only the highest order byte
 		}
 		firstSplit = (firstSplit >> bitsIndex) & 0xFF;//take only the top (8 - bitsIndex) bits
 		int firstSplitBitLength = bitLength;
@@ -284,17 +284,17 @@ public class Serial_Packet {
 		/*
 		System.out.println("Packet Bitlen: " + this.packetBitLength);
 		System.out.println("Insert BitPos: " + bitPosition);
-		System.out.println("Insert Bitoffset: " + (8 - bitsIndex) + " insert bitlen: " + firstSplitBitLength);
+		System.out.println("new data Bitoffset: " + (8 - bitsIndex) + " and bitlen: " + firstSplitBitLength);
 		System.out.println("Packet length: " + this.packetLength);
-		System.out.println("Insert Packet: " + byteIndex);
-		System.out.println("Second bitLen: " + secondSplitBitLength);
+		System.out.println("Insert pos in Packet: " + byteIndex);
+		System.out.println("extra data bitLen: " + secondSplitBitLength);
 		System.out.println(" ");
 		*/
 		
 		//now change data in the packet, or append if necessary
 		if(this.packetLength*8 > bitPosition)
 		{
-			//we are changing data within the packet
+			//we are changing data within the packet, rather than appending
 			//collect data from the packet
 			int thirdMask = 0;
 			for(int i = 0; i < 8; i++)
@@ -306,7 +306,8 @@ public class Serial_Packet {
 			}
 			byte byteFromPacket = (byte) (this.packetData[byteIndex] & thirdMask);
 			this.packetData[byteIndex] = (byte) (byteFromPacket | firstSplit);
-			this.packetBitLength += firstSplitBitLength;
+			//System.out.print("changing data: ");
+			//System.out.println(this.packetData[byteIndex]);
 		}
 		else
 		{
@@ -318,7 +319,10 @@ public class Serial_Packet {
 			this.packetData[this.packetData.length - 1] = (byte) firstSplit;
 			this.packetLength += 1;
 			this.packetBitLength += firstSplitBitLength;
+			//System.out.print("appending data: ");
+			//System.out.println((byte) firstSplit);
 		}
+		
 		
 		//then recursively add the remaining bytes
 		if(secondSplitBitLength > 0)
@@ -402,6 +406,14 @@ public class Serial_Packet {
 		updateOutputs();
 		updateInputs();
 		updateChecksum();
+	}
+	
+	public void print_packet() {
+		for(int i = 0; i < this.packetLength; i++)
+		{
+			System.out.print(this.packetData[i]+" ");
+		}
+		System.out.println();
 	}
 	
 	//special functions for conditional read serial packets

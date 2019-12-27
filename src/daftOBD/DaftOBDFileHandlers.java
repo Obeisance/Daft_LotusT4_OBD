@@ -133,20 +133,24 @@ public class DaftOBDFileHandlers {
 	public void update_settings_logSaveLocation(File filename, String newLineText)
 	{
 		/*
-		 * this function looks for the line label: "Definition File: " and replaces the
-		 * line with the text: "Definition File: " and newLineText
+		 * this function looks for the line label: "Log save location: " and replaces the
+		 * line with the text: "Log save location: " and newLineText
 		 */
 		replace_or_append_line_in_text_file(filename, "Log save location: ", newLineText);
 	}
 	
-	public File find_defn_fileLocation(File filename, String lineLabel)
+	public void update_settings_logParameters(File filename, String newLineText)
 	{
 		/*
-		 * this function reads through the 'filename' file to find the line label
-		 * and returns the file generated based on that text
+		 * this function looks for the line label: "PIDs active bitmask: " and replaces the
+		 * line with the text: "PIDs active bitmask: " and newLineText
 		 */
-		
-		File returnFile = null;
+		replace_or_append_line_in_text_file(filename, "PIDs active bitmask: ", newLineText);
+	}
+	
+	public String find_data_after_label_in_file(File filename, String lineLabel) {
+		//search through the input file and return the string after the lineLabel
+		String string_after_label = "";
 		
 		if(filename.exists()) 
 		{
@@ -162,8 +166,7 @@ public class DaftOBDFileHandlers {
 					{
 						//we've found the line we want, so let's collect the
 						//string that shows the file path
-						String fileName = fileLine.substring(lineLabel.length());
-						returnFile = new File(fileName);
+						string_after_label = fileLine.substring(lineLabel.length());
 						break;
 					}
 				}
@@ -176,9 +179,40 @@ public class DaftOBDFileHandlers {
 				e.printStackTrace();
 			}
 		}
+		return string_after_label;
+	}
+	
+	public File find_defn_fileLocation(File filename, String lineLabel)
+	{
+		/*
+		 * this function reads through the 'filename' file to find the line label
+		 * and returns the file generated based on that text
+		 */
+		
+		File returnFile = null;
+		String fileName = find_data_after_label_in_file(filename, lineLabel);
+		if(!fileName.isEmpty()) {
+			returnFile = new File(fileName);
+		}
 		return returnFile;
 	}
 	
+	public boolean[] import_PID_reload_list(File settings_file) {
+		//import the flag that shows the PIDs that were active at last operation
+		boolean[] PIDs_reload = {false};
+		String PIDs_mask_string = find_data_after_label_in_file(settings_file, "PIDs active bitmask: ");
+		if(!PIDs_mask_string.isEmpty())
+		{
+			PIDs_reload = new boolean[PIDs_mask_string.length()];
+			for(int i = 0; i < PIDs_mask_string.length(); i++) {
+				if(PIDs_mask_string.substring(i,i+1).equals("1"))
+				{
+					PIDs_reload[i] = true;
+				}
+			}
+		}
+		return PIDs_reload;
+	}
 	
 	public DaftTreeComponent import_Log_definition_list(File settings_file) {
 		DaftTreeComponent treeDefinitionList = new DaftTreeComponent("Parameters");
@@ -923,11 +957,11 @@ public class DaftOBDFileHandlers {
 	}
 	
 	
-	public void appendln_byteLogFile(File settings_file, String lineToAppend)
+	public void appendln_byteLogFile(File settings_file, String filename_append, String lineToAppend)
 	{
 		//first, find the location that we should save the log file to
 		File logSaveLocation = find_defn_fileLocation(settings_file, "Log save location: ");
-		String byteLogFileName = logSaveLocation.getPath() + "\\Daft OBD byte log.txt";
+		String byteLogFileName = logSaveLocation.getPath() + "\\Daft OBD byte log " + filename_append + ".txt";
 		File byteLogFile = new File(byteLogFileName);
 		
 		//if the file does not exist, try creating it
@@ -960,11 +994,11 @@ public class DaftOBDFileHandlers {
 		}
 	}
 	
-	public void appendln_dataLogFile(File settings_file, String lineToAppend)
+	public void appendln_dataLogFile(File settings_file, String filename_append, String lineToAppend)
 	{
 		//first, find the location that we should save the log file to
 		File logSaveLocation = find_defn_fileLocation(settings_file, "Log save location: ");
-		String dataLogFileName = logSaveLocation.getPath() + "\\Daft OBD data log.txt";
+		String dataLogFileName = logSaveLocation.getPath() + "\\Daft OBD data log " + filename_append + ".txt";
 		File dataLogFile = new File(dataLogFileName);
 		
 		//if the file does not exist, try creating it
@@ -997,14 +1031,14 @@ public class DaftOBDFileHandlers {
 		}
 	}
 	
-	public void appendStrArray_byteLogFile(File settings_file, String[] byteSetString)
+	public void appendStrArray_byteLogFile(File settings_file, String filename_append, String[] byteSetString)
 	{
 		//this function loops through all of the strings in 'byteSetString' and
 		//appends them line-by-line to the byte log file
 
 		//first, find the location that we should save the log file to
 		File logSaveLocation = find_defn_fileLocation(settings_file, "Log save location: ");
-		String byteLogFileName = logSaveLocation.getPath() + "\\Daft OBD byte log.txt";
+		String byteLogFileName = logSaveLocation.getPath() + "\\Daft OBD byte log " + filename_append + ".txt";
 		File byteLogFile = new File(byteLogFileName);
 
 		//if the file does not exist, try creating it
@@ -1042,14 +1076,14 @@ public class DaftOBDFileHandlers {
 		}
 	}
 	
-	public void appendStrArray_dataLogFile(File settings_file, String[] dataSetString)
+	public void appendStrArray_dataLogFile(File settings_file, String filename_append, String[] dataSetString)
 	{
 		//this function loops through all strings in 'dataSetString' and
 		//appends them line-by-line to the data log file
 		
 		//first, find the location that we should save the log file to
 		File logSaveLocation = find_defn_fileLocation(settings_file, "Log save location: ");
-		String dataLogFileName = logSaveLocation.getPath() + "\\Daft OBD data log.txt";
+		String dataLogFileName = logSaveLocation.getPath() + "\\Daft OBD data log " + filename_append + ".txt";
 		File dataLogFile = new File(dataLogFileName);
 
 		//if the file does not exist, try creating it

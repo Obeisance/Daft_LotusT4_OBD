@@ -59,7 +59,7 @@ public class Input implements ActionListener, FocusListener {
 		{
 			this.dataMask = (this.dataMask << 0x1) | 0x1;
 		}
-		convert_update_input();//update intData
+		//convert_update_input();//update intData
 	}
 	
 	public void set_variableName(String vn)
@@ -93,21 +93,23 @@ public class Input implements ActionListener, FocusListener {
 				}
 			}
 			this.intData = convertedChar & this.dataMask;
-			return;
 		}
 		else if(this.type.contains("int"))
 		{
 			//collect the string from the input field, convert it and evaluate 
 			//an equation if it contains one, then update the integer input data
+			//System.out.println("change an int type input...");
 			String data = this.display_input;
+			
+			//convert the input value to a double and back to a string in
+			//order to eliminate unusual characters
+			Conversion_Handler convert = new Conversion_Handler();
+			double convert_input = convert.Dec_string_to_double(data);
+			String value = convert.Double_to_dec_string(convert_input);
+			
 			if(this.equation.length() > 0)
 			{
 				//System.out.println("There is an equation to evaluate: " + this.equation);
-				//convert the input value to a double and back to a string in
-				//order to eliminate unusual characters
-				Conversion_Handler convert = new Conversion_Handler();
-				double convert_input = convert.Dec_string_to_double(data);
-				String value = convert.Double_to_dec_string(convert_input);
 				
 				//then put the value into the equation
 				Equation_Parser parser = new Equation_Parser();
@@ -140,7 +142,12 @@ public class Input implements ActionListener, FocusListener {
 				//and finally update the data
 				this.intData = ((int) evaluatedEqn) & this.dataMask;
 			}
+			else
+			{
+				this.intData = ((int) convert_input) & this.dataMask;
+			}
 		}
+		//System.out.println(this.intData);
 
 		//update the parent Serial_Packet
 		this.parentPacket.update_append_bits(this.intData, this.bit_start_position, this.bitLength);
@@ -248,7 +255,8 @@ public class Input implements ActionListener, FocusListener {
 
 	@Override
 	public void focusGained(FocusEvent arg0) {
-		//we don't want to act here
+		//we don't want to act here, but we will anyway
+		update_when_textBoxChanged();
 	}
 
 	@Override
