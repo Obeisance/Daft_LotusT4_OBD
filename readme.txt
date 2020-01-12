@@ -13,7 +13,7 @@ a check list of loggable parameters.
 
 The program is a work in progress.
 
-This program uses Java 8, I think. It also uses a Java D2XX 
+This program uses Java 8. It also uses a Java D2XX 
 library for the FTDI cable: "JavaFTD2XX-0.2.6.jar"
 Embarrassingly, I cannot figure out where I got this library from.
 
@@ -34,7 +34,8 @@ When the program first runs, it requires that you select a save location
 for data logs that the program generates. It also requires you
 to select a valid definition file which outlines PIDs which
 are able to be polled. After choosing a definition file, restart the
-program. An example definition file is included: 
+program (or click on the top of the PID tree). 
+An example definition file is included: 
 "2005 Elise OBD parameter definition.txt"
 
 When selecting an OBD cable to use, the program is a bit buggy if 
@@ -48,3 +49,16 @@ customized ROM images.
 find my threads on Lotustalk.com to contact me:
 https://www.lotustalk.com/threads/daft-disassembly.352193/
 https://www.lotustalk.com/threads/notes-about-2005-elise-fueling-and-timing-control.463664/
+
+Troubleshooting: 
+1) Program seems to run, but no communication occurs
+I find that if I update to a newer version of Java
+there is trouble making the program properly use the FTDI library.
+In order to overcome this, install the Java 8 runtime environment
+and create a shortcut that points to the the 'Javaw.exe' program for
+Java 8. The shortcut must dictate the '-jar' command and must also point
+to the DaftOBD program.
+
+Here's an example shortcut target from my computer:
+"C:\Program Files (x86)\Java\jre1.8.0_231\bin\javaw.exe" -jar "C:\Users\David\Documents\Elise\Elise ECU assembly Code\DaftOBD\DaftOBD.jar"
+

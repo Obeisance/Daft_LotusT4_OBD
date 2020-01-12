@@ -244,7 +244,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 	    		logStartTime = System.currentTimeMillis();
 	    		LocalDateTime thisSec = LocalDateTime.now();
 	    		file_dateID = thisSec.getYear() + "-" + thisSec.getMonth() + "-" + thisSec.getDayOfMonth() + " " + thisSec.getHour() + " " + thisSec.getMinute() + " " + thisSec.getSecond();
-	    		System.out.println(file_dateID);
+	    		//System.out.println(file_dateID);
 	    	}
 	    	else
 	    	{
@@ -493,6 +493,9 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				byte[] readPacket = ComPort.read(dataToRead[readIndex].packetLength);//read the number of bytes we're looking for
 				//thisPacket = dataToRead[readIndex].getPacket();
 				thisPacket = readPacket;
+				
+				//System.out.print("Length: " + dataToRead[readIndex].packetLength + " data: ");
+				//dataToRead[readIndex].print_packet();//for diagnostics of how the packet was read in by the definition interpreter
 				
 				//System.out.print("read: [ ");
 				logBytes = logBytes.concat(" Read: [ ");

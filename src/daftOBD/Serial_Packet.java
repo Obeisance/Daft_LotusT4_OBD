@@ -306,6 +306,13 @@ public class Serial_Packet {
 			}
 			byte byteFromPacket = (byte) (this.packetData[byteIndex] & thirdMask);
 			this.packetData[byteIndex] = (byte) (byteFromPacket | firstSplit);
+			
+			//if we're in a byte that is added to the packet, but the data is new, be sure
+			//to update the packet bit length
+			if(this.packetBitLength < bitPosition + firstSplitBitLength)
+			{
+				this.packetBitLength += firstSplitBitLength;
+			}
 			//System.out.print("changing data: ");
 			//System.out.println(this.packetData[byteIndex]);
 		}
