@@ -1062,7 +1062,7 @@ public class DaftOBDFileHandlers {
 				writer = new BufferedWriter(new FileWriter(byteLogFile,true));//set to append
 				
 				for(int i = 0; i < byteSetString.length; i++)
-				{
+				{ 
 					writer.append(byteSetString[i]);
 					writer.newLine();
 				}

@@ -107,19 +107,18 @@ public class Serial_Packet {
 		//calculate the checksum for the packet
 		//assume that the sum is for all bytes except the last one
 		int sum = 0;
-		for(int i = 0; i < data.length - 1; i++)
-		{
-			//be mindful of Java's lack of unsigned integers
-			sum = (sum + convertToInt(data[i])) % 256;
+		for(int i = 0; i < data.length - 1; i++) {
+			sum += (int) data[i];
 		}
+		sum = sum & 0xFF;
 		return sum;
 	}
 	
 	private byte convertFromInt(int data) {
 		//convert an integer input to a byte
 		byte output = 0;
-		data = data % 256;//use only the lowest order byte
-		if(data >= 0 && data <= 255)
+		data = data % 256;//The integer could be up to 64 bits: use only the lowest order byte
+		if(data >= 0 && data <= 255)//this is some goofy number handling... i've lost the implication of this by now 
 		{
 			if(data > 127)
 			{
@@ -130,12 +129,15 @@ public class Serial_Packet {
 				output = (byte) data;
 			}
 		}
+		else if(data < 0 && data >= -128){
+			output = (byte) (data & 0xFF);//maybe we were handed data that already fit the 'byte' type behavior.. this line may actually be all that is needed in this function..
+		}
 		return output;
 	}
 	
 	private int convertToInt(byte data) {
 		//convert byte data to an integer
-		int output = data & 0xFF;
+		int output = data & 0xFF;//the ff mask may not be necessary.
 		return output;
 	}
 	
@@ -416,9 +418,10 @@ public class Serial_Packet {
 	}
 	
 	public void print_packet() {
+		Conversion_Handler convert = new Conversion_Handler();
 		for(int i = 0; i < this.packetLength; i++)
 		{
-			System.out.print(this.packetData[i]+" ");
+			System.out.print(convert.Int_to_hex_string(this.packetData[i],2)+" ");
 		}
 		System.out.println();
 	}

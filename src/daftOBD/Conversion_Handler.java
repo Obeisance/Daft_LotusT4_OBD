@@ -198,16 +198,33 @@ public class Conversion_Handler {
 		String[] hexChars = {"0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"};
 		String outString = "";
 		int divide_int = inInteger;
+		
+		//signed values mess this up... maybe I'll have to use the other version at a later point...
 		if(divide_int == 0)
 		{
 			outString = hexChars[0];
 		}
 		while(divide_int > 0)
 		{
-			int lastDigit = divide_int % 16;
+			int lastDigit = Integer.remainderUnsigned(divide_int, 16);//divide_int % 16;
 			outString = hexChars[lastDigit].concat(outString);
-			divide_int = divide_int / 16;
+			divide_int = Integer.divideUnsigned(divide_int, 16);//divide_int / 16;
 		}
+		
+		return outString;
+	}
+	
+	public String Int_to_hex_string(int inInteger, int numChars)
+	{
+		String[] hexChars = {"0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"};
+		String outString = "";
+		int divide_int = inInteger;
+		for(int i = 0; i < numChars; i++) {
+			int lastDigit = divide_int & 0xF;
+			outString = hexChars[lastDigit].concat(outString);
+			divide_int = divide_int >> 4;
+		}
+		
 		return outString;
 	}
 	

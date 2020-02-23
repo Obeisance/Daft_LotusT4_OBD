@@ -48,9 +48,9 @@ public class DaftOBDSelectionObject implements ActionListener {
 	
 	//Stuff for the special operation mode for RAM write
 	Conversion_Handler convert = new Conversion_Handler();//allow us to convert between different number types
-	public long RAMtargetAddress = 0x84000;
-	public long ROMtargetAddress = 0x70000;
-	public long ROMtoRAMlength = 0x6000;
+	public int RAMtargetAddress = 0x84000;
+	public int ROMtargetAddress = 0x70000;
+	public int ROMtoRAMlength = 0x6000;
 	public int specialModeBaud = 10400;
 	int file_chooser_return_value = 1;//0x0 means that we have a hex file chosen
 	//extra GUI parts in case we have a special RAMwrite use for this object
@@ -60,6 +60,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 	File hexFile;//a file that contains the data we'll extract for reflashing
 	byte[] hexData = new byte[0];//store the entire hex file as byte data
 	byte[] prev_hexData = new byte[0];//store the entire hex file as byte data
+	boolean dataSentOnce = false;
 	
 	//constructors
 	public DaftOBDSelectionObject(String m, String pid, Serial_Packet[] list_of_packets_to_send, Serial_Packet[] list_of_packets_to_read) {	
@@ -237,15 +238,15 @@ public class DaftOBDSelectionObject implements ActionListener {
 		//then, figure out how much of the binary file has changed since last time
 		//and add changed bytes to the serial data message. We're only interested
 		//in a segment of the file...
-		for(long i = this.ROMtargetAddress; i < this.hexData.length && i < (this.ROMtargetAddress + this.ROMtoRAMlength); i++) 
+		for(int i = this.ROMtargetAddress; i < this.hexData.length && i < (this.ROMtargetAddress + this.ROMtoRAMlength); i++) 
 		{
-			byte byte_to_send = this.hexData[(int)i];
+			byte byte_to_send = this.hexData[i];
 			
 			//decide if we should send this byte
 			boolean send_the_byte = false;
-			if(this.prev_hexData.length >= i)
+			if(this.prev_hexData.length >= i && this.dataSentOnce)
 			{
-				if(this.prev_hexData[(int)i] != byte_to_send)
+				if(this.prev_hexData[i] != byte_to_send)
 				{
 					//the data has been changed, so we'll send the byte
 					send_the_byte = true;
@@ -262,7 +263,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 			{
 				if(newPacket.packetLength == contiguous_data_index)
 				{
-					//add a placeholder for 'number of bytes ot write' as 
+					//add a placeholder for 'number of bytes to write' as 
 					//well as the address of data to send
 					newPacket.appendByte(0);//number of bytes to write
 					int displacement = (int)(i - this.ROMtargetAddress + this.RAMtargetAddress);
@@ -272,8 +273,17 @@ public class DaftOBDSelectionObject implements ActionListener {
 					newPacket.appendByte(addrHi);
 					newPacket.appendByte(addrMid);
 					newPacket.appendByte(addrLo);
+					
+					//System.out.println(convert.Int_to_hex_string(addrHi, 2) + convert.Int_to_hex_string(addrMid, 2) + convert.Int_to_hex_string(addrLo, 2));
+					/*if(this.dataSentOnce) {
+						System.out.println(convert.Int_to_hex_string(addrHi, 2) + convert.Int_to_hex_string(addrMid, 2) + convert.Int_to_hex_string(addrLo, 2));
+						System.out.println(byte_to_send + " " + convert.Int_to_hex_string( byte_to_send, 2));
+					}*/
 				}
 				newPacket.appendByte(byte_to_send);
+				/*if(this.dataSentOnce && newPacket.packetLength-5 == contiguous_data_index) {
+					newPacket.print_packet();
+				}*/
 			}
 			else
 			{
@@ -323,6 +333,9 @@ public class DaftOBDSelectionObject implements ActionListener {
 		{
 			int length_of_data = newPacket.packetLength - (contiguous_data_index + 1) - 3;
 			newPacket.changeByte(length_of_data, contiguous_data_index);
+		} else if(newPacket.packetLength == 3) {
+			//make sure we send enough bytes for an OBD message (at least 5)
+			newPacket.appendByte(0);//add a byte saying 'write zero bytes' -> if less than serial bytes are sent, then no OBD response occurs
 		}
 		
 		//and write the 'total length of packet' byte
@@ -334,6 +347,11 @@ public class DaftOBDSelectionObject implements ActionListener {
 		//append that packet to the set of packets
 		newListOfPackets = Arrays.copyOf(newListOfPackets, newListOfPackets.length + 1);
 		newListOfPackets[newListOfPackets.length - 1] = newPacket;
+		
+		if(!this.dataSentOnce)
+		{
+			this.dataSentOnce = true;
+		}
 		
 		return newListOfPackets;
 	}
@@ -383,6 +401,7 @@ public class DaftOBDSelectionObject implements ActionListener {
 			//let the user choose the ECU program data file
 			file_chooser_return_value = this.binarySourceChooser.showDialog(fileSelectFrame, "Done selecting hex file");
 			readBinaryFile();
+			this.dataSentOnce = false;
 		}
 	}
 	

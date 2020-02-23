@@ -429,6 +429,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		int sendIndex = 0;
 		int readIndex = 0;
 		String logBytes = "";
+		Conversion_Handler convert = new Conversion_Handler();
 		
 		//check to see if we've collected our polling headers:
 		//System.out.println("Write new file headers, if necessary...");
@@ -516,7 +517,8 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				for(int k = 0; k < thisPacket.length; k++)
 				{
 					//System.out.print((int) (thisPacket[k] & 0xFF) + " ");
-					logBytes = logBytes.concat(String.valueOf((int) (thisPacket[k] & 0xFF))).concat(" ");
+					String hexByte = convert.Int_to_hex_string(thisPacket[k], 2);
+					logBytes = logBytes.concat(hexByte).concat(" ");
 				}
 			}
 			//System.out.println("]");
