@@ -3363,7 +3363,7 @@
   </receive>
  </pid>
 
- <pid name="101 Fire injector 1" mode="Mode 0x2F" init="OBD init">
+ <pid name="101 Fire injector 1" mode="Mode 0x2F" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=8>
    <data>104</data>
    <data>106</data>
@@ -3385,7 +3385,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="102 Fire injector 2" mode="Mode 0x2F" init="OBD init">
+ <pid name="102 Fire injector 2" mode="Mode 0x2F" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=8>
    <data>104</data>
    <data>106</data>
@@ -3407,7 +3407,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="103 Fire injector 3" mode="Mode 0x2F" init="OBD init">
+ <pid name="103 Fire injector 3" mode="Mode 0x2F" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=8>
    <data>104</data>
    <data>106</data>
@@ -3429,7 +3429,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="104 Fire injector 4" mode="Mode 0x2F" init="OBD init">
+ <pid name="104 Fire injector 4" mode="Mode 0x2F" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=8>
    <data>104</data>
    <data>106</data>
@@ -3459,7 +3459,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x21</data>
-   <data type="input" size="uint8" name="0"; expression="#*2.55"/>
+   <data type="input" size="uint8" name="0" expression="#*2.55"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3481,7 +3481,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x22</data>
-   <data type="input" size="uint8" name="0"; expression="#*2.55"/>
+   <data type="input" size="uint8" name="0" expression="#*2.55"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3547,7 +3547,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x27</data>
-   <data type="input" size="uint8" name="0"; expression="#*2.55"/>
+   <data type="input" size="uint8" name="0" expression="#*2.55"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3590,7 +3590,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x41</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3611,7 +3611,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x42</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3633,7 +3633,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x43</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3655,7 +3655,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x44</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3677,7 +3677,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x46</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3699,7 +3699,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x47</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3721,7 +3721,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x48</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3743,7 +3743,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x49</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3765,7 +3765,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x4A</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3787,7 +3787,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x4B</data>
-   <data type="input" size="uint8" name="0";/>
+   <data type="input" size="uint8" name="0"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -4524,6 +4524,113 @@
    <data type="int" size="uint16" name="FFF2CA Fuel Level sig AtoD"/>
    <data type="int" size="uint16" name="FFF2CC Oxygen Sensor 2 Heater sig AtoD"/>
    <data type="int" size="uint16" name="FFF2CE Unused Ch16 sig AtoD"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Intake pressure monitor and road dyno" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=32>
+   <data>85</data>
+   <data>32</data>
+   <data>17</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x00</data>
+   <data>0xE4</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x30</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0xC6</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0x6A</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0x88</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x0C</data>
+   <data>0xEC</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x20</data>
+   <data>0x00</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=21>
+   <data>170</data>
+   <data>21</data>
+   <data>17</data>
+   <data type="double" size="int16" name="Intake camshaft advance measured 800E4 [Degree overlap]" expression="(220 - #)*0.25"/>
+   <data type="double" size="uint16" name="Absolute barometric pressure 80130 [kPa]" expression="#/10"/>
+   <data type="double" size="uint16" name="Absolute Throttle position 80132 [%]" expression="#/10.2"/>
+   <data type="double" size="uint16" name="Engine speed 801C6 [rev/min]" expression="#/4"/>
+   <data type="int" size="uint8" name="Vehicle speed 8036A [km/hr]"/>
+   <data type="int" size="uint16" name="Vehicle speed pulse length 80888 [a.u.]"/>
+   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100"/>
+   <data type="double" size="uint16" name="Calc'd intake barometric pressure 80CEE [kPa]" expression="#/10"/>
+   <data type="int" size="uint16" name="Intake barometric pressure AtoD 82000 [a.u.]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Read learned variables" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=12>
+   <data>85</data>
+   <data>12</data>
+   <data>17</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x0E</data>
+   <data>0x44</data>
+   <data>16</data>
+   <data>0x08</data>
+   <data>0x17</data>
+   <data>0xAE</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=22>
+   <data>170</data>
+   <data>22</data>
+   <data>17</data>
+   <data type="double" size="uint16" name="Learned throttle position zero 80E44 [%]" expression="#/10.2"/>
+   <data type="double" size="uint32" name="Learned idle air control offset 817AE [% duty]" expression="#/2618.88"/>
+   <data type="int" size="uint16" name="Learned LTFT below 7 g/sec idle fuel pulse offset 817B2 [microsecond]"/>
+   <data type="double" size="uint8" name="Learned LTFT 7-24 g/sec low flow 817B4 [%]" expression="(#-128)/5.12"/>
+   <data type="double" size="uint8" name="Learned LTFT 38+ g/sec high flow 817B5 [%]" expression="(#-128)/5.12"/>
+   <data type="int" size="uint16" name="Learned A_sum knock counts coil A 817B6 [count]"/>
+   <data type="int" size="uint16" name="Learned A_sum knock counts coil C 817B8 [count]"/>
+   <data type="int" size="uint16" name="Learned A_sum knock counts coil D 817BA [count]"/>
+   <data type="int" size="uint16" name="Learned A_sum knock counts coil B 817BC [count]"/>   
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Write injection control for Mode 0x2F PIDs 0x101-0x104 - Pulse length [us] - Total actuation time [ms] - Pulse period [ms]" mode="Fast K-Line" init="OBD init" read_only_once="true">
+  <send type="data" baud="10400" length=17>
+   <data>85</data>
+   <data>17</data>
+   <data>136</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x6C</data>
+   <data>0xD0</data>
+   <data type="input" size="uint16" name="4000" expression="#/1.6"/>
+   <data type="input" size="uint16" name="20000" expression="#/5"/>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x6C</data>
+   <data>0xCE</data>
+   <data type="input" size="uint8" name="500" expression="#/5"/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=4>
+   <data>170</data>
+   <data>4</data>
+   <data>136</data>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
