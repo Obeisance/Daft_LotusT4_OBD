@@ -25,6 +25,7 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -255,6 +256,13 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 					initList[i].isSelected = false;
 				}
 				
+				//reset the poll delay periods too
+				DaftOBDSelectionObject[] scanList = daftTreeRoot.getComponents();
+				for(int i = 0; i < scanList.length; i++)
+				{
+					scanList[i].resetTimeNextPoll();
+				}
+				
 				//shutdown any active thread requests:
 				this.scheduler.shutdown();//make sure to tell the executor to shut down open threads when they finished, and to stop accepting new thread requests.
 				
@@ -358,7 +366,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		GridBagConstraints modeBoxConstraints = new GridBagConstraints();
 		modeBoxConstraints.anchor = GridBagConstraints.FIRST_LINE_START;
 		modeBoxConstraints.weighty = 0.1;
-		modeBoxConstraints.weightx = 0.1;
+		modeBoxConstraints.weightx = 1.0;
 		modeBoxConstraints.ipadx = 10;
 		modeBox.setBorder(BorderFactory.createLineBorder(Color.black));
 		
@@ -381,13 +389,17 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		modeBox.add(daftTree,modeBoxConstraints);
 		modeBox.addMouseListener(this);//to collect events handed up by the child tree
 		
-		loggingParameterBoxes.add(modeBox);
+		loggingParameterBoxes.add(modeBox);//put the daft tree into the JPanel called modeBox
 		
-		//now put this into a scroll pane so that it can be viewed more easily
+		//now put this modeBox JPanel into a scroll pane so that it can be viewed more easily
 		JScrollPane scrollableLoggingParameters = new JScrollPane(loggingParameterBoxes);//ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-		scrollableLoggingParameters.setPreferredSize(new Dimension(900,500));//250,500
+		Dimension minSize = new Dimension(280,90);//used to be 900,500
+		if(scrollableLoggingParameters.getSize().width < minSize.width) {
+			scrollableLoggingParameters.setPreferredSize(minSize);
+		}
 		
-		//finally, add the log parameters to the main JPanel that we're building
+		
+		//finally, add the log parameters JScrollPane to the main JPanel that we're building
 		layoutConstraints.gridx = 0;//position 0,1 (one row down)
 		layoutConstraints.gridy = 1;
 		layoutConstraints.gridheight = 1;//one row tall, two rows wide
@@ -395,8 +407,8 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		layoutConstraints.weightx = 0.1;
 		layoutConstraints.weighty = 1.0;
 		layoutConstraints.anchor = GridBagConstraints.FIRST_LINE_START;
-		layoutConstraints.insets = new Insets(0,10,0,0);
-		layoutConstraints.fill = GridBagConstraints.VERTICAL;
+		layoutConstraints.insets = new Insets(0,10,0,10);
+		layoutConstraints.fill = GridBagConstraints.BOTH;
 		log_button_and_parameters.add(scrollableLoggingParameters,layoutConstraints);
 		
 		//add a status indicating message
@@ -410,13 +422,14 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 		layoutConstraints.gridx = 0;//position 0,2 (two rows down)
 		layoutConstraints.gridy = 2;
 		layoutConstraints.gridheight = 1;//one row tall, two rows wide
-		layoutConstraints.gridwidth = 2;
-		//layoutConstraints.weightx = 0.1;
-		//layoutConstraints.weighty = 1.0;
+		layoutConstraints.gridwidth = 1;
+		layoutConstraints.weightx = 0;
+		layoutConstraints.weighty = 0;
 		layoutConstraints.anchor = GridBagConstraints.LAST_LINE_START;
 		layoutConstraints.insets = new Insets(0,10,0,0);
 		layoutConstraints.fill = GridBagConstraints.VERTICAL;
 		log_button_and_parameters.add(statusBox,layoutConstraints);
+		
 		
 		//after we've initialized the 'statusText' object, we can share it
 		daftTreeRoot.updateReflashControlOver(this.statusText, this.ComPort, this.settings_file);//add the controllable parameters to the tree reflash objects
@@ -554,6 +567,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			JPanel source = (JPanel) sourceOfEvent;
 			//if the JPanel contains the daftTree object, we'll re-draw that so it behaves like a 
 			//tree
+			//JPanel contains JScrollPane contains JPanel contains daftTree
 			if(source.contains(daftTree.getLocation()))
 			{
 				JPanel parent = (JPanel) source.getParent();
@@ -565,6 +579,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 				c.weightx = 0.1;
 				c.ipadx = 10;
 				source.add(daftTree,c);
+				
 				parent.revalidate();//to get the change to show immediately
 				parent.repaint();
 			}
@@ -671,11 +686,23 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 							}
 						}
 					}
-					Serial_Packet[] dataToSend = scanList[i].getSendPacketList();
-					Serial_Packet[] dataToRead = scanList[i].getReadPacketList();
-					boolean[] messageFlowOrder = scanList[i].getFlowControl();
-					
-					boolean msgCycleSuccess = send_and_receive_message_cycle(dataToSend, dataToRead, messageFlowOrder);
+					//compare current polling time to scheduled poll time
+					int current_poll_time = (int) (System.currentTimeMillis() - logStartTime);
+					boolean msgCycleSuccess = false;
+					if(current_poll_time >= scanList[i].timeNextPoll_ms)
+					{
+						scanList[i].incrementTimeNextPoll();
+						Serial_Packet[] dataToSend = scanList[i].getSendPacketList();
+						Serial_Packet[] dataToRead = scanList[i].getReadPacketList();
+						boolean[] messageFlowOrder = scanList[i].getFlowControl();
+
+						msgCycleSuccess = send_and_receive_message_cycle(dataToSend, dataToRead, messageFlowOrder);
+					}
+					else
+					{
+						//we skip a polling cycle due to scheduled rate limitation
+						msgCycleSuccess = true;
+					}
 
 					if(msgCycleSuccess == false)
 					{
@@ -691,12 +718,21 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 					}
 					else
 					{
-						//we are running correctly
+						//we are running correctly - this update may eat a bunch of processor time.. but we'll keep it for now
+						statusText.setText("Running " + String.valueOf( (System.currentTimeMillis() - logStartTime) / 1000));
+						statusText.repaint();
+						/*
 						String current_status = statusText.getText();
 						if(!current_status.equals("Running"))
 						{
-							statusText.setText("Running");
+							statusText.setText("Running ");
 							statusText.repaint();
+						}
+						*/
+						
+						//make a beep if we're supposed to
+						if(scanList[i].beepOnPoll) {
+							java.awt.Toolkit.getDefaultToolkit().beep();//lol, I bet this will be fun... -_-
 						}
 						
 						finished_reading_ThisTime[i] = true;

@@ -4599,7 +4599,7 @@
    <data>17</data>
    <data type="double" size="uint16" name="Learned throttle position zero 80E44 [%]" expression="#/10.2"/>
    <data type="double" size="uint32" name="Learned idle air control offset 817AE [% duty]" expression="#/2618.88"/>
-   <data type="int" size="uint16" name="Learned LTFT below 7 g/sec idle fuel pulse offset 817B2 [microsecond]"/>
+   <data type="int" size="int16" name="Learned LTFT below 7 g/sec idle fuel pulse offset 817B2 [microsecond]"/>
    <data type="double" size="uint8" name="Learned LTFT 7-24 g/sec low flow 817B4 [%]" expression="(#-128)/5.12"/>
    <data type="double" size="uint8" name="Learned LTFT 38+ g/sec high flow 817B5 [%]" expression="(#-128)/5.12"/>
    <data type="int" size="uint16" name="Learned A_sum knock counts coil A 817B6 [count]"/>

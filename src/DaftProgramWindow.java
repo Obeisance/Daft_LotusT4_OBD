@@ -1,3 +1,4 @@
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
 
@@ -10,7 +11,7 @@ public class DaftProgramWindow {
 	
 	public static void createAndShowGUI() {
 		//a frame to put our user interface into
-		JFrame main_window = new JFrame("Daft OBD v2.12");
+		JFrame main_window = new JFrame("Daft OBD v2.13");
 		//main_window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);//set what the window does when closed
 		
 		//load or create our settings file
@@ -32,6 +33,8 @@ public class DaftProgramWindow {
 		main_window.add(windowContent.loggingParameterSelectors());
 		
 		main_window.setResizable(true);//allow the window to be resized
+		main_window.setMinimumSize(new Dimension(320,240));
+		main_window.setPreferredSize(new Dimension(800,600));
 		//draw the window to size
 		main_window.pack();
 		main_window.setVisible(true);//and then set it to visible

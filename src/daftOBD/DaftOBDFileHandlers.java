@@ -231,6 +231,7 @@ public class DaftOBDFileHandlers {
 		String mode = null;
 		String name = null;
 		String initName = null;
+		int messagePeriod = 0;
 		boolean init_needed = false;
 		Serial_Packet send_packet = new Serial_Packet();
 		Serial_Packet[] sendPacketList = new Serial_Packet[0];
@@ -239,6 +240,7 @@ public class DaftOBDFileHandlers {
 		boolean repeatRead = false;//a flag indicating that a receive packet line may represent multiple packets
 		int replicate = 0;//if a packet is repeated, this is the max number of times it will occur
 		boolean read_only_once = false;//a flag associated with a PID indicating that it should only be read once
+		boolean beepOnPoll = false;//a flag associated with a PID that is used to signal the user that the value is being read
 		
 		boolean[] flowControl = new boolean[0];//a vector showing the send/receive order
 		
@@ -332,6 +334,21 @@ public class DaftOBDFileHandlers {
 								{
 									read_only_once = false;
 								}
+								
+								if(fileLine.contains("messagePeriodms="))
+								{
+									String periodString = stringBetween(fileLine, "messagePeriodms=\"","\"");
+									messagePeriod = convert.Hex_or_Dec_string_to_int(periodString); 
+								}
+								
+								if(fileLine.contains("beepOnPoll=\"true\""))
+								{
+									beepOnPoll = true;
+								}
+								else
+								{
+									beepOnPoll = false;
+								}
 
 								sendPacketList = new Serial_Packet[0];//reset the list of send data packets associated with the parameter
 								readPacketList = new Serial_Packet[0];
@@ -362,12 +379,19 @@ public class DaftOBDFileHandlers {
 									DaftTreeLeaf.setReadOnce(read_only_once);
 								}
 								
+								if(beepOnPoll)
+								{
+									DaftTreeLeaf.setBeepOnPoll(beepOnPoll);
+								}
+								DaftTreeLeaf.setPeriod(messagePeriod);
+								
 								//then add this object to our tree
 								treeDefinitionList.add(DaftTreeLeaf);
 
 								//and clear our PID data buffers
 								mode = null;
 								name = null;
+								messagePeriod = 0;
 
 								//and no longer process our lines to fill the PID data buffers
 								onParameter = false;

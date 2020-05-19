@@ -45,6 +45,9 @@ public class DaftOBDSelectionObject implements ActionListener {
 	boolean[] flowControl = new boolean[0];//'0' = send message, '1' = receive message, '2' = eval. cond. before receive
 	
 	boolean readOnce = false;//a flag that states that the PID should be read only once per polling cycle
+	boolean beepOnPoll = false;//a flag that indicates the program should make a beep when the PID is polled
+	int messagePeriod_ms = 0;
+	int timeNextPoll_ms = 0;
 	
 	//Stuff for the special operation mode for RAM write
 	Conversion_Handler convert = new Conversion_Handler();//allow us to convert between different number types
@@ -188,6 +191,26 @@ public class DaftOBDSelectionObject implements ActionListener {
 	public void setReadOnce(boolean state) {
 		//this function updates the read-once flag based on the input
 		this.readOnce = state;
+	}
+	
+	public void setBeepOnPoll(boolean state) {
+		//this function updates the flag that indicates a system beep should be produced each time the polling cycle completes
+		this.beepOnPoll = state;
+	}
+	
+	public void setPeriod(int newPeriod) {
+		//this function sets a delay time in milliseconds between message polling cycles
+		this.messagePeriod_ms = newPeriod;
+	}
+	
+	public void incrementTimeNextPoll() {
+		//this function updates the accounting of the next time we'll poll this parameter
+		this.timeNextPoll_ms += this.messagePeriod_ms;
+	}
+	
+	public void resetTimeNextPoll() {
+		//reset the next poll time delay
+		this.timeNextPoll_ms = 0;
 	}
 	
 	public void stopPolling() {
