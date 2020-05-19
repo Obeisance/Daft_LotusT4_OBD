@@ -697,6 +697,11 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 						boolean[] messageFlowOrder = scanList[i].getFlowControl();
 
 						msgCycleSuccess = send_and_receive_message_cycle(dataToSend, dataToRead, messageFlowOrder);
+						
+						//make a beep if we're supposed to
+						if(scanList[i].beepOnPoll && msgCycleSuccess) {
+							java.awt.Toolkit.getDefaultToolkit().beep();//lol, I bet this will be fun... -_-
+						}
 					}
 					else
 					{
@@ -729,11 +734,6 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 							statusText.repaint();
 						}
 						*/
-						
-						//make a beep if we're supposed to
-						if(scanList[i].beepOnPoll) {
-							java.awt.Toolkit.getDefaultToolkit().beep();//lol, I bet this will be fun... -_-
-						}
 						
 						finished_reading_ThisTime[i] = true;
 					}
