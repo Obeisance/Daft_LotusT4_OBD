@@ -1729,7 +1729,7 @@
    <data>98</data>
    <data>0x2</data>
    <data>0x7</data>
-   <data type="double" size="int16" name="Intake camshaft advance target [Degree overlap]" expression="(220 - #)*0.25"/>
+   <data type="double" size="int16" name="Intake camshaft advance target [Degree overlap]" expression="#/4"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -1750,7 +1750,7 @@
    <data>98</data>
    <data>0x2</data>
    <data>0x8</data>
-   <data type="double" size="int16" name="Intake camshaft advance measured [Degree overlap]" expression="(220 - #)*0.25"/>
+   <data type="double" size="int16" name="Intake camshaft advance measured [Degree overlap]" expression="#/4"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>

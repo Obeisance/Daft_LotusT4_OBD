@@ -1,0 +1,5 @@
+Address Range 0x8000-0xF000
+Insert at 0x913E
+Insert bytes 0x2E
+Address to shift 0x8832
+Shift by 0x84000

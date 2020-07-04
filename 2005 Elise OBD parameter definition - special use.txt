@@ -1732,7 +1732,7 @@
    <data>98</data>
    <data>0x2</data>
    <data>0x7</data>
-   <data type="double" size="int16" name="Intake camshaft advance target [Degree overlap]" expression="(220 - #)*0.25"/>
+   <data type="double" size="int16" name="Intake camshaft advance target [Degree overlap]" expression="#/4"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -1753,7 +1753,7 @@
    <data>98</data>
    <data>0x2</data>
    <data>0x8</data>
-   <data type="double" size="int16" name="Intake camshaft advance measured [Degree overlap]" expression="(220 - #)*0.25"/>
+   <data type="double" size="int16" name="Intake camshaft advance measured [Degree overlap]" expression="#/4"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -1994,7 +1994,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="214 ??" mode="Mode 0x22" init="OBD init">
+ <pid name="214 solenoid status" mode="Mode 0x22" init="OBD init">
   <send type="data" baud="10400" length=7>
    <data>104</data>
    <data>106</data>
@@ -2011,7 +2011,14 @@
    <data>98</data>
    <data>0x2</data>
    <data>0x14</data>
-   <data type="int" size="uint8" name="214 byte 1 ??"/>
+   <data type="int" size="uint1" name="214 bit0"/>
+   <data type="int" size="uint1" name="214 bit1"/>
+   <data type="int" size="uint1" name="214 bit2"/>
+   <data type="int" size="uint1" name="214 bit3"/>
+   <data type="int" size="uint1" name="214 bit4"/>
+   <data type="int" size="uint1" name="214 bit5"/>
+   <data type="int" size="uint1" name="214 bit6 fuel pump"/>
+   <data type="int" size="uint1" name="214 bit7"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -3582,7 +3589,7 @@
    <data>0x0</data>
    <data type="sum" size="uint8"/>
   </receive>
- <pid name="141 Fuel pump ??" mode="Mode 0x2F" init="OBD init">
+ <pid name="141 Actuate Fuel Pump" mode="Mode 0x2F" init="OBD init" read_only_once="true">
   <send type="data" baud="10400" length=8>
    <data>104</data>
    <data>106</data>
@@ -3590,7 +3597,7 @@
    <data>0x2F</data>
    <data>0x1</data>
    <data>0x41</data>
-   <data type="input" size="uint8" name="0"/>
+   <data type="input" size="uint8" name="1"/>
    <data type="sum" size="uint8"/>
   </send>
   <receive type="data" baud="10400" length="8">
@@ -3603,6 +3610,7 @@
    <data type="int" size="uint8" name="Commanded fuel pump state"/>
    <data type="sum" size="uint8"/>
   </receive>
+ </pid>
  <pid name="142 Airbox flap ??" mode="Mode 0x2F" init="OBD init">
   <send type="data" baud="10400" length=8>
    <data>104</data>
@@ -4276,15 +4284,15 @@
    <data>0x08</data>
    <data>0x14</data>
    <data>0x74</data>
-   <data>1</data>
+   <data>2</data>
    <data>0x08</data>
    <data>0x17</data>
    <data>0xB2</data>
    <data type="sum" size="uint8"/>
   </send>
-  <receive type="data" baud="10400" length=86>
+  <receive type="data" baud="10400" length=87>
    <data>170</data>
-   <data>86</data>
+   <data>87</data>
    <data>17</data>
    <data type="double" size="uint8" name="80116 Coolant temp fp [Deg C]" expression="#*160.00/256.00 - 40.00"/>
    <data type="int" size="uint8" name="80117 unused fp"/>
@@ -4323,7 +4331,7 @@
    <data type="double" size="uint32" name="80cfe (MPS) MAF per stroke fp [mg air]"/>
    <data type="double" size="uint8" name="80d02 Eng load fp [mg air]" expression="#*4.00"/>
    <data type="double" size="uint32" name="81474 Alternate fuel inj pulse length fp [microsecond injection pulse]"/>
-   <data type="double" size="uint8" name="817b2 (I_lrn) Idle learned fuel pulse length correction fp [microsecond injection pulse]"/>
+   <data type="double" size="int16" name="817b2 (I_lrn) Idle learned fuel pulse length correction fp [microsecond injection pulse]"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -4527,7 +4535,7 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
- <pid name="Intake pressure monitor and road dyno" mode="Fast K-Line" init="OBD init">
+ <pid name="Intake pressure monitor and road dyno w/spd" mode="Fast K-Line" init="OBD init">
   <send type="data" baud="10400" length=32>
    <data>85</data>
    <data>32</data>
@@ -4566,7 +4574,7 @@
    <data>170</data>
    <data>21</data>
    <data>17</data>
-   <data type="double" size="int16" name="Intake camshaft advance measured 800E4 [Degree overlap]" expression="(220 - #)*0.25"/>
+   <data type="double" size="int16" name="Intake camshaft advance measured 800E4 [Degree overlap]" expression="#/4"/>
    <data type="double" size="uint16" name="Absolute barometric pressure 80130 [kPa]" expression="#/10"/>
    <data type="double" size="uint16" name="Absolute Throttle position 80132 [%]" expression="#/10.2"/>
    <data type="double" size="uint16" name="Engine speed 801C6 [rev/min]" expression="#/4"/>
@@ -4575,6 +4583,57 @@
    <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100"/>
    <data type="double" size="uint16" name="Calc'd intake barometric pressure 80CEE [kPa]" expression="#/10"/>
    <data type="int" size="uint16" name="Intake barometric pressure AtoD 82000 [a.u.]"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Intake pressure monitor and road dyno" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=32>
+   <data>85</data>
+   <data>32</data>
+   <data>17</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x00</data>
+   <data>0xE4</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x30</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0xC6</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0x88</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x0C</data>
+   <data>0xEC</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x20</data>
+   <data>0x00</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x18</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=21>
+   <data>170</data>
+   <data>21</data>
+   <data>17</data>
+   <data type="double" size="int16" name="Intake camshaft advance measured 800E4 [Degree overlap]" expression="#/4"/>
+   <data type="double" size="uint16" name="Absolute barometric pressure 80130 [kPa]" expression="#/10"/>
+   <data type="double" size="uint16" name="Absolute Throttle position 80132 [%]" expression="#/10.2"/>
+   <data type="double" size="uint16" name="Engine speed 801C6 [rev/min]" expression="#/4"/>
+   <data type="int" size="uint16" name="Vehicle speed pulse length 80888 [a.u.]"/>
+   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100"/>
+   <data type="double" size="uint16" name="Calc'd intake barometric pressure 80CEE [kPa]" expression="#/10"/>
+   <data type="int" size="uint16" name="Intake barometric pressure AtoD 82000 [a.u.]"/>
+   <data type="int" size="uint8" name="Intake air temperature 80118 [degC]" expression="#*160/256 - 40"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -4634,6 +4693,32 @@
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
+ <pid name="Write cam control - VVT stpt [deg] - VVL on [rpm] - VVL off [rpm]" mode="Fast K-Line" init="OBD init" messagePeriodms="30000">
+  <send type="data" baud="10400" length=17>
+   <data>85</data>
+   <data>17</data>
+   <data>136</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x0D</data>
+   <data>0x7B</data>
+   <data type="input" size="uint8" name="5" expression="#*4"/>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x41</data>
+   <data>0xB4</data>
+   <data type="input" size="uint16" name="6200" expression="#"/>
+   <data type="input" size="uint16" name="6000" expression="#"/>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=4>
+   <data>170</data>
+   <data>4</data>
+   <data>136</data>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+
  <RAMwrite name="Update calibration RAM from file" mode="Write to RAM" init="OBD init" baud="10400" targetAddressRAM="0x84000" targetAddressROM="0x70000" targetLength="0x6000"/>
 
 </parameter list>
