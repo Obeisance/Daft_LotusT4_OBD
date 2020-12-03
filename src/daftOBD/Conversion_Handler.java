@@ -107,7 +107,7 @@ public class Conversion_Handler {
 			}
 
 		}
-		
+		//System.out.println("Converting to double from string: " + toDoub);
 		return toDoub*sign;
 	}
 	

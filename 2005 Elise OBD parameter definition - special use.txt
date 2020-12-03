@@ -306,7 +306,7 @@
    <data>16</data>
    <data>65</data>
    <data>0x10</data>
-   <data type="double" size="uint16" name="Mass airflow rate [g/sec]" expression="#/100"/>
+   <data type="double" size="uint16" name="Mass airflow rate [g/sec]" expression="#/100.00"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -553,7 +553,7 @@
    <data>16</data>
    <data>65</data>
    <data>0x42</data>
-   <data type="double" size="uint16" name="Control module voltage [V]" expression="#/1000"/>
+   <data type="double" size="uint16" name="Control module voltage [V]" expression="#/1000.00"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -803,7 +803,7 @@
    <data>66</data>
    <data>0x10</data>
    <data>0x0</data>
-   <data type="double" size="uint16" name="Freeze frame mass airflow rate [g/sec]" expression="#/100"/>
+   <data type="double" size="uint16" name="Freeze frame mass airflow rate [g/sec]" expression="#/100.00"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -1990,7 +1990,7 @@
    <data>98</data>
    <data>0x2</data>
    <data>0x13</data>
-   <data type="double" size="uint16" name="Commanded A/F ratio" expression="#/100"/>
+   <data type="double" size="uint16" name="Commanded A/F ratio" expression="#/100.00"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -4580,7 +4580,7 @@
    <data type="double" size="uint16" name="Engine speed 801C6 [rev/min]" expression="#/4"/>
    <data type="int" size="uint8" name="Vehicle speed 8036A [km/hr]"/>
    <data type="int" size="uint16" name="Vehicle speed pulse length 80888 [a.u.]"/>
-   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100"/>
+   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100.00"/>
    <data type="double" size="uint16" name="Calc'd intake barometric pressure 80CEE [kPa]" expression="#/10"/>
    <data type="int" size="uint16" name="Intake barometric pressure AtoD 82000 [a.u.]"/>
    <data type="sum" size="uint8"/>
@@ -4635,13 +4635,87 @@
    <data type="double" size="uint16" name="Engine speed 801C6 [rev/min]" expression="#/4"/>
    <data type="int" size="uint16" name="Vehicle speed pulse length 80888 [a.u.]"/>
    <data type="double" size="uint32" name="808be (F) Total fuel injector pulse length fp [microsecond injection pulse]"/>
-   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100"/>
+   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100.00"/>
    <data type="double" size="uint16" name="Calc'd intake barometric pressure 80CEE [kPa]" expression="#/10"/>
    <data type="int" size="uint16" name="Intake barometric pressure AtoD 82000 [a.u.]"/>
    <data type="int" size="uint16" name="Intake air temperature TMAP AtoD 82002 [a.u.]"/>
    <data type="int" size="uint16" name="LC2 Lambda AtoD 82004 [a.u.]"/>
    <data type="int" size="uint8" name="Oil temperature 82006 [degC]" expression="# - 40"/>
    <data type="int" size="uint8" name="Intake air temperature 80118 [degC]" expression="#*160/256 - 40"/>
+   <data type="sum" size="uint8"/>
+  </receive>
+ </pid>
+ <pid name="Intake monitor fuel trims and road dyno" mode="Fast K-Line" init="OBD init">
+  <send type="data" baud="10400" length=48>
+   <data>85</data>
+   <data>48</data>
+   <data>17</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x00</data>
+   <data>0xE4</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x30</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0xC6</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0x88</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x08</data>
+   <data>0xBE</data>
+   <data>4</data>
+   <data>0x08</data>
+   <data>0x0C</data>
+   <data>0xEC</data>
+   <data>7</data>
+   <data>0x08</data>
+   <data>0x20</data>
+   <data>0x00</data>
+   <data>1</data>
+   <data>0x08</data>
+   <data>0x01</data>
+   <data>0x18</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0xBA</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x03</data>
+   <data>0xD6</data>
+   <data>2</data>
+   <data>0x08</data>
+   <data>0x17</data>
+   <data>0xB2</data>
+   <data type="sum" size="uint8"/>
+  </send>
+  <receive type="data" baud="10400" length=36>
+   <data>170</data>
+   <data>36</data>
+   <data>17</data>
+   <data type="double" size="int16" name="Intake camshaft advance measured 800E4 [Degree overlap]" expression="#/4"/>
+   <data type="double" size="uint16" name="Absolute barometric pressure 80130 [kPa]" expression="#/10"/>
+   <data type="double" size="uint16" name="Absolute Throttle position 80132 [%]" expression="#/10.2"/>
+   <data type="double" size="uint16" name="Engine speed 801C6 [rev/min]" expression="#/4"/>
+   <data type="int" size="uint16" name="Vehicle speed pulse length 80888 [a.u.]"/>
+   <data type="double" size="uint32" name="808be (F) Total fuel injector pulse length [microsecond injection pulse]"/>
+   <data type="double" size="uint16" name="Mass airflow rate 80CEC [g/sec]" expression="#/100.00"/>
+   <data type="double" size="uint16" name="Calc'd intake barometric pressure 80CEE [kPa]" expression="#/10"/>
+   <data type="int" size="uint16" name="Intake barometric pressure AtoD 82000 [a.u.]"/>
+   <data type="int" size="uint16" name="Intake air temperature TMAP AtoD 82002 [a.u.]"/>
+   <data type="int" size="uint16" name="LC2 Lambda AtoD 82004 [a.u.]"/>
+   <data type="int" size="uint8" name="Oil temperature 82006 [degC]" expression="# - 40"/>
+   <data type="int" size="uint8" name="Intake air temperature 80118 [degC]" expression="#*160/256 - 40"/>
+   <data type="double" size="int16" name="Short term fuel trim 803BA [%]" expression="#/20.0"/>
+   <data type="double" size="int16" name="Long term fuel trim 803D6 [%]" expression="#/20.0"/>
+   <data type="int" size="int16" name="Learned LTFT below 7 g/sec idle fuel pulse offset 817B2 [microsecond]"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -4693,22 +4767,22 @@
    <data>170</data>
    <data>121</data>
    <data>17</data>
-   <data type="double" size="uint8" name="Learned load calc x-axis 1 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 2 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 3 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 4 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 5 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 6 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 7 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 8 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 9 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 10 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 11 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 12 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 13 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 14 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 15 engine speed [rpm]" expression="(#+16)*375/12"/>
-   <data type="double" size="uint8" name="Learned load calc x-axis 16 engine speed [rpm]" expression="(#+16)*375/12"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 1 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 2 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 3 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 4 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 5 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 6 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 7 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 8 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 9 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 10 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 11 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 12 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 13 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 14 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 15 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
+   <data type="double" size="uint8" name="Learned load calc x-axis 16 engine speed [rpm]" expression="(#+16.00)*375.0/12.00"/>
    <data type="double" size="uint8" name="Learned load calc y-axis 1 throt pos [%]" expression="#/2.55"/>
    <data type="double" size="uint8" name="Learned load calc y-axis 2 throt pos [%]" expression="#/2.55"/>
    <data type="double" size="uint8" name="Learned load calc y-axis 3 throt pos [%]" expression="#/2.55"/>
@@ -4725,91 +4799,91 @@
    <data type="double" size="uint8" name="Learned load calc y-axis 14 throt pos [%]" expression="#/2.55"/>
    <data type="double" size="uint8" name="Learned load calc y-axis 15 throt pos [%]" expression="#/2.55"/>
    <data type="double" size="uint8" name="Learned load calc y-axis 16 throt pos [%]" expression="#/2.55"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y1 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y1 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y2 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y2 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y3 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y3 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y4 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y4 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y5 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y5 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y6 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y6 [%]" expression="#/100"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y1 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y1 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y2 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y2 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y3 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y3 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y4 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y4 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y5 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y5 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y6 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y6 [%]" expression="#/100.00"/>
    <data type="sum" size="uint8"/>
   </receive>
   <send type="data" baud="10400" length=8>
@@ -4826,91 +4900,91 @@
    <data>170</data>
    <data>89</data>
    <data>17</data>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y6 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y7 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y7 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y8 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y8 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y9 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y9 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y10 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y10 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y11 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y11 [%]" expression="#/100"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y6 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y7 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y7 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y8 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y8 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y9 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y9 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y10 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y10 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y11 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y11 [%]" expression="#/100.00"/>
    <data type="sum" size="uint8"/>
   </receive>
   <send type="data" baud="10400" length=8>
@@ -4927,92 +5001,92 @@
    <data>170</data>
    <data>90</data>
    <data>17</data>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y11 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y12 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y12 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y13 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y13 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y14 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y14 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y15 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y15 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x1 y16 [%]" expression="#/100"/> 
-   <data type="double" size="uint8" name="Learned load calc correction x2 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x3 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x4 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x5 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x6 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x7 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x8 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x9 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x10 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x11 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x12 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x13 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x14 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x15 y16 [%]" expression="#/100"/>
-   <data type="double" size="uint8" name="Learned load calc correction x16 y16 [%]" expression="#/100"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y11 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y12 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y12 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y13 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y13 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y14 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y14 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y15 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y15 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x1 y16 [%]" expression="#/100.00"/> 
+   <data type="double" size="uint8" name="Learned load calc correction x2 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x3 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x4 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x5 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x6 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x7 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x8 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x9 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x10 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x11 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x12 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x13 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x14 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x15 y16 [%]" expression="#/100.00"/>
+   <data type="double" size="uint8" name="Learned load calc correction x16 y16 [%]" expression="#/100.00"/>
    <data type="sum" size="uint8"/>
   </receive>
  </pid>
@@ -5092,6 +5166,6 @@
   </receive>
  </pid>
 
- <RAMwrite name="Update calibration RAM from file" mode="Write to RAM" init="OBD init" baud="10400" targetAddressRAM="0x84000" targetAddressROM="0x70000" targetLength="0x6000"/>
+ <RAMwrite name="Update calibration RAM from file" mode="Write to RAM" init="OBD init" baud="10400" targetAddressRAM="0x84000" targetAddressROM="0x70000" targetLength="0x6000" read_only_once="true"/>
 
 </parameter list>

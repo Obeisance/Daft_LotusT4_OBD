@@ -135,7 +135,7 @@ public class Input implements ActionListener, FocusListener {
 				}
 				
 				//and then evaluate the equation
-				double evaluatedEqn = parser.evaluate(substitutedEquation);
+				double evaluatedEqn = parser.evaluate(substitutedEquation, this.equation);
 				//System.out.println("evaluate: " + substitutedEquation + " results in: " + evaluatedEqn);
 				//then mask the output based on the length of the input
 				

@@ -807,6 +807,7 @@ public class main_window_content implements ActionListener, MouseListener, Runna
 			}
 			
 			//practice other code
+			
 		}
 		return;
 	}

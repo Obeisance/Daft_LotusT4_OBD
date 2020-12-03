@@ -142,7 +142,7 @@ public class Output {
 				}
 				
 				//then process the equation
-				processedEquation = parser.evaluate(substitutedEquation);
+				processedEquation = parser.evaluate(substitutedEquation,this.equation);
 			}
 			else
 			{

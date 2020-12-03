@@ -29,11 +29,18 @@ public class Equation_Parser {
 		//we don't need to do anything in the constructor
 	}
 	
-	public double evaluate(String equation)
+	public double evaluate(String equation) {
+		return evaluate(equation, equation);
+	}
+	
+	public double evaluate(String equation, String orig_eqn)
 	{
 		//reduce the equation and convert to a double
 		String reduced_equation = reduce(equation);
 		double outValue = convert.Dec_string_to_double(reduced_equation);
+		//and only perform the significant figure evaluation at the end!
+		int orig_eqn_sig_figs = sig_figs_eqn(orig_eqn);
+		outValue = round_off(outValue,orig_eqn_sig_figs);
 		//System.out.println("Evaluate: " + equation + " results in string: " + reduced_equation + " which is converted to double: " + outValue);
 		return outValue;
 	}
@@ -334,7 +341,7 @@ public class Equation_Parser {
 			double leftNum = convert.Dec_string_to_double(eqns[0]);
 			double rightNum = convert.Dec_string_to_double(eqns[1]);
 			double eval = leftNum / rightNum;
-			eval = round_for_significant_figures(eval, leftNum, rightNum);
+			//eval = round_for_significant_figures(eval, leftNum, rightNum);
 			String evalString = convert.Double_to_dec_string(eval);
 			
 			//then replace the operation in the original equation string
@@ -349,7 +356,7 @@ public class Equation_Parser {
 			double leftNum = convert.Dec_string_to_double(eqns[0]);
 			double rightNum = convert.Dec_string_to_double(eqns[1]);
 			double eval = leftNum * rightNum;
-			eval = round_for_significant_figures(eval, leftNum, rightNum);
+			//eval = round_for_significant_figures(eval, leftNum, rightNum);
 			String evalString = convert.Double_to_dec_string(eval);
 			
 			//then replace the operation in the original equation string
@@ -380,7 +387,7 @@ public class Equation_Parser {
 			double leftNum = convert.Dec_string_to_double(eqns[0]);
 			double rightNum = convert.Dec_string_to_double(eqns[1]);
 			double eval = leftNum + rightNum;
-			eval = round_for_significant_figures(eval, leftNum, rightNum);
+			//eval = round_for_significant_figures(eval, leftNum, rightNum);
 			String evalString = convert.Double_to_dec_string(eval);
 			
 			//then replace the operation in the original equation string
@@ -395,7 +402,7 @@ public class Equation_Parser {
 			double leftNum = convert.Dec_string_to_double(eqns[0]);
 			double rightNum = convert.Dec_string_to_double(eqns[1]);
 			double eval = leftNum - rightNum;
-			eval = round_for_significant_figures(eval, leftNum, rightNum);
+			//eval = round_for_significant_figures(eval, leftNum, rightNum);
 			String evalString = convert.Double_to_dec_string(eval);
 			
 			//then replace the operation in the original equation string
@@ -832,6 +839,26 @@ public class Equation_Parser {
 	{
 		//round a number based on the number of digits in the two input values
 		double sigFigs = result;
+		
+		//we'll use a string representation of the numbers in order to do this
+		Conversion_Handler convert = new Conversion_Handler();
+		String inOneString = convert.Double_to_dec_string(inOne);
+		String inTwoString = convert.Double_to_dec_string(inTwo);
+		
+		//count the number of digits in each input number to figure out how many the output should have
+		int reqd_result_sig_figs = num_sig_figs(inOneString);
+		int inTwo_sig_figs = num_sig_figs(inTwoString);
+		if(inTwo_sig_figs < reqd_result_sig_figs) {
+			reqd_result_sig_figs = inTwo_sig_figs;
+		}
+		
+		//System.out.println("result " + result + ", in1 " + inOne + ", in2 " + inTwo + ", inTwo sig figs: " + inTwo_sig_figs + ", reqd sig figs " + reqd_result_sig_figs);
+		sigFigs = round_off(result, reqd_result_sig_figs);
+		//System.out.println("Fixed: " + sigFigs);
+		
+		return sigFigs;
+		
+		/*
 		int numPastDecimal = 0;
 		
 		//we'll use a string representation of the numbers in order to do this
@@ -922,21 +949,201 @@ public class Equation_Parser {
 			sigFigs = convert.Dec_string_to_double(resultString);
 		}
 		return sigFigs;
+		*/
+	}
+	
+	private double round_off(double input_val, int reqd_sig_figs) {
+		//round the input value toward 'sig figs' of digits
+		double sigFigs = input_val;
+
+		//we'll use a string representation of the numbers in order to do this
+		Conversion_Handler convert = new Conversion_Handler();
+		String resultString = convert.Double_to_dec_string(input_val);
+		int current_result_sig_figs = num_sig_figs(resultString);
+
+		if(reqd_sig_figs == 0) {
+			return input_val;
+		}
+
+		//then decide if the result needs to be shortened or lengthened
+		if(current_result_sig_figs > reqd_sig_figs) {
+			//the result string is too long
+			//we need to shorten the result string by rounding beyond the decimal
+
+			String shortened_resultString = "";
+			char sig_digit = '0';
+			char after_sig_digit = '0';
+			int digit_count = 0;
+			for (int i = 0; i < resultString.length(); i++) {
+				char current_char = resultString.charAt(i);
+				if(current_char >= 48 && current_char <= 57) {
+					digit_count += 1;
+				}
+
+				if(digit_count < reqd_sig_figs) {
+					shortened_resultString = shortened_resultString + current_char;
+				} else if(digit_count == reqd_sig_figs) {
+					shortened_resultString = shortened_resultString + current_char;
+					sig_digit = current_char;
+				} else if(digit_count > reqd_sig_figs) {
+					after_sig_digit = current_char;
+					break;
+				}
+			}
+			//System.out.println("Shortened number: " + shortened_resultString);
+
+			//then, decide if we should round the number
+			int sig_digit_int = convert.Hex_or_Dec_string_to_int("" + sig_digit);//and now the char is a string... doh!
+			double add_to_round = 0;
+			if(after_sig_digit >= 53 && sig_digit_int % 2 != 0) {
+				//we should round up!
+				//first, find how far we are past the decimal
+				int index_of_decimal = shortened_resultString.indexOf(".");
+				if(index_of_decimal >= 0) {
+					int pastDecimal = shortened_resultString.length() - 1 - index_of_decimal;
+					add_to_round = Math.pow(10,-1*pastDecimal);
+				} else {
+					add_to_round = 1;
+				}
+				//System.out.println("We should round up! -> add: " + add_to_round + " due to index of decimal: " + index_of_decimal + " and length of string: " + shortened_resultString.length());
+			}
+			//convert our value back to a double
+			sigFigs = convert.Dec_string_to_double(shortened_resultString);
+			sigFigs = sigFigs + add_to_round;
+
+		} else if (current_result_sig_figs < reqd_sig_figs) {
+			//the result string is too short, so we'll append zeros
+			if(!resultString.contains(".")) {
+				resultString = resultString.concat(".");
+			}
+
+			//the decimal should already be written, so just append...
+			int numZerosToAdd =  reqd_sig_figs - current_result_sig_figs;
+			for(int i = 0; i < numZerosToAdd; i++) {
+				resultString = resultString.concat("0");
+			}
+			sigFigs = convert.Dec_string_to_double(resultString);
+		}
+		//System.out.println("We've finished rounding: " + sigFigs);
+		return sigFigs;
+
+			/*
+			//it'll be easier to use an integer version of the number
+			boolean isNeg = false;
+			int index_of_decimal = resultString.length();
+			String resultInteger = "";
+			for (int i = 0; i < resultString.length(); i++) {
+				if(resultString.charAt(i) == '.') {
+					index_of_decimal = i;//respecting the possibility of a "-" character at the beginning
+					if(resultInteger.length() > reqd_sig_figs) { //at least include data up to the decimal point
+						reqd_sig_figs = resultInteger.length();
+					}
+				} else if(resultString.charAt(i) == '-') {
+					isNeg = true;
+				} else {
+					resultInteger = resultInteger + resultString.charAt(i);
+				}
+			}
+
+			//now that we have the integer value, truncate it to line up with the required number of significant digits
+			int index_of_sig_fig = reqd_sig_figs - 1;
+			String past_sig_fig = String.valueOf(resultInteger.charAt(index_of_sig_fig + 1));//collect the digit that will dictate how we round
+			String at_sig_fig = String.valueOf(resultInteger.charAt(index_of_sig_fig));
+			int val_past_sig_fig = convert.Hex_or_Dec_string_to_int(past_sig_fig);
+			int val_at_sig_fig = convert.Hex_or_Dec_string_to_int(at_sig_fig);
+			//convert the shortened resultInteger to an integer, round, and convert back to string (this seems dumb)
+			int resultInt = convert.Hex_or_Dec_string_to_int(resultInteger.substring(0,index_of_sig_fig+1));
+			if(val_past_sig_fig >= 5 && val_at_sig_fig % 2 != 0) {
+				//round up!
+				if(isNeg) {
+					resultInt -= 1;
+				} else {
+					resultInt += 1;
+				}
+			}
+			resultString = convert.Int_to_dec_string(resultInt);
+			System.out.println(resultString);
+
+			//then add back in the "-" and "." characters if they are required
+			if(isNeg) {
+				resultString = "-" + resultString;
+			}
+			if(resultString.length() > index_of_decimal) {
+				resultString = resultString.substring(0,index_of_decimal) + "." + resultString.substring(index_of_decimal);
+			}
+
+
+		} else if (current_result_sig_figs < reqd_sig_figs) {
+			//the result string is too short, so we'll append zeros
+			if(!resultString.contains(".")) {
+				resultString = resultString.concat(".");
+			}
+
+			//the decimal should already be written, so just append...
+			int numZerosToAdd =  reqd_sig_figs - current_result_sig_figs;
+			for(int i = 0; i < numZerosToAdd; i++) {
+				resultString = resultString.concat("0");
+			}
+		}
+
+		sigFigs = convert.Dec_string_to_double(resultString);
+		return sigFigs;
+		*/
+	}
+	
+	private int num_sig_figs(String num_to_eval) {
+		//number of significant digits - be mindful of "." and "-" characters
+		int skip_chars = 0;
+		if(num_to_eval.contains(".")){
+			skip_chars += 1;
+		} 
+		if(num_to_eval.contains("-")) {
+			skip_chars += 1;
+		}
+		return num_to_eval.length() - skip_chars;
+	}
+	
+	private int sig_figs_eqn(String orig_eqn) {
+		//scan through the original equation and pull out each term's number of significant digits. I'll ignore rules for add/subt vs mult/div
+		int sig_digits = 100;//an unreasonably high guess, but also a limitation on what the program can do
+		
+		int num_digits = 0;
+		for(int i = 1; i < orig_eqn.length(); i++) {
+			//collect numbers, stop and evaluate at each operator or space
+			char current_char = orig_eqn.charAt(i);
+			if(current_char >= 48 && current_char <= 57) {
+				//we're on a number !
+				num_digits += 1;
+			} else if(current_char != '.' && current_char != ' '){
+				//not on a number, compare to our number of significant digits, and reset the counter
+				if(num_digits < sig_digits && num_digits != 0) {
+					sig_digits = num_digits;
+				}
+				num_digits = 0;
+			}
+		}
+		if(num_digits < sig_digits && num_digits != 0) {
+			sig_digits = num_digits;
+		}
+		
+		//System.out.println(orig_eqn + " has " + sig_digits + " significant digits.");
+		return sig_digits;
 	}
 }
 
 /*
  * //let's test the equation parser
-	    String equation = "12/3 - (1+2) - 3*4";
-	    //equation = " -4 - -3 ";
-	    //equation = "(2^8 + (2^2))/8";
-	    //equation = "exp(-2^3) + (1^2)^3";
-	    //equation = "ln(exp(log(2)^3)) + (2^2)^3";
-	    //equation = "10 >> 4";
-	    //equation = "0xf0 xor 0x0f";
-	    equation = "32 | 8";
-	    Equation_Parser parse = new Equation_Parser();
-	    //fix this! figure out "-" operator!
-	    double solution = parse.evaluate(equation);
-	    System.out.println(equation + " = " + solution);
+		    String equation = "12/3 - (1+2) - 3*4";
+			    //equation = " -4 - -3 ";
+			    //equation = "(2^8 + (2^2))/8";
+			    //equation = "exp(-2^3) + (1^2)^3";
+			    //equation = "ln(exp(log(2)^3)) + (2^2)^3";
+			    //equation = "10 >> 4";
+			    //equation = "0xf0 xor 0x0f";
+			    //equation = "32 | 8";
+				equation = "(3.0000+16.000)*375.00/12.000";
+			    Equation_Parser parse = new Equation_Parser();
+			    //fix this! figure out "-" operator!
+			    double solution = parse.evaluate(equation);
+			    System.out.println(equation + " = " + solution);
 	    */
