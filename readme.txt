@@ -13,7 +13,7 @@ a check list of loggable parameters.
 
 The program is a work in progress.
 
-This program uses Java 8. It also uses a Java D2XX 
+This program uses 32-bit Java 8. It also uses a Java D2XX 
 library for the FTDI cable: "JavaFTD2XX-0.2.6.jar"
 Embarrassingly, I cannot figure out where I got this library from.
 

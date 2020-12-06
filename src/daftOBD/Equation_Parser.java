@@ -974,23 +974,30 @@ public class Equation_Parser {
 			char sig_digit = '0';
 			char after_sig_digit = '0';
 			int digit_count = 0;
+			boolean decimal_found = false;
 			for (int i = 0; i < resultString.length(); i++) {
 				char current_char = resultString.charAt(i);
 				if(current_char >= 48 && current_char <= 57) {
 					digit_count += 1;
+				} else if(current_char == 46) {
+					decimal_found = true;
+				}
+				
+				if(!decimal_found || decimal_found && digit_count <= reqd_sig_figs) {
+					shortened_resultString = shortened_resultString + current_char;
+					if(current_char != 46) {
+						sig_digit = current_char;//we don't want the decimal as our significant digit
+					}
 				}
 
-				if(digit_count < reqd_sig_figs) {
-					shortened_resultString = shortened_resultString + current_char;
-				} else if(digit_count == reqd_sig_figs) {
-					shortened_resultString = shortened_resultString + current_char;
-					sig_digit = current_char;
-				} else if(digit_count > reqd_sig_figs) {
-					after_sig_digit = current_char;
-					break;
+				if((digit_count > reqd_sig_figs && decimal_found) || i == resultString.length()-1) {
+					if(current_char != 46) {
+						after_sig_digit = current_char;//we take whatever the last character is in the number - be careful, we may end on a '.'
+						break;
+					}
 				}
 			}
-			//System.out.println("Shortened number: " + shortened_resultString);
+			//System.out.println("Shortened number: " + shortened_resultString + " after sig digit: " + after_sig_digit + " sig digit: " + sig_digit);
 
 			//then, decide if we should round the number
 			int sig_digit_int = convert.Hex_or_Dec_string_to_int("" + sig_digit);//and now the char is a string... doh!
@@ -1138,10 +1145,11 @@ public class Equation_Parser {
 			    //equation = "(2^8 + (2^2))/8";
 			    //equation = "exp(-2^3) + (1^2)^3";
 			    //equation = "ln(exp(log(2)^3)) + (2^2)^3";
-			    //equation = "10 >> 4";
+			    //equation = "10 >> 3";
 			    //equation = "0xf0 xor 0x0f";
 			    //equation = "32 | 8";
-				equation = "(3.0000+16.000)*375.00/12.000";
+				//equation = "(3.000+16.000)*375.00/12.000";
+		    	equation = "750/4";
 			    Equation_Parser parse = new Equation_Parser();
 			    //fix this! figure out "-" operator!
 			    double solution = parse.evaluate(equation);
