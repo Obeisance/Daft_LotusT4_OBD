@@ -1,0 +1,835 @@
+2005 Lotus Elise serial communication settings for OBD-II
+Baud rate: 10.419 kBaud (4.001 MHz reference frequency)
+
+Store incoming packet starting at: 0x81162
+
+[The incoming data reading routine uses a byte at
+	0x807C8 to count the number of bytes received]
+
+Store outgoing packet starting at: 0x811E2 
+
+[The sending data routine uses a byte at 0x807CE as
+	a position counter to track which byte within the
+	packet has been sent, and uses a byte at 0x807CC 
+	to store the number of bytes (excluding the 
+	sumByte) in the packet]
+
+Before OBD comms can work, send an init packet in a sequence of
+	9 events. The following packet will satisfy the
+	sequence: send 0x33 at 5 baud, switch to 10.4 kBaud and
+	receive 0x55, 0x94, 0x94, send 0x6B and receive 0xCC
+	(this is the regular ISO 9141 slow init)
+
+
+Send an OBD query packet to the car to get an OBD response
+Query Packet: 104,106,241,MODE Byte,PID byte1,SumByte 
+	(note: sumByte is the byte-masked sum of the other 
+	bytes in the packet)
+
+a query packet may have zero, one, two or more PID bytes,
+	if necessary.
+
+Allowable MODE bytes: 
+1 - 0x1 - real time data - 6 byte packet (1 mode byte, 1 PID byte)
+2 - 0x2 - freeze frame data - 7 byte packet (1 mode byte, 2 PID bytes)
+3 - 0x3 - read diagnostic trouble codes - (1 mode byte, 0 PID bytes)
+4 - 0x4 - clear diagnostic trouble codes - (1 mode byte, 0 PID bytes)
+5 - 0x5 - oxygen sensor monitoring test results (2 PIDs) - 7 byte packet (1 mode byte, 2 PID bytes (second is 1))
+6 - 0x6 - other component test results (1 PID) - 6 byte packet (1 mode byte, 1 PID byte)
+7 - 0x7 - pending diagnostic trouble codes - (1 mode byte, 0 PID bytes)
+8 - 0x8 - control onboard components (?) (1 PID) - 11 byte packet
+9 - 0x9 - request vehicle information - 6 byte packet (1 mode byte, 1 PID byte)
+34 - 0x22 - enhanced performance data - 7 byte packet (1 mode byte, 2 PID bytes)
+47 - 0x2F - Vehicle functions (3 PIDs, first two bytes are one PID) - 7 byte packet
+59 - 0x3B - VIN reset (9 PIDs) - 11 byte packet (1 mode byte, 1 PID byte, X data bytes) 
+
+
+if an unallowed MODE is requested, the ECU will respond with:
+72,107,16,127,18,sumByte
+
+visit: https://en.wikipedia.org/wiki/OBD-II_PIDs
+in order to interpret the packet responses for modes 1 - 9
+
+Odd notes: 
+1 - In order for the OBD packet assembler to work, the 
+	byte at 0x807BC must equal '9': this is set up
+	through the 9 part init sequence found at 0x230B2
+	and called via the ECU's periodic interrupt sequence.
+	The OBD-II packet response occurs in-line via the
+	main ECU loop, and the serial packet sender/receiver
+	occurs via its own interrupt routine.
+2 - at the end of each serial response, a byte is cleared
+	at 0x807CA and at 0x807C8 (number of incoming bytes)
+	and the word at 0x807D2 is set to '1000' (this
+	sets a 5000 ms timer for OBD active)
+3 - the serial packet send or receive function stores an
+	error counter at 0x807D6; upon 2 errors, the function
+	clears this byte as well as a byte at 0x807C2 and
+	at 0x807BC
+4 - as outgoing serial data is sent, the packet sender
+	stores a sent byte at 0x807D4 and compares it to
+	the value in the packet at 0x811e2 to confirm
+	accuracy
+5 - The OBD response assembler has the ability to respond to 
+	certain queries with more than one packet:
+	MODE3, MODE9 PIDs 2 and 4.
+	if the value at 0x807c8 (number of recv'd bytes)
+	is less than 5:
+	check to make sure that the byte at 0x807cc
+	(number of outgoing bytes),the byte at 0x807ce
+	(position counter of sending bytes), and the 
+	byte at 0x807d8 (this byte is decremented each 
+	time the OBD init routine is accessed after 
+	the init is received) are zero,
+	and that the byte at 0x80832 (related to the
+	number of DTCs to be read) is not zero
+	if all of these pass, a serial packet response
+		occurrs as if MODE 0x3 was requested
+		(this sets byte at 0x80832 to 0)
+		then the byte at 0x807d8 is set to '9'
+	if all the above checks pass, but the byte
+	at 0x80832 is zero and the byte at 80d44 is not 0,
+	(80d44 is set to '1' by calling some mode 9 PIDs)
+	use the short message
+	serial packet response assembler to return
+	the VIN in ASCII or the CAL ID, year make and model
+	in ASCII in pieces each time the function is called
+	and then the byte at 0x807d8 is set to '9' each time
+	the function is called
+6 - other serial settings: refer to MC68376 data sheet
+	;LOOPS 0: normal SCI operation - no looping, feedback path disabled
+	;WOMS 0: if configured as an output, TXD is a normal CMOS output, rather than open-drain output
+	;ILT 0: short idle line detect (start count on first one, rather than after stop bit(s))
+	;PT 0: even parity
+	;PE 0: SCI parity disabled
+	;M 0: mode select: 10-bit SCI frame (1 start bit, 8 data bits, 1 stop bit)
+	;WAKE 0: SCI receiver awakened by idle-line detection (as opposed to awakened by address mark/last bit set)
+	;TIE 0: SCI transmit interrupts (TDRE) disabled
+	;TCIE 0: SCI transmit complete interrupt disabled
+	;RIE 0: SCI receiver and OR interrupts disabled
+	;ILIE 0: idle line interrupts disabled
+	;TE 1: SCI transmitter enabled (TXD pin dedicated to SCI)
+	;RE 1: SCI receiver enabled
+	;RWU 0: normal operation: all received data is recognized (rather than ignored until receiver awakened)
+	;SBK 0: normal operation (no break frame transmitted after completion of current frame)
+
+
+Details of response to MODE and PID combinations:
+------------------------------------
+subroutine @ 0x234e2: pass in byte 4 past 0x81162
+	;input a byte: this routine is MODE 0x1 OBD-II serial packet constructor, input byte is PID
+	;if the input byte is '0x0'
+	;	PIDs supported 0x0 through 0x20
+	;	starting at 0x811e2, write bytes: 72,107,16,65,0,($807da).L,($807dc).L,($807de).L,($807e0).L, sum of ($811e2).L-($811ea).L
+	;	put byte '9' onto (0x807cc).L, 0x0 onto (0x807ce).L, put '72' onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0x1'
+	;	monitor status since DTCs cleared
+	;	starting at 0x811e2, write bytes: 72,107,16,65,1,($8082e).L,($86c96).L,($86c97).L,($80830).L, sum of ($811e2).L-($811ea).L
+	;	put byte '9' onto (0x807cc).L, 0x0 onto (0x807ce).L, put '72' onto D0 and onto the SCDR to send over serial
+	;	$8082e_byte OBD mode 0x1 PID 0x1 bit7 DTCon bit 0-6 numDTCs
+	;	$86c96_byte OBD mode 0x1 PID 0x1 testFlags components fuel system misfire monitor type
+	;	$86c97_byte OBD mode 0x1 PID 0x1 testFlags test available
+	;	$80830_byte OBD mode 0x1 PID 0x1 testFlags test incomplete
+	;if the input byte is '0x2'
+	;	DTC which caused freeze frame
+	;	calculate a word: input word at 0x803ec divided by 8
+	;	D0 = D3*8 + (input long word)/(D2) from each (of 4) iteration
+	;	D2 cycles down through 1000, 100, 10, or 1, and (input long word) 
+	;	is the remainder from that divide on subsequent passes
+	;	assemble a packet onto 0x811e2: 72,107,16,65,input byte, calc'd word upper byte, calc'd word lower byte, sum of bytes
+	;	put '7' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0x3'
+	;	fuel system status
+	;	word size data to send: 8*(word at 0x803BE)
+	;	$803bf_byte OBD mode 0x1 PID 0x3 byte2 fuel system status bit0-open loop due to insufficient temp bit1-closed loop using O2 sensor 
+	;		for feedback bit2-open loop due to load or fuel cut bit3-open loop due to system failure
+	;	assemble a packet onto 0x811e2: 72,107,16,65,input byte, send word upper byte, send word lower byte, sum of bytes
+	;	put '7' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0x4'
+	;	calculated engine load
+	;	if the word at 0x801C6 is zero, send zero as the data byte
+	;	data is byte from 0x80d22 = (%load corr for STP)*2.55
+	;	assemble a packet starting at 0x811e2: 72,107,16,65,input byte,data byte = (byte from 0x80d22),sum of bytes
+	;	put '6' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0x5'
+	;	engine coolant temperature
+	;	data is byte masked 160*(word at 0x8012A)/256 = coolant temp + 40 deg C
+	;	assemble a packet starting at 0x811e2: 72,107,16,65,input byte,data byte,sum of bytes
+	;	put '6' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0x6'
+	;	Short term fuel trim: bank 1
+	;	data byte is from 0x80414 = (%fuel trim + 100%)*1.28
+	;	assemble a packet starting at 0x811e2: 72,107,16,65,input byte,data byte,sum of bytes
+	;	put '6' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0x7'
+	;	Long term fuel trim: bank 1
+	;	data byte is from 0x80416 = (%fuel trim + 100%)*1.28
+	;	assemble a packet starting at 0x811e2: 72,107,16,65,input byte,data byte,sum of bytes
+	;	put '6' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto D0 and onto the SCDR to send over serial
+	;if the input byte is '0xC'
+	;	engine speed
+	;	data is word from ($801c6).L = rpm*4
+	;if the input byte is '0xD'
+	;	vehicle speed
+	;	data is byte from ($8036a).L = kph
+	;if the input byte is '0xE'
+	;	timing advance	
+	;	data is byte masked (word at 0x8026C)/2+128
+	;if the input byte is '0xF'
+	;	intake air temperature
+	;	data is byte masked (word at 0x80128)*160/256 = IAT + 40 deg C
+	;if the input byte is '0x10'
+	;	mass airflow rate
+	;	data is word from ($80ce6).L = (g/sec)*100
+	;if the input byte is '0x11'
+	;	throttle position
+	;	data is byte masked (word from 0x80132)/4 = (%throt pos)*2.55
+	;if the input byte is '0x13'
+	;	oxygen sensors present
+	;	data is byte from ($86c99).L
+	;if the input byte is '0x14'
+	;	Oxygen sensor 1 voltage/short term fuel trim
+	;	if word at ($8013a).L is greater than 261, data byte 1 is 255
+	;	otherwise, data byte 1 is: (word from 0x8013a)*255/261 = (volts)*200
+	;	data byte 2 is always from (0x80414).L = (%fuel trim + 100%)*1.28
+	;if the input byte is '0x15'
+	;	Oxygen sensor 2 voltage/short term fuel trim
+	;	if word at ($8013c).L is greater than 261, data byte 1 is 255
+	;	otherwise, data byte 1 is: (word from ($8013c).L)*255/261 = (volts)*200
+	;	data byte 2 is always #255 = (%fuel trim + 100%)*1.28
+	;if the input byte is '0x1C'
+	;	OBD standards this vehicle conforms to
+	;	data byte is from ($86c9a).L
+	;if the input byte is '0x1F'
+	;	run time since engine start
+	;	data is word masked (long word from ($80e86).L)/200 = seconds
+	;if the input byte is '0x20'
+	;	PIDs supported 0x21-0x40
+	;	data is 1 byte each at ($807e2).L,($807e4).L,($807e6).L,($807e8).L
+	;if the input byte is '0x21'
+	;	distance traveled with MIL on
+	;	data is word masked (long word from ($8112a).L)/10000 = kilometer
+	;if the input byte is '0x2E'
+	;	commanded evaporative purge
+	;	data is byte masked ($802e2).L = (evap purge %)*2.55
+	;if the input byte is '0x2F'
+	;	fuel tank level
+	;	data is byte from ($80394).L = (%fuel level)*2.55
+	;if the input byte is '0x33'
+	;	absolute barometric pressure
+	;	data is is byte masked (sign extended to long (word from ($80130).L))/10 = (kPa)
+	;if the input byte is '0x40'
+	;	PIDs supported 0x41-0x60
+	;	data is on byte each from ($807ea).L,($807ec).L,($807ee).L,($807f0).L
+	;if the input byte is '0x42'
+	;	control module voltage
+	;	data is word from ((word from ($80146).L)*18 = (volts)*1000
+	;if the input byte is '0x43'
+	;	absolute load value
+	;	if the word value at 0x801c6 is 0, data word is 0x0000
+	;	otherwise data is word masked (byte from ($80d24).L) = (% absolute load)*2.55
+	;if the input byte is '0x45'
+	;	relative throttle position = (% zero corr throt pos)*2.55
+	;	data is abs((byte from 0x8405B)*((sign extended to long (word at 0x80132)) - (sign extended (word at 0x80e3e))))/256
+	;	if that value is greater than 255, data = 255
+	;if the input byte is any other value
+	;	send packet: 72,107,16,127,18,sum of bytes
+------------------------------------
+
+subroutine @ 0x23f3e: pass in byte 4 past 0x81162 and byte 5 past 0x81162 each on separate long words
+	;OBD-II MODE 0x2 serial packet constructor, input two long words (each with a byte of data)
+	;if input byte 1 is 0x0:
+	;	list allowable OBD PIDs 0x1 to 0x20
+	;	make a serial packet starting at 0x811e2 with structure: 72,107,16,66,input byte 1, input byte 2, 
+	;	byte from ($807f2).L, byte from ($807f4).L, byte from ($807f6).L, byte from ($807f8).L, sum of bytes
+	;	put '10' onto 0x807CC, clear byte at 0x807CE, put the first byte of the packet onto the SCDR to send over serial
+	;if input byte 1 is 0x2:
+	;	freeze DTC - code which caused freeze frame
+	;	calculate data to send: input (word at 0x803EC)/8
+	;	D0 = D0*8 + (input long word)/(D2) from each of 4 iterations
+	;	D2 is 1000, 100, 10, or 1, and (input long word) is the remainder from that divide on subsequent passes
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,66,input byte 1, input byte 2, upper byte of data,
+	;	lower byte of data,sum of bytes
+	;	set 0x807CC to 8, clear a byte at 0x807CE, and move the first byte of the packet onto the SCDR to send over serial
+	;if input byte 1 is 0x3:
+	;	fuel system status
+	;	data is (byte from 0x803F0)*256
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,66,input byte 1, input byte 2, upper byte of data word,
+	;	lower byte of data word,sum of bytes
+	;	set 0x807CC to 8, clear a byte at 0x807CE, and move the first byte of the packet onto the SCDR to send over serial
+	;if input byte 1 is 0x4:
+	;	calculated engine load
+	;	data is byte at 0x803F2 = (%load corr for STP)*2.55
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,66,input byte 1, input byte 2, data byte, sum of bytes
+	;	set 0x807CC to '7' and clear a byte at 0x807CE, move the first byte of the packet onto the SCDR to send over serial
+	;if input byte 1 is 0x5:
+	;	engine coolant temperature
+	;	data is byte at ($803fe).L = (coolt temp + 40 deg C)
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,66,input byte 1, input byte 2, data byte, sum of bytes
+	;	set 0x807CC to '7' and clear a byte at 0x807CE, move the first byte of the packet onto the SCDR to send over serial
+	;if input byte 1 is 0x6:
+	;	short term fuel trim: bank 1
+	;	data is byte at ($803fa).L = (STFT % + 100%)*1.28
+	;in input byte 1 is 0x7:
+	;	long term fuel trim: bank 2
+	;	data is byte at ($803fc).L = (LTFT % + 100%)*1.28
+	;if input byte 1 is 12 (0xC):
+	;	engine speed
+	;	data is word at ($803ee).L = rpm*4
+	;if input byte 1 is 13 (0xD):
+	;	vehicle speed
+	;	data is byte at ($803f4).L = kph
+	;if input byte 1 is 16 (0x10):
+	;	mass air flow rate
+	;	data is word at ($803f6).L = (g/sec)*100
+	;if input byte 1 is 17 (0x11):
+	;	throttle position
+	;	data is byte at ($803f8).L = (% throt pos)*2.55
+	;if input byte 1 is anything else:
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,127,18,sum of bytes
+	;	set 0x807CC to '5' and clear a byte at 0x807CE, move the first byte of the packet onto the SCDR to send over serial
+--------------------------------------------
+
+subroutine @ 0x2563C: OBD-II mode 0x3 serial packet constructor
+	;	read in DTCs
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,67,X,X,X,X,X,X,sum of bytes
+	;	X = data byte, which is calculated as follows:
+	;	if the (byte at 0x80834) is 0
+	;		clear a byte at 0x80832, all data bytes are '0'
+	;	if the (byte at 0x80834) - (byte at 0x80832) is greater than 3
+	;		calculate our data in pairs of bytes by incrementing D3 from 0,1,2: input into loop: 
+	;			word at ($0,0x81264,((byte at 0x80832)+D3.B)*2) (on long word)
+	;			D0 = D0*8 + (input long word)/(D2) from each iteration
+	;			D2 is 1000, 100, 10, or 1, and (input long word) is the remainder from that divide on subsequent passes
+	;			D0 is then a long word, both bytes are data for the serial packet
+	;	if the (byte at 0x80834) - (byte at 0x80832) is less than or equal to 3
+	;		if the (byte at 0x80834) is less than or equal to the (byte at 0x80832)
+	;			set byte at 0x80832 to zero, all of the data bytes in serial packet = '0'
+	;		if the (byte at 0x80834) is greater than the (byte at 0x80832)
+	;			calculate our data in pairs of bytes by incrementing D3 from 0, up to 
+	;			(byte at 0x80834) - (byte at 0x80832) - 1: input into loop: 
+	;				word at ($0,0x81264,((byte at 0x80832)+D3.B)*2) (on long word)
+	;				D0 = D0*8 + (input long word)/(D2) from each iteration
+	;				D2 is 1000, 100, 10, or 1, and (input long word) is the remainder from that divide on subsequent passes
+	;				D0 is then a long word, both bytes are data for the serial packet
+	;			the rest of the serial packet data bytes are cleared
+	;	set 0x807CC to '10', clear a byte at 0x807CE, put the first byte of the packet onto the SCDR to send over serial
+----------------------------------------------
+
+subroutine @ 0x257e0: MODE 0x4 OBD-II serial packet generator
+	;clear DTCs
+	;assemble a serial packet starting at 0x811e2: 72,107,16,68,sum of bytes
+	;put '4' onto 0x807CC, clear a byte at 0x807CE, put the first byte of the packet onto the SCDR to send over serial
+	;this routine also has many subroutine calls which affect data
+--------------------------------------------------
+
+subroutine @ 0x260FA: pass in 4th and 5th serial bytes
+	;OBD-II mode 0x5 serial packet assembler, input two bytes (each on a long word)
+	;if second input byte is not '1', or if the first input byte is larger than 8
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,127,18,sum of bytes
+	;	set 0x807cc to '5', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;otherwise:
+	;if first input byte is 0x0
+	;	bit flags that indicate which PIDs are available 0x1-0x20
+	;	X is data, data is byte from: ($80838).L,($8083a).L,($8083c).L,($8083e).L
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,0,1,X,X,X,X,sum of bytes
+	;	set 0x807cc to '10', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x1
+	;	STFT front O2 sensor rich voltage target
+	;	X is data, data is byte from: ($841fb).L*255/261 = (volts)*200
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,1,1,X,sum of bytes
+	;	set 0x807cc to '7', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x2 
+	;	STFT front O2 sensor lean voltage target
+	;	X is data, data is byte from: ($841fd).L*255/261 = (volts)*200
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,2,1,X,sum of bytes
+	;	set 0x807cc to '7', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x3 
+	;	X is data, data is byte from: ($86d0b).L,
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,3,1,X,sum of bytes
+	;	set 0x807cc to '7', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x4 
+	;	X is data, data is byte from: ($86d09).L,
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,4,1,X,sum of bytes
+	;	set 0x807cc to '7', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x5 
+	;	X is data, data is byte from: ($80775).L, ($86c69).L
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,5,1,X,0,X,sum of bytes
+	;	set 0x807cc to '9', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x6 
+	;	X is data, data is byte from: ($80773).L, ($86c67).L
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,6,1,X,0,X,sum of bytes
+	;	set 0x807cc to '9', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x7 
+	;	X is data, data is byte from: ($8077b).L,
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,7,1,X,sum of bytes
+	;	set 0x807cc to '7', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+	;if first input byte is 0x8 
+	;	X is data, data is byte from: ($80779).L,
+	;	assemble a serial packet starting at 0x811e2: 72,107,16,69,8,1,X,sum of bytes
+	;	set 0x807cc to '7', clear a byte at 0x807ce, move first byte of packet onto SCDR to send over serial
+--------------------------------------------
+
+subroutine @ 0x27ef6: pass in 4th serial byte
+	;OBD-II MODE 0x6 serial packet generator: pass in one byte on a long word
+	;if the passed in byte is greater than 5
+	;	assemble a serial packet starting at 0x811e2:72,107,16,127,sum of bytes
+	;	set byte at 0x807cc to '5', clear a byte at 0x807ce, put first byte of packet onto SCDR to send over serial
+	;otherwise:
+	;	X is data byte
+	;	assemble a serial packet starting at 0x811e2:72,107,16,70,input byte,1,X,X,X,X,sum of bytes
+	;	set byte at 0x807cc to '10', clear a byte at 0x807ce, put first byte of packet onto SCDR to send over serial
+	;if the passed in byte is 0
+	;	X is data byte: ($8086e).L,($80870).L,($80872).L,($80874).L
+	;	assemble a serial packet starting at 0x811e2:72,107,16,70,input byte,255,X,X,X,X,sum of bytes
+	;	set byte at 0x807cc to '10', clear a byte at 0x807ce, put first byte of packet onto SCDR to send over serial
+	;if the passed in byte is 1
+	;	data is from: word at ($80464).L, word at ($86c5a).L
+	;if the passed in byte is 2
+	;	data is from: word at ($80c54).L, byte 0, then byte at ($80c58).L
+	;if the passed in byte is 3
+	;	data is from: word at ($80c52).L, byte 0, then byte at ($80c56).L
+	;if the passed in byte is 4
+	;	data is from: word at ($803d6).L, word at ($86c5e).L
+	;if the passed in byte is 5
+	;	data is from: word at ($805fe).L, byte 0, then byte at ($805bc).L
+-----------------------------------------------
+
+subroutine @ 0x28526: OBD-II MODE 0x7 serial packet assembler:
+	;assemble a serial packet starting at 0x811e2:72,107,16,71,X,X,X,X,X,X,sum of bytes
+	;set the byte value at ($807cc).L to '10', clear a byte at 0x807ce, move the first byte of the serial packet onto SCDR to send over serial
+	;X is data bytes calculated as follows:
+	;	if the byte value at 0x80878 is zero, all data bytes are '0'
+	;	if (byte at 0x80878) - (byte at 0x80876) is greater than 3
+	;		calculate the data bytes in the following loop, incrementing D3 from 0 through 2:
+	;			pass in word from (0,0x81364,((byte at 0x80876)+D3)*2), (in a long word)
+	;			D0 = D0*8 + (input long word)/(D2) from each iteration
+	;			D2 is 1000, 100, 10, or 1, and (input long word) is the remainder from that divide on subsequent passes
+	;		this calculation yields a word value and is performed 3x, thereby filling the data bytes in the serial packet
+	;	if (byte at 0x80878) - (byte at 0x80876) is less than or equal to 3
+	;		if (byte at 0x80878) is less than or equal to the (byte at 0x80876), all serial data bytes are '0'
+	;		if (byte at 0x80878) - (byte at 0x80876) is 1, 2 or 3, an offset
+	;			calculate the data bytes in the following loop, incrementing D3 from 0 through the calculated offset:
+	;				pass in word from (0,0x81364,((byte at 0x80876)+D3)*2), (in a long word)
+	;				D0 = D0*8 + (input long word)/(D2) from each iteration
+	;				D2 is 1000, 100, 10, or 1, and (input long word) is the remainder from that divide on subsequent passes
+	;			this calculation yields a word value and is performed (offset) number of times
+	;			thereby filling 2, or 4 data bytes in the serial packet. The rest of the data bytes are '0'
+----------------------------------------------------
+
+subroutine @ 0x2e6a4: pass in 4th byte from serial packet
+	;OBD-II MODE 0x8 serial packet assembler: input byte on a long word
+	;assemble a a serial packet starting on 0x811e2: 
+	;if the input byte is 0: 
+	;	this is a bit flag list of available PIDs 0x1-0x20
+	;	packet: 72,107,16,72,0,0,X,X,X,X,sum of bytes
+	;	X are data bytes as follows: byte from each of ($80d62).L, ($80d64).L, ($80d66).L, ($80d68).L
+	;	clear a byte at 0x807ce, set 0x807cc to '10', move first byte of serial packet onto SCDR to send over serial, end routine
+	;if the input byte is 1:
+	;	if the word at ($801c6).L is zero and if the word at ($86cd4).L is not zero
+	;		packet: 72,107,16,72,1,0,0,0,0,0,sum of bytes
+	;		move byte 24 onto ($80d6a).L
+	;		move a word from ($86cd4).L onto ($80d6c).L
+	;		move byte 255 onto ($80862).L
+	;		clear a byte at 0x807ce, set 0x807cc to '10', move first byte of serial packet onto SCDR to send over serial, end routine
+	;	if the word at ($801c6).L is not zero or (if the word at ($801c6).L is zero and the word at ($86cd4).L is zero)
+	;		packet: 72,107,16,127,8,34,sum of bytes
+	;		move byte 0 onto ($80d6a).L and onto ($80862).L
+	;		clear a byte at 0x807ce, set 0x807cc to '6', move first byte of serial packet onto SCDR to send over serial, end routine
+	;if the input byte is greater than 1:
+	;	packet: 72,107,16,127,18,sum of bytes
+	;	clear a byte at 0x807ce, set 0x807cc to '5', move first byte of serial packet onto SCDR to send over serial, end routine
+-----------------------------------------------
+
+subroutine @ 0x2ddc0: pass in 4th serial packet byte
+	;OBD-II MODE 0x9 serial packet assembler, input byte on long word
+	;assemble a serial packet starting at 0x811e2: 72,107,16,73,[other bytes],sum of bytes
+	;at end set 0x807cc to number of bytes, clear byte at 0x807ce and put the first serial
+	;packet byte onto SCDR to send over serial
+	;if input byte is 0:
+	;reports supported PIDs 0x1 to 0x20
+	;	clear the byte at 0x80D46
+	;	other bytes are: 0,1,byte from ($80d48).L, ($80d4a).L, ($80d4c).L, ($80d4e).L
+	;if input byte is 1:
+	;reports the number of packets used to transmit the VIN with
+	;	PID 2
+	;	set byte at 0x80d46 to 1
+	;	other bytes are: 1,5
+	;if input byte is 2:
+	;reports the VIN in ASCII
+	;	set byte at 0x80d46 to 2,
+	;	set byte at 0x80d44 to 1
+	;	other bytes are: 2,1,0,0,0, byte from ($80d50).L
+	;if input byte is 3:
+	;reports the number of packets used to transmit the 
+	;Calibration ID in PID 4
+	;	set byte at 0x80d46 to 3
+	;	other bytes are: 3,4
+	;if input byte is 4:
+	;reports the calibration ID
+	;	set byte at 0x80d46 to 4,
+	;	set byte at 0x80d44 to 1
+	;	other bytes are: 4,1,byte from ($87656).L,($87657).L,($87658).L,($87659).L
+	;if input byte is 5:
+	;reports the number of packets used to transmit the 
+	;Calibration validation number in PID6
+	;	set byte at 0x80d46 to 5
+	;	other bytes are: 5,1
+	;if input byte is 6:
+	;reports the CVN
+	;	end routine if word at 0x803a4 is not zero
+	;	set byte at 0x80d46 to 6
+	;	set byte at 0x80d44 to 1
+	;	other bytes are: 6,1,0,0 word at ($803a2).L
+	;if input byte is greater than 6:
+	;	set byte at 0x80d46 to 254
+	;	serial message (instead of other): 72,107,16,127,18,sum of bytes
+-------------------------------------------------
+
+subroutine @0x243c4: pass in the 4th and 5th serial byte combined as a word
+	;OBD-II MODE 0x22 serial packet assembler, pass in a word
+	;assemble a serial packet starting at 0x811e2, clear 0x807ce and put the number
+	;of bytes in the serial packet (less the sum) onto 0x807CC, then put the first serial packet
+	;byte onto the SCDR to send over serial
+	;if input word is 0x200: packet: 72,107,16,98,2,0,($807fc).L,($807fe).L,($80800).L,($80802).L,sum of bytes
+	;	this lists available PIDs via a bit mask
+	;if input word is 0x201: packet: 72,107,16,98, input word upper byte, input word lower byte, byte from ($80c46).L,sum of bytes - jump command index
+	;if input word is 0x203: packet: 72,107,16,98,upper byte of input word, lower byte of input word, 4 bytes of long word at ($817a8).L, sum of bytes - a counter
+	;if input word is 0x204: packet: 72,107,16,98, input word upper byte, input word lower byte, byte from ($808ee).L,sum of bytes - ?
+	;if input word is 0x205: packet: 72,107,16,98,upper byte of input word, lower byte of input word, 2 bytes of word at (0x808ba).L, sum of bytes - fuel injection pulse length in microseconds
+	;if input word is 0x206: packet: 72,107,16,98, input word upper byte, input word lower byte, byte from ($80916).L,sum of bytes - ?
+	;if input word is 0x207: packet: 72,107,16,98,upper byte of input word, lower byte of input word, 2 bytes of word at ($80b7a).L, sum of bytes - setpoint for VVT, unit is 220 - (crank angle in degrees BTDC)*40/10
+	;if input word is 0x208: packet: 72,107,16,98,upper byte of input word, lower byte of input word, 2 bytes of word at ($800e4).L, sum of bytes - measured VVT position, unit is 220 - (crank angle in degrees BTDC)*40/10
+	;if input word is 0x209: packet: 72,107,16,98, input word upper byte, input word lower byte, byte from ($80b78).L,sum of bytes - flag for high cam engagement
+	;if input word is 0x20a: packet: 72,107,16,98,upper byte of input word, lower byte of input word, 2 bytes of word at ($8045a).L, sum of bytes - lookup based on MAF/100
+	;if input word is 0x20b: 2 bytes from word at ($80458).L - lookup based on MAF/100
+	;if input word is 0x20c: byte from ($80388).L -> calculated gear
+	;if input word is 0x20d: word masked value {sign extended to 32 bits [(word from ($808e8).L)-600]}/5 - target idle speed - unit is ((RPM)-600)/5
+	;if input word is 0x20e-0x211: 16 bytes in groups of 4 from (0xFFE0).L -> this is the address of the ECU part number (16 ASCII chars, ex. "C121E0001F K0303")
+	;if input word is 0x212: 2 bytes from word at ($80138).L - ??
+	;if input word is 0x213: 2 bytes from word at ($808d8).L - commanded A/F - unit is (A/F)*100
+	;if input word is 0x214: byte from ($80002).L - ??
+	;if input word is 0x215: byte from ($fffa41_Port C data (PORTC)).L
+	;if input word is 0x216: byte from ($fffa19_Port F data (PORTF0)).L
+	;if input word is 0x218: word from ($817b0).L - ??
+	;if input word is 0x219: word from ($817b2).L - ??
+	;if input word is 0x21a: word from ($817b4).L - ??
+	;if input word is 0x21b: word from ($817b6).L - ??
+	;if input word is 0x21c-0x21f: 16 bytes in groups of 4 starting at address ($87656).L -> this is the Cal ID in ASCII (ex. "B121E0002H      ")
+	;if input word is 0x220: packet: 72,107,16,98,2,32,byte each from ($80804).L,($80806).L,($80808).L,($8080a).L,sum of bytes
+	;	this lists available PIDs via a bit mask
+	;if input word is 0x221-0x224: 16 bytes in groups of 4 starting at address ($87666).L -> this is the make, model and year in ASCII (ex. "Lotus Elise MY05")
+	;if input word is 0x225-0x23c: 24 groups of 4 bytes starting at ($80ab0).L (through the 4 bytes at 0x80b0c)
+	;	this returns the time at 0-1.5%, 1.5-15%, 15-25%, 25-35%, 35-50%, 50-65%, 
+	;	65-80%, 80-100% throttle, then time at 500-1500, 1500-2500, 2500-3500,
+	;	3500-4500, 4500-5500, 5500-6500, 6500-7000, and 7000-7500 rpm, then 
+	;	time at wheel speed 0-30, 30-60, 60-90, 90-120, 120-150, 150-180,
+	;	180-210 and 210-240 kph, (32bit counter, 0.1 second increments)
+	;if input word is 0x240: packet: 72,107,16,98,2,32,byte each from ($8080c).L,($8080e).L,($80810).L,($80812).L,sum of bytes
+	;	this lists available PIDs via a bit mask
+	;if input word is 0x246-0x249: 4 groups of 4 bytes starting at ($80b10).L (through the 4 bytes at ($80b1c).L)
+	;	this returns time between 105-110C, 110-115C, 115-120C
+	;	and time above 120C, (32bit counter, 0.1 second increments)
+	;if input word is 0x24e-0x252: 5 groups of 2 bytes starting at ($80b20).L (through the 2 bytes at ($80b28).L)
+	;	this returns the 5 highest RPM values recorded
+	;if input word is 0x253: byte at ($80b2a).L -> engine coolant temp at high rpm 1 (byte*0.625 - 40) = (degree C)
+	;if input word is 0x255: 4 bytes starting at ($80b2c).L -> engine hrs at high rpm 1 (32bit counter, 0.1 seconds)
+	;if input word is 0x256: byte from ($80b30).L -> engine coolant temp at high rpm 2 (byte*0.625 - 40) = (degree C)
+	;if input word is 0x258: 4 bytes starting at ($80b32).L -> engine hrs at high rpm 2 (32bit counter, 0.1 seconds)
+	;if input word is 0x259: byte from ($80b36).L -> engine coolant temp at high rpm 3 (byte*0.625 - 40) = (degree C)
+	;if input word is 0x25b: 4 bytes from ($80b38).L -> engine hrs at high rpm 3 (32bit counter, 0.1 seconds)
+	;if input word is 0x25c: byte from ($80b3c).L -> engine coolant temp at high rpm 4 (byte*0.625 - 40) = (degree C)
+	;if input word is 0x25e: 4 bytes from ($80b3e).L -> engine hrs at high rpm 4 (32bit counter, 0.1 seconds)
+	;if input word is 0x25f: byte from ($80b42).L -> engine coolant temp at high rpm 5 (byte*0.625 - 40) = (degree C)
+	;if input word is 0x260: packet: 72,107,16,98,2,32,byte each from ($80814).L,($80816).L,($80818).L,($8081a).L,sum of bytes
+	;	this lists available PIDs via a bit mask
+	;if input word is 0x262: 4 bytes from ($80b44).L -> engine hrs at high rpm 5 (32bit counter, 0.1 seconds)
+	;if input word is 0x263: byte from ($80b48).L -> max wheel speed 1 kph
+	;if input word is 0x264: byte from ($80b4a).L -> max wheel speed 2 kph
+	;if input word is 0x265: byte from ($80b4c).L -> max wheel speed 3 kph
+	;if input word is 0x266: byte from ($80b4e).L -> max wheel speed 4 kph
+	;if input word is 0x267: byte from ($80b50).L -> max wheel speed 5 kph
+	;if input word is 0x268: byte from ($80b64).L -> fastest 0-100 kph
+	;if input word is 0x269: byte from ($80b66).L -> fastest 0-160 kph
+	;if input word is 0x26a: byte from ($80b68).L -> most recent 0-100 kph (0.1 s)
+	;if input word is 0x26b: byte from ($80b6a).L -> most recent 0-160 kph (0.1 s)
+	;if input word is 0x26c: 4 bytes from ($80b52).L -> total engine hrs (32bit counter, 0.1 seconds)
+	;if input word is 0x26d: 2 bytes from ($80b6c).L -> number standing starts
+	;if input word is any other value: 72,107,16,127,17,sum of bytes
+-------------------------------------------------------
+
+subroutine @ 0x268A2: input 4th and 5th serial byte combined as a word (on a long word) and a the 6th serial byte
+	;input a word (the PID bytes combined) and a byte
+	;OBD-II MODE 0x2F serial packet response assembler
+	;assemble a packet at 0x811e2, put the first byte of the packet onto
+	;SCDR to send over serial, clear 0x807CE and set 0x807CC to the number
+	;of bytes in the packet
+	;
+	;if input word is 0x100: packet: 72,107,16,111,1,0,byte each from ($80840).L,($80842).L,($80844).L,($80846).L,sumByte
+	;	this lists available PIDs via a bit mask
+	;
+	;PIDs 0x101-0x104 will fire injectors via TPU output compare mode, then send:
+	;72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;skip the attempt to command the TPU if the word at 0x80866 is not zero, or 
+	;if the word at 0x801c6 (rpm) is not zero, or if the word at 0x86cd2 is zero, then send:
+	;72,107,16,127,33,sum of bytes
+	;if input word is 0x101: TPU function 6, TPU ram (word data starting at 0xFFFF60): 137,0,236,0, 
+	;	move word at ($86cd2).L to 0x80868 and move '1' to (byte at 0x80860)
+	;if input word is 0x102: TPU function 7, TPU ram (word data starting at 0xFFFF70): 137,0,236,0, 
+	;	move word at ($86cd2).L to 0x80868 and move '2' to (byte at 0x80860)
+	;if input word is 0x103: TPU function 8, TPU ram (word data starting at 0xFFFF80): 137,0,236,0, 
+	;	move word at ($86cd2).L to 0x80868 and move '3' to (byte at 0x80860)
+	;if input word is 0x104: TPU function 9, TPU ram (word data starting at 0xFFFF90): 137,0,236,0, 
+	;	move word at ($86cd2).L to 0x80868 and move '4' to (byte at 0x80860)
+	;if input word is 0x120: packet: 72,107,16,111,1,32,byte each from ($80848).L,($8084a).L,($8084c).L,($8084e).L,sumByte
+	;	this lists available PIDs via a bit mask
+	;if input word is 0x121: 
+	;	actuate the VVL controller- input byte is (solenoid duty cycle)*2.55
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put whichever is higher of '4' or the input byte
+	;	onto 0x80862, then put byte '9' onto 0x80860, and the word at ($86cc8).L onto 0x80868
+	;	send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x122: 
+	;	actuate the VVT controller- input byte is (solenoid duty cycle)*2.55
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put whichever is higher of '4' or the input byte
+	;	onto 0x80862, then put byte '10' onto 0x80860, and the word at ($86cca).L onto 0x80868
+	;	send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x125: 
+	;	this sets the gauge cluster engine speed to match calibration word at $86cde
+	;	if the word at 0x801c6 (rpm) is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at 0x86ce2 is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put whichever is higher of '4' or the input byte
+	;	onto 0x80862, then put byte '12' onto 0x80860, and the word at ($86ce2).L onto 0x80868
+	;	send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x126: 
+	;	this sets the gauge cluster vehicle speed to match the calibration byte at $86ce1
+	;	if the word at 0x801c6 (rpm) is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at 0x86ce4 is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put whichever is higher of '4' or the input byte
+	;	onto 0x80862, then put byte '11' onto 0x80860, and the word at ($86ce4).L onto 0x80868
+	;	send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x127: 
+	;	this actuates the evap purge PWM valve- input byte is (solenoid duty cycle)*2.55
+	;	put whichever is higher of '4' or the input byte
+	;	onto 0x80862, then put byte '13' onto 0x80860, and the word at ($86cd4).L onto 0x80868
+	;	send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x12A: 
+	;	related to MODE 0x22 PIDs 0x204 and 0x206 - put byte input data onto $80d78
+	;	put whichever is higher of '4' or the input byte
+	;	onto 0x80862, then put byte '14' onto 0x80860, and the word at ($86cdc).L onto 0x80868
+	;	send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x140: packet: 72,107,16,111,1,64,a byte each from ($80850).L,($80852).L,($80854).L,($80856).L,sumByte
+	;	this lists available PIDs via a bit mask
+	;if input word is 0x141: 
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cec).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise 
+	;		if the input byte is not equal to the (byte at 0x80862), put '64' onto the byte at ($8086a).L
+	;		otherwise clear a byte at ($8086a).L, 
+	;	put '64' onto the byte at ($8086c).L
+	;		then put byte '15' onto 0x80860, and the word at ($86cec).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x142: 
+	;	related to OBD MODE 0x22 PID 0x214
+	;	if the word at ($86c46).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put the input byte onto 0x80862
+	;	then put byte '22' onto 0x80860, and the word at ($86c46).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x143: 
+	;	affects data on PORTC0
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cee).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put the input byte onto 0x80862
+	;	then put byte '21' onto 0x80860, and the word at ($86cee).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x144: 
+	;	affects data on PORTC0
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cf0).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put the input byte onto 0x80862
+	;	then put byte '20' onto 0x80860, and the word at ($86cf0).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x146: if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cf2).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise 
+	;		if the input byte is not equal to the (byte at 0x80862), put '16' onto the byte at ($8086a).L
+	;		otherwise clear a byte at ($8086a).L, 
+	;	put '16' onto the byte at ($8086c).L
+	;		then put byte '16' onto 0x80860, and the word at ($86cf2).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x147: 
+	;	This turns the MIL light on in the gauge cluster
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cf4).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put the input byte onto 0x80862
+	;	then put byte '17' onto 0x80860, and the word at ($86cf4).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x148: 
+	;	this turns the oil light on in the gauge cluster
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cf4).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put the input byte onto 0x80862
+	;	then put byte '23' onto 0x80860, and the word at ($86cf4).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x149: 
+	;	this commands the EVAP purge system?
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cd4).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise put the input byte onto 0x80862
+	;	then put byte '24' onto 0x80860, and the word at ($86cd4).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x14A: if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cf6).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise 
+	;		if the input byte is not equal to the (byte at 0x80862), put '2' onto the byte at ($8086a).L
+	;		otherwise clear a byte at ($8086a).L, 
+	;	put '2' onto the byte at ($8086c).L
+	;		then put byte '18' onto 0x80860, and the word at ($86cf6).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x14B: 
+	;	if the word at 0x801c6 is not zero, or if the word at 0x80866 is not zero, 
+	;	or if the word at ($86cf6).L is zero, then send:
+	;	72,107,16,127,33,sum of bytes
+	;	otherwise 
+	;		if the input byte is not equal to the (byte at 0x80862), put '32' onto the byte at ($8086a).L
+	;		otherwise clear a byte at ($8086a).L, 
+	;	put '32' onto the byte at ($8086c).L
+	;		then put byte '19' onto 0x80860, and the word at ($86cf6).L onto 0x80868
+	;		send: 72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;if input word is 0x160: packet: 72,107,16,111,1,96,byte each from ($80858).L,($8085a).L,($8085c).L,($8085e).L,sumByte
+	;	this lists available PIDs via a bit mask
+	;
+	;PIDs 0x161-0x164 will activate the ignition/spark firing routine of the TPU (OC mode), then send:
+	;72,107,16,111,2 bytes of input word, input byte,sum of bytes
+	;skip the attempt to command the TPU if the word at 0x80866 is not zero, or 
+	;if the word at 0x801c6 (rpm) is not zero, or if the word at ($86cea).L is zero, then send:
+	;72,107,16,127,33,sum of bytes
+	;if input word is 0x161: TPU function 1, TPU ram (word data starting at 0xFFFF10): 137,0,236,0, 
+	;	move word at ($86cea).L to 0x80868 and move '5' to (byte at 0x80860)
+	;if input word is 0x162: TPU function 2, TPU ram (word data starting at 0xFFFF20): 137,0,236,0, 
+	;	move word at ($86cea).L to 0x80868 and move '6' to (byte at 0x80860)
+	;if input word is 0x163: TPU function 3, TPU ram (word data starting at 0xFFFF30): 137,0,236,0, 
+	;	move word at ($86cea).L to 0x80868 and move '7' to (byte at 0x80860)
+	;if input word is 0x164: TPU function 4, TPU ram (word data starting at 0xFFFF40): 137,0,236,0, 
+	;	move word at ($86cea).L to 0x80868 and move '8' to (byte at 0x80860)
+	;if input word is anything else: packet: 72,107,16,127,18,sumByte
+-------------------------------------------------------
+
+subroutine @ 0x2ea10: pass in serial bytes 4 through 9
+	;input six bytes, each on a long word
+	;OBD-II MODE 0x3B response serial packet assembler
+	;Re-write VIN into RAM (RAM gets copied to flash mem at power cycle)
+	;interestingly, the car typically acts like the PID0x2 message is not
+	;received
+	;if the first input byte is '0x1': put the 2nd through 6th input bytes onto
+	;	addresses ($80d58).L,($80d5b).L,($80d5c).L,($80d5d).L,($80d5e).L
+	;	assemble serial packet: 72,107,16,123,1st input byte,sumByte
+	;	put '5' on 0x807cc, clear the byte at 0x807ce and put the first byte
+	;	of the serial packet onto SCDR to send over serial
+	;if the first input byte is '0x2': put the 2nd and 3rd input bytes onto
+	;	addresses ($80d5f).L,($80d60).L
+	;	assemble serial packet: 72,107,16,123,1st input byte,sumByte
+	;	put '5' on 0x807cc, clear the byte at 0x807ce and put the first byte
+	;	of the serial packet onto SCDR to send over serial
+	;if the first input byte is any other value: 
+	;	assemble serial packet: 72,107,16,127,18,sumByte
+	;	put '5' on 0x807cc, clear the byte at 0x807ce and put the first byte
+	;	of the serial packet onto SCDR to send over serial
+-------------------------------------------------------
+
+Short message serial packet response assembler - this is automatically
+called when Mode 9 PID 2 or 4 are used- it allows for multiple OBD response
+packets to be sent for one received query packet
+subroutine @0x2e3e6: pass in 4th serial byte (4th byte past 0x81162)
+	;input a byte
+	;increment the (byte at 0x80d44) each time this function is called
+	;if the input byte is 2: assemble a serial packet: 72,107,16,73,2,byte at 0x80d44,
+	;	byte at (0x80d50 + [(byte at 0x80d44 - 1)*4 - 3]),byte at (0x80d50 + [(byte at 0x80d44 - 1)*4 - 2]),
+	;	byte at (0x80d50 + [(byte at 0x80d44 - 1)*4 - 1]),byte at (0x80d50 + [(byte at 0x80d44 - 1)*4]),sumByte
+	;	put '10' onto byte at 0x807cc, clear byte at 0x807ce, put first serial packet byte onto SCDR to send over serial
+	;	if the value at 0x80d44 is 5, clear that byte -> multiple (5) calls to this function returns the VIN in ASCII
+	;if the input byte is 4: assemble a serial packet: 72,107,16,73,4,byte at 0x80d44,
+	;	byte at (0x87656 + [(byte at 0x80d44 - 1)*4]),byte at (0x87656 + [(byte at 0x80d44 - 1)*4] + 1),
+	;	byte at (0x87656 + [(byte at 0x80d44 - 1)*4] + 2),byte at (0x87656 + [(byte at 0x80d44 - 1)*4] + 3),sumByte
+	;	put '10' onto byte at 0x807cc, clear byte at 0x807ce, put first serial packet byte onto SCDR to send over serial
+	;	if the value at 0x80d44 is 4, clear that byte -> multiple (4) calls to this function returns the CAL ID, make, model and year in ASCII
+	;if the input byte is any other value: assemble a serial packet response
+	;	72,107,16,127,18,sumByte
+	;	put '5' onto byte at 0x807cc, clear byte at 0x807ce, put first serial packet byte onto SCDR to send over serial
+-----------------------------------------------------
+
+init timing response routine
+subroutine @0x230b2: this is part of the periodic interrupt routine, (this routine will be called
+	once every 5 ms).
+	;This is the OBD init interpreter
+	;
+	;if the byte at 0x807bc is 0, 2 interrupt cycles must occur where the SCI reciever
+	;	is INACTIVE; at 0x807c2 = 2, increment byte at 0x807bc, clear 0x807c2 and end
+	;if the byte at 0x807bc is 1, 40 interrupt cycles must occur where the SCI reciever
+	;	is ACTIVE; at 0x807c2 = 40, increment byte at 0x807bc, clear byte at 0x807c2,
+	;	a byte at ($807c0).L, and a byte at 0x807be and end routine
+	;if the byte at 0x807bc is 2, there are 20 interrupt cycles where behavior does not
+	;	matter- at 0x807c2 = 20, divide the byte at 0x807be
+	;		by 2 and if the receiver is INACTIVE, also add 128 to that byte
+	;	then there are 19 more interrupt cycles where behavior does not matter
+	;		at 0x807c2 > 40, increment the byte at ($807c0).L, 
+	;		if the incremented byte at 0x807c0 is 8, increment the byte at
+	;		0x807bc, and clear the byte at 0x807c2, then end routine
+	;		when byte at 0x807c0 is not 8, if [51*(2^(8 - (byte at 0x807c0)))] 
+	;			is not equal to the byte at 0x807be
+	;			subtract 1 from the byte at 0x807bc, 
+	;			in either case (equal or not), clear 0x807c2 and end routine
+	;if the byte at 0x807bc is 3, increment 0x807c2 until it is 40 (40 interrupt cycles)
+	;		then check that 0x807be is 51 (if not, clear 0x807c2 and 0x807bc)
+	;		if the SCSR is zero, clear a byte at 0x807c4, and increment 0x807bc, and end routine
+	;		if the SCSR is not zero, also read in a word from SCDR onto D0
+	;if the byte at 0x807bc is 4, increment 0x807c4 on each call, then check to see if the value is 20
+	;		(this gives 20 interrupt count cycles) if not, end routine
+	;		otherwise, send byte '85' onto the SCDR to send over serial, then increment
+	;		0x807bc and clear 0x807c4
+	;if the byte at 0x807bc is 5, increment 0x807c4 on each call, then check to see if the value is 2
+	;		(this gives 2 interrupt count cycles) if the value is 2, send byte 148 over serial, 
+	;		increment 0x807bc and clear 0x807c4
+	;		then/otherwise if we have new serial data save it on byte at 0x807c6
+	;if the byte at 0x807bc is 6, increment 0x807c4 on each call, then check to see if the value is 2
+	;		(this gives 2 interrupt count cycles) if the value is 2, send byte 148 over serial, 
+	;		increment 0x807bc and clear 0x807c4
+	;		then/otherwise if we have new serial data save it on byte at 0x807c6
+	;if the byte at 0x807bc is 7, if we have received new serial data and the new data byte 
+	;		is '107', increment 0x807bc and clear 0x807c4
+	;		if no new data increment 0x807c4 on each iteration: if the value is not 12
+	;		end routine; otherwise clear 0x807bc and 0x807c4 (this makes up for the increments of
+	;			0x807c4 for errors in previous steps
+	;if the byte at 0x807bc is 8, increment the byte at 0x807c4 on each iteration, if the value is 7
+	;		send (byte at 0x807be)EOR '255' over serial (this gives inverse of 51 = 00110011
+	;			inverse = 11001100 = 204)
+	;	 	if the value is larger than 7, check to see if we have new serial data:
+	;		if we have no new data, end routine
+	;		if we have new data, store it on 0x807c6
+	;		then change SCCR1 settings: turn on the SCI transmitter and receiver, 
+	;			and enable the receiver interrupt
+	;		then increment 0x807bc and clear 0x807c4, 0x807c8 and 0x807ca
+	;if the byte at 0x807bc is 9, check to see if the byte at 0x807d8 is 0
+	;		if not, decrement it by 1, then check to see if the word at 0x807d2 is 0
+	;		if not, decrement it by 1 and end routine (this is the desirable result in case
+	;		we want to do more serial data routines)
+	;		if the word at 0x807d2 is 0, clear a byte at 0x807bc
+	;		put the word '1000' (the 5 sec OBD timeout) onto ($807d2).L, clear a byte at 0x807be, ($807c0).L,0x807c2,
+	;		0x807c4, ($807c6).L, ($807c8).L, ($807ca).L, ($807cc).L, ($807ce).L, ($807d0).L,
+	;		($807d4).L, and ($807d6).L and set SCI baud rate to: 10.419 kbaud, enable 
+	;		reciever and transmitter and end routine
+-----------------------------------------------------
